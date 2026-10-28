@@ -31,9 +31,6 @@
     "docker",
     "oci"
   ],
-  "os": [
-    "darwin"
-  ],
   "extensionKind": [
     "ui"
   ],
