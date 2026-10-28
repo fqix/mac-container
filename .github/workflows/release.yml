@@ -65,18 +65,21 @@ jobs:
       # Exact versions: `npx` resolves at publish time, so a floating major would run
       # code published after this workflow was reviewed, with credentials in scope.
       # The VSIX is platform-specific; vsce and ovsx read the target (darwin-arm64) from it.
+      # --skip-duplicate lets a failed job be re-run after some stores already have this version.
       - name: Publish to VS Code Marketplace
-        run: npx --yes @vscode/vsce@4.0.0 publish --azure-credential --packagePath vsix/*.vsix
+        run: npx --yes @vscode/vsce@4.0.0 publish --azure-credential --skip-duplicate --packagePath vsix/*.vsix
 
-      # Trusted publishing exchanges this job's OIDC token for a short-lived Open VSX
-      # token (no secret). The registration on open-vsx.org must pin this repository,
-      # release.yml and the marketplace-publish environment. --trusted-publishing
-      # fails instead of falling back when no ID token is available.
-      - name: Publish to Open VSX
-        run: npx --yes ovsx@1.2.0 publish --trusted-publishing --packagePath vsix/*.vsix
-
+      # Attached before Open VSX so the release has its VSIX even when only Open VSX fails.
       - name: Attach VSIX package to the release
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ github.event.release.tag_name }}
         run: gh release upload "$TAG" vsix/*.vsix --clobber
+
+      # Trusted publishing exchanges this job's OIDC token for a short-lived Open VSX
+      # token (no secret). The registration on open-vsx.org must pin this repository,
+      # release.yml and the marketplace-publish environment. --trusted-publishing
+      # fails instead of falling back when no ID token is available. Open VSX only accepts a trusted
+      # publisher for an extension that already exists, so the very first version is published by hand.
+      - name: Publish to Open VSX
+        run: npx --yes ovsx@1.2.0 publish --trusted-publishing --skip-duplicate --packagePath vsix/*.vsix
