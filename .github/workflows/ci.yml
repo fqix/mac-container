@@ -97,7 +97,7 @@ jobs:
 
       - name: Verify VSIX contents
         run: |
-          vsix="$(ls apple-container-darwin-arm64-*.vsix)"
+          vsix="$(ls apple-container-tools-darwin-arm64-*.vsix)"
           mkdir -p vsix-check && unzip -q "$vsix" -d vsix-check
           test -f vsix-check/extension/dist/extension.js
           test -f vsix-check/extension/dist/webview/webview.js
@@ -114,7 +114,7 @@ jobs:
         if: inputs.package
         uses: actions/upload-artifact@v7
         with:
-          name: apple-container-vsix
-          path: apple-container-darwin-arm64-*.vsix
+          name: apple-container-tools-vsix
+          path: apple-container-tools-darwin-arm64-*.vsix
           if-no-files-found: error
           retention-days: 14

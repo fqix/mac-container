@@ -1,5 +1,5 @@
 {
-  "displayName": "Apple Container",
+  "displayName": "Apple Container Tools",
   "description": "在 VS Code 中管理 Apple container（macOS 原生 Linux 容器）：容器、镜像、网络、卷与系统服务",
   "viewsContainer.title": "Apple Container",
   "view.containers": "容器",

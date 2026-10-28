@@ -1,4 +1,4 @@
-# Apple Container for VS Code
+# Apple Container Tools for VS Code
 
 [简体中文](README.zh-CN.md)
 
@@ -72,7 +72,7 @@ npm install
 npm run build        # bundle the extension and webviews into dist/
 npm test             # type check, l10n check and unit tests
 npm run test:e2e     # end-to-end tests in VS Code against the real container service
-npm run package      # build apple-container-darwin-arm64-<version>.vsix
+npm run package      # build apple-container-tools-darwin-arm64-<version>.vsix
 ```
 
 The e2e suite launches the installed VS Code (`/Applications/Visual Studio Code.app`, override with `VSCODE_EXECUTABLE`) and needs the `container` service running.

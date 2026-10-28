@@ -48,7 +48,7 @@ jobs:
       - name: Download VSIX package
         uses: actions/download-artifact@v7
         with:
-          name: apple-container-vsix
+          name: apple-container-tools-vsix
           path: vsix
 
       # Azure DevOps retires global PATs on 2026-12-01; the Marketplace accepts a

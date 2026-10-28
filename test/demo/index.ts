@@ -95,7 +95,7 @@ async function setup(api: ExtensionApi): Promise<void> {
 }
 
 export async function run_(): Promise<void> {
-  const extension = vscode.extensions.all.find((e) => e.packageJSON.name === 'apple-container')!;
+  const extension = vscode.extensions.all.find((e) => e.packageJSON.name === 'apple-container-tools')!;
   const api = (await extension.activate()) as ExtensionApi;
   await setup(api);
   await run('workbench.action.closeAuxiliaryBar');

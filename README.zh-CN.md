@@ -1,4 +1,4 @@
-# Apple Container for VS Code
+# Apple Container Tools for VS Code
 
 [English](README.md)
 
@@ -70,7 +70,7 @@ npm install
 npm run build        # 打包插件和 webview 到 dist/
 npm test             # 类型检查、l10n 检查和单元测试
 npm run test:e2e     # 在 VS Code 中针对真实 container 服务的端到端测试
-npm run package      # 生成 apple-container-darwin-arm64-<version>.vsix
+npm run package      # 生成 apple-container-tools-darwin-arm64-<version>.vsix
 ```
 
 e2e 测试会启动本机安装的 VS Code（`/Applications/Visual Studio Code.app`，可用 `VSCODE_EXECUTABLE` 覆盖），需要 `container` 服务处于运行状态。

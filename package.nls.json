@@ -1,5 +1,5 @@
 {
-  "displayName": "Apple Container",
+  "displayName": "Apple Container Tools",
   "description": "Manage Apple container (native Linux containers on macOS) in VS Code: containers, images, networks, volumes and system services",
   "viewsContainer.title": "Apple Container",
   "view.containers": "Containers",
