@@ -34,6 +34,19 @@ async function main(): Promise<void> {
         `--extensions-dir=${path.join(tmp, 'extensions')}`,
       ],
     });
+    // Same extension, no folder argument: commands such as pull must not depend on a workspace folder
+    await runTests({
+      vscodeExecutablePath,
+      extensionDevelopmentPath: root,
+      extensionTestsPath: path.join(__dirname, 'e2e', 'index.js'),
+      extensionTestsEnv: { E2E_SUITE: 'emptyWindow' },
+      launchArgs: [
+        '--disable-extensions',
+        // Keep it short: VS Code puts its IPC socket here and macOS limits socket paths to 104 bytes
+        `--user-data-dir=${path.join(tmp, 'ud-empty')}`,
+        `--extensions-dir=${path.join(tmp, 'extensions')}`,
+      ],
+    });
   } finally {
     fs.rmSync(tmp, { recursive: true, force: true });
   }

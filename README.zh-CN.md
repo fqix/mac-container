@@ -75,6 +75,7 @@ npm run package      # 生成 apple-container-tools-darwin-arm64-<version>.vsix
 
 e2e 测试会启动本机安装的 VS Code（`/Applications/Visual Studio Code.app`，可用 `VSCODE_EXECUTABLE` 覆盖），需要 `container` 服务处于运行状态。
 测试只操作自己创建的资源（`e2e-` 前缀），不会执行任何 prune。设置 `E2E_SKIP_BUILD=1` 跳过镜像构建用例，`E2E_GREP=<pattern>` 只运行部分用例。
+测试会启动两次 VS Code：一次带工作区文件夹，一次是空窗口，用来覆盖不依赖文件夹的命令。
 
 README 中的动画由 `npm run demo` 录制：它用调试端口启动 VS Code，针对演示容器（结束后自动删除）播放脚本化的场景，再通过 Chrome DevTools Protocol 抓取窗口画面生成 `docs/media/*.gif`。`DEMO_SCENES=stats npm run demo` 只录制单个场景。
 

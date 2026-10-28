@@ -77,6 +77,7 @@ npm run package      # build apple-container-tools-darwin-arm64-<version>.vsix
 
 The e2e suite launches the installed VS Code (`/Applications/Visual Studio Code.app`, override with `VSCODE_EXECUTABLE`) and needs the `container` service running.
 It only touches resources it creates (prefixed with `e2e-`) and never runs prune. Set `E2E_SKIP_BUILD=1` to skip the image build test and `E2E_GREP=<pattern>` to run a subset.
+It runs twice: once with a workspace folder and once as an empty window, for commands that must work without a folder.
 
 The README animations are recorded with `npm run demo`: it starts VS Code with a remote debugging port, plays scripted scenes against demo containers (removed afterwards) and captures the window over the Chrome DevTools Protocol into `docs/media/*.gif`. `DEMO_SCENES=stats npm run demo` records a single scene.
 

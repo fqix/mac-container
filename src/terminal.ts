@@ -1,5 +1,7 @@
 // Commands that are interactive or stream output (exec, logs -f, build, pull) run in the integrated terminal
 
+import * as os from 'os';
+
 import * as vscode from 'vscode';
 
 import type { ContainerCli } from './cli';
@@ -21,14 +23,17 @@ export async function runCliTask(cli: ContainerCli, name: string, args: string[]
   return runTask(name, await cli.executable(), args, cwd);
 }
 
-/** Runs any executable as a VS Code task and resolves with its exit code */
+/**
+ * Runs any executable as a VS Code task and resolves with its exit code.
+ * Without a cwd VS Code falls back to ${workspaceFolder}, which fails in a window with no folder open, so default to the home directory.
+ */
 export async function runTask(name: string, executable: string, args: string[], cwd?: string): Promise<number | undefined> {
   const task = new vscode.Task(
     { type: 'appleContainer', id: `${name}-${Date.now()}` },
     vscode.TaskScope.Workspace,
     name,
     'Apple Container',
-    new vscode.ProcessExecution(executable, args, cwd ? { cwd } : undefined),
+    new vscode.ProcessExecution(executable, args, { cwd: cwd ?? os.homedir() }),
   );
   task.presentationOptions = { reveal: vscode.TaskRevealKind.Always, panel: vscode.TaskPanelKind.Dedicated, clear: true };
   const execution = await vscode.tasks.executeTask(task);
