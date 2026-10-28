@@ -2,8 +2,8 @@
 
 import * as vscode from 'vscode';
 
-import { describeError } from '../i18n';
-import type { ServiceMonitor } from '../state';
+import { describeError } from '../utils/i18n';
+import type { ServiceMonitor } from '../services/state';
 
 export class ResourceNode<T> extends vscode.TreeItem {
   constructor(

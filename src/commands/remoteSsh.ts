@@ -19,8 +19,8 @@ import {
   prepareContainer,
   renderConfig,
   writeConfig,
-} from '../remoteSsh';
-import { describeError } from '../i18n';
+} from '../services/remoteSsh';
+import { describeError } from '../utils/i18n';
 import type { ContainerNode } from '../views/containers';
 import { CommandContext, ask, register, withProgress } from './common';
 

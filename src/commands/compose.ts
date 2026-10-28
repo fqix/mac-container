@@ -1,10 +1,10 @@
 import * as path from 'path';
 import * as vscode from 'vscode';
 
-import { resolveCliPath } from '../cli';
-import { COMPOSE_FILE_NAMES, composeProjectName, isComposeFileName } from '../compose';
-import { runTask } from '../terminal';
-import type { ContainerSummary } from '../types';
+import { resolveCliPath } from '../services/cli';
+import { COMPOSE_FILE_NAMES, composeProjectName, isComposeFileName } from '../services/compose';
+import { runTask } from '../ui/terminal';
+import type { ContainerSummary } from '../models/types';
 import type { ComposeProjectNode } from '../views/containers';
 import { CommandContext, confirm, register, withProgress } from './common';
 

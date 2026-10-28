@@ -3,7 +3,7 @@
 // means deleting the container and creating it again. No vscode dependency.
 // Field layout follows ContainerConfiguration / ProcessConfiguration of apple/container 1.6.1.
 
-import type { ContainerMount, PortMapping } from './types';
+import type { ContainerMount, PortMapping } from '../models/types';
 
 type Json = Record<string, any>;
 

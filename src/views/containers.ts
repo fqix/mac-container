@@ -1,11 +1,11 @@
 import * as vscode from 'vscode';
 
-import type { ContainerCli } from '../cli';
-import { ComposeProject, groupByComposeProject } from '../compose';
-import { relativeTime } from '../i18n';
-import { formatBytes, formatPort, shortImageName } from '../parse';
-import type { ServiceMonitor } from '../state';
-import type { ContainerMount, ContainerSummary, PortMapping } from '../types';
+import type { ContainerCli } from '../services/cli';
+import { ComposeProject, groupByComposeProject } from '../services/compose';
+import { relativeTime } from '../utils/i18n';
+import { formatBytes, formatPort, shortImageName } from '../utils/parse';
+import type { ServiceMonitor } from '../services/state';
+import type { ContainerMount, ContainerSummary, PortMapping } from '../models/types';
 import { ResourceNode, ResourceProvider, TreeNode } from './base';
 
 export type ContainerNode = ResourceNode<ContainerSummary>;

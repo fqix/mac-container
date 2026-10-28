@@ -2,7 +2,7 @@
 
 import * as vscode from 'vscode';
 
-import type { ServiceMonitor, ServiceState } from './state';
+import type { ServiceMonitor, ServiceState } from '../services/state';
 
 export class ServiceStatusBar implements vscode.Disposable {
   private readonly item = vscode.window.createStatusBarItem('appleContainer.status', vscode.StatusBarAlignment.Left, 50);

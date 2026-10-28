@@ -3,8 +3,8 @@
 import * as vscode from 'vscode';
 
 import { CliNotFoundError, ContainerCli } from './cli';
-import { describeError } from './i18n';
-import type { SystemStatus } from './types';
+import { describeError } from '../utils/i18n';
+import type { SystemStatus } from '../models/types';
 
 export type ServiceState =
   | { kind: 'unknown' }

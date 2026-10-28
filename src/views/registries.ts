@@ -1,9 +1,9 @@
 import * as vscode from 'vscode';
 
-import type { ContainerCli } from '../cli';
-import { relativeTime } from '../i18n';
-import type { ServiceMonitor } from '../state';
-import type { RegistrySummary } from '../types';
+import type { ContainerCli } from '../services/cli';
+import { relativeTime } from '../utils/i18n';
+import type { ServiceMonitor } from '../services/state';
+import type { RegistrySummary } from '../models/types';
 import { ResourceNode, ResourceProvider } from './base';
 
 export type RegistryNode = ResourceNode<RegistrySummary>;

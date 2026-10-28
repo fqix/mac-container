@@ -1,9 +1,9 @@
 import * as vscode from 'vscode';
 
-import { EditContainerPanel } from '../editPanel';
-import { StatsPanel } from '../statsPanel';
-import { openCliTerminal } from '../terminal';
-import type { ContainerSummary } from '../types';
+import { EditContainerPanel } from '../panels/editPanel';
+import { StatsPanel } from '../panels/statsPanel';
+import { openCliTerminal } from '../ui/terminal';
+import type { ContainerSummary } from '../models/types';
 import type { ContainerNode } from '../views/containers';
 import { CommandContext, confirm, register, selection, showOutput, withProgress } from './common';
 

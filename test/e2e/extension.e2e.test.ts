@@ -9,10 +9,10 @@ import { promisify } from 'util';
 
 import * as vscode from 'vscode';
 
-import { composeProjectName } from '../../src/compose';
-import { recreateContainer } from '../../src/editPanel';
+import { composeProjectName } from '../../src/services/compose';
+import { recreateContainer } from '../../src/panels/editPanel';
 import type { ExtensionApi } from '../../src/extension';
-import { parseJson } from '../../src/parse';
+import { parseJson } from '../../src/utils/parse';
 import type { ResourceProvider, TreeNode } from '../../src/views/base';
 import { ResourceNode } from '../../src/views/base';
 

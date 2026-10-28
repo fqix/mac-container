@@ -1,7 +1,7 @@
 import * as assert from 'assert';
 
-import { parseContainers } from '../../src/parse';
-import { hostAlias, isIncluded, parsePrepareOutput, renderConfig } from '../../src/remoteSsh';
+import { parseContainers } from '../../src/utils/parse';
+import { hostAlias, isIncluded, parsePrepareOutput, renderConfig } from '../../src/services/remoteSsh';
 
 describe('remote ssh', () => {
   const home = '/Users/dev';

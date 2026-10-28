@@ -1,8 +1,8 @@
 import * as vscode from 'vscode';
 
-import type { ContainerCli } from '../cli';
-import type { ServiceMonitor } from '../state';
-import type { NetworkSummary } from '../types';
+import type { ContainerCli } from '../services/cli';
+import type { ServiceMonitor } from '../services/state';
+import type { NetworkSummary } from '../models/types';
 import { ResourceNode, ResourceProvider } from './base';
 
 export type NetworkNode = ResourceNode<NetworkSummary>;

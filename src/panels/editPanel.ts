@@ -2,9 +2,9 @@
 
 import * as vscode from 'vscode';
 
-import type { ContainerCli } from './cli';
-import { describeError } from './i18n';
-import { parseContainers, parseJson } from './parse';
+import type { ContainerCli } from '../services/cli';
+import { describeError } from '../utils/i18n';
+import { parseContainers, parseJson } from '../utils/parse';
 import {
   buildRecreateArgs,
   ContainerEdits,
@@ -12,7 +12,7 @@ import {
   EditProblem,
   EditToWebview,
   validateEdits,
-} from './recreate';
+} from '../services/recreate';
 import { webviewHtml, webviewRoot } from './webviewHtml';
 
 type Json = Record<string, any>;

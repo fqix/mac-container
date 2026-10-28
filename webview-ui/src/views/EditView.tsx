@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 
-import type { EditFromWebview, EditToWebview } from '../../../src/recreate';
-import type { ContainerMount, PortMapping } from '../../../src/types';
+import type { EditFromWebview, EditToWebview } from '../../../src/services/recreate';
+import type { ContainerMount, PortMapping } from '../../../src/models/types';
 import { useMessages } from '../useMessages';
 import { postMessage, t } from '../vscode';
 

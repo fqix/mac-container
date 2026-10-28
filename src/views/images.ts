@@ -1,10 +1,10 @@
 import * as vscode from 'vscode';
 
-import type { ContainerCli } from '../cli';
-import { relativeTime } from '../i18n';
-import { formatBytes } from '../parse';
-import type { ServiceMonitor } from '../state';
-import type { ImageSummary } from '../types';
+import type { ContainerCli } from '../services/cli';
+import { relativeTime } from '../utils/i18n';
+import { formatBytes } from '../utils/parse';
+import type { ServiceMonitor } from '../services/state';
+import type { ImageSummary } from '../models/types';
 import { ResourceNode, ResourceProvider } from './base';
 
 export type ImageNode = ResourceNode<ImageSummary>;

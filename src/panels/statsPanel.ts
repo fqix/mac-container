@@ -2,10 +2,10 @@
 
 import * as vscode from 'vscode';
 
-import type { ContainerCli } from './cli';
-import { describeError } from './i18n';
-import { StatsMessage, toSample } from './stats';
-import type { ContainerStats } from './types';
+import type { ContainerCli } from '../services/cli';
+import { describeError } from '../utils/i18n';
+import { StatsMessage, toSample } from '../services/stats';
+import type { ContainerStats } from '../models/types';
 import { webviewHtml, webviewRoot } from './webviewHtml';
 
 export class StatsPanel implements vscode.Disposable {

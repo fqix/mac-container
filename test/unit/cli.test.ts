@@ -3,7 +3,7 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 
-import { CliError, CliNotFoundError, cliErrorDetail, ContainerCli, resolveCliPath } from '../../src/cli';
+import { CliError, CliNotFoundError, cliErrorDetail, ContainerCli, resolveCliPath } from '../../src/services/cli';
 
 describe('cli', () => {
   let dir: string;

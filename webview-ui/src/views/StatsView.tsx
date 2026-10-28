@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState } from 'react';
 
-import type { StatsMessage, StatsSample } from '../../../src/stats';
+import type { StatsMessage, StatsSample } from '../../../src/services/stats';
 import { LineChart } from '../components/LineChart';
 import { formatBytes, formatPercent, formatRate } from '../format';
 import { useMessages } from '../useMessages';

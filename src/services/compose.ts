@@ -3,7 +3,7 @@
 
 import * as path from 'path';
 
-import type { ContainerSummary } from './types';
+import type { ContainerSummary } from '../models/types';
 
 /** File names container-compose looks for, in order, when no --file is given */
 export const COMPOSE_FILE_NAMES = ['compose.yml', 'compose.yaml', 'docker-compose.yml', 'docker-compose.yaml'];

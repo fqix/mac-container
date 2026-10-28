@@ -1,6 +1,6 @@
 import * as assert from 'assert';
 
-import { generateContainerName } from '../../src/names';
+import { generateContainerName } from '../../src/utils/names';
 
 describe('container names', () => {
   it('generates adjective_surname names', () => {

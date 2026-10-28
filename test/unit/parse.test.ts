@@ -13,7 +13,7 @@ import {
   parseSystemStatus,
   parseVolumes,
   shortImageName,
-} from '../../src/parse';
+} from '../../src/utils/parse';
 
 // Compiled to out/test/unit, fixtures stay in the source tree
 const fixture = (name: string) =>

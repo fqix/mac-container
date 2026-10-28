@@ -4,7 +4,7 @@ import * as os from 'os';
 
 import * as vscode from 'vscode';
 
-import type { ContainerCli } from './cli';
+import type { ContainerCli } from '../services/cli';
 
 /** Opens a terminal running the container CLI directly; output stays after the process exits */
 export async function openCliTerminal(cli: ContainerCli, name: string, args: string[]): Promise<vscode.Terminal> {

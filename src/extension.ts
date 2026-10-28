@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 
-import { ContainerCli } from './cli';
+import { ContainerCli } from './services/cli';
 import type { CommandContext } from './commands/common';
 import { register } from './commands/common';
 import { registerComposeCommands } from './commands/compose';
@@ -12,11 +12,11 @@ import { registerPortAndMountCommands } from './commands/ports';
 import { registerRegistryCommands } from './commands/registries';
 import { registerSystemCommands } from './commands/system';
 import { registerVolumeCommands } from './commands/volumes';
-import { DOCUMENT_SCHEME, ReadonlyDocumentProvider } from './documents';
-import { EditContainerPanel } from './editPanel';
-import { ServiceMonitor } from './state';
-import { StatsPanel } from './statsPanel';
-import { ServiceStatusBar } from './statusBar';
+import { DOCUMENT_SCHEME, ReadonlyDocumentProvider } from './ui/documents';
+import { EditContainerPanel } from './panels/editPanel';
+import { ServiceMonitor } from './services/state';
+import { StatsPanel } from './panels/statsPanel';
+import { ServiceStatusBar } from './ui/statusBar';
 import type { ResourceProvider } from './views/base';
 import { ContainersProvider } from './views/containers';
 import { ImagesProvider } from './views/images';

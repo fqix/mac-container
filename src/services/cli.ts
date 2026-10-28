@@ -14,7 +14,7 @@ import {
   parseStats,
   parseSystemStatus,
   parseVolumes,
-} from './parse';
+} from '../utils/parse';
 import type {
   ContainerStats,
   ContainerSummary,
@@ -23,7 +23,7 @@ import type {
   RegistrySummary,
   SystemStatus,
   VolumeSummary,
-} from './types';
+} from '../models/types';
 
 /** VS Code launched from the Dock does not inherit the shell PATH, so also look in Homebrew's and the official pkg's install locations */
 const EXTRA_SEARCH_DIRS = ['/opt/homebrew/bin', '/usr/local/bin'];

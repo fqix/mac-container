@@ -1,6 +1,6 @@
 // Turns two consecutive `container stats` readings into rates for the stats chart. No vscode dependency.
 
-import type { ContainerStats } from './types';
+import type { ContainerStats } from '../models/types';
 
 export interface StatsSample {
   /** Unix time in milliseconds */

@@ -2,11 +2,11 @@ import * as assert from 'assert';
 import * as fs from 'fs';
 import * as path from 'path';
 
-import { composeProjectName, groupByComposeProject, isComposeFileName } from '../../src/compose';
-import { parseContainers, parseJson } from '../../src/parse';
-import { buildRecreateArgs, formatPublishSpec, validateEdits } from '../../src/recreate';
-import { toSample } from '../../src/stats';
-import type { ContainerSummary } from '../../src/types';
+import { composeProjectName, groupByComposeProject, isComposeFileName } from '../../src/services/compose';
+import { parseContainers, parseJson } from '../../src/utils/parse';
+import { buildRecreateArgs, formatPublishSpec, validateEdits } from '../../src/services/recreate';
+import { toSample } from '../../src/services/stats';
+import type { ContainerSummary } from '../../src/models/types';
 
 const fixture = (name: string) =>
   parseJson(fs.readFileSync(path.resolve(__dirname, '../../../test/fixtures', name), 'utf8')) as any[];

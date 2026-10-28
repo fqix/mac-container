@@ -1,9 +1,9 @@
 import * as vscode from 'vscode';
 
-import type { ContainerCli } from '../cli';
-import type { ReadonlyDocumentProvider } from '../documents';
-import { showError } from '../i18n';
-import type { ServiceMonitor } from '../state';
+import type { ContainerCli } from '../services/cli';
+import type { ReadonlyDocumentProvider } from '../ui/documents';
+import { showError } from '../utils/i18n';
+import type { ServiceMonitor } from '../services/state';
 import type { ResourceNode } from '../views/base';
 import type { ContainersProvider } from '../views/containers';
 import type { ImagesProvider } from '../views/images';

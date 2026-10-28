@@ -1,9 +1,9 @@
 import * as path from 'path';
 import * as vscode from 'vscode';
 
-import { generateContainerName } from '../names';
-import { runCliTask } from '../terminal';
-import type { ImageSummary } from '../types';
+import { generateContainerName } from '../utils/names';
+import { runCliTask } from '../ui/terminal';
+import type { ImageSummary } from '../models/types';
 import type { ImageNode } from '../views/images';
 import { ask, CommandContext, confirm, register, selection, showOutput, withProgress } from './common';
 

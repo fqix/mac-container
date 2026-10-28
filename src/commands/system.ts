@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 
-import { openCliTerminal, runCliTask } from '../terminal';
+import { openCliTerminal, runCliTask } from '../ui/terminal';
 import { CommandContext, confirm, register, withProgress } from './common';
 
 export function registerSystemCommands(ctx: CommandContext): void {

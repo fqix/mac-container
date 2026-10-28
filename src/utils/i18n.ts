@@ -2,7 +2,7 @@
 
 import * as vscode from 'vscode';
 
-import { CliError, CliNotFoundError, cliErrorDetail } from './cli';
+import { CliError, CliNotFoundError, cliErrorDetail } from '../services/cli';
 import { formatRelativeTime } from './parse';
 
 export function describeError(error: unknown): string {

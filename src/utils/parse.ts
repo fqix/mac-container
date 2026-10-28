@@ -11,7 +11,7 @@ import type {
   RegistrySummary,
   SystemStatus,
   VolumeSummary,
-} from './types';
+} from '../models/types';
 
 type Json = Record<string, any>;
 
