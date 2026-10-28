@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.0
+
+- Open running containers as Remote-SSH workspaces through `container exec`, with automatic OpenSSH server installation and the container's user or an `appleContainer.sshUser` override
+- Keep Remote-SSH host entries and keys in a dedicated directory, included from the user's SSH config
+- Suggest Docker-style random container names and run optional shell scripts with `/bin/sh -c`, replacing the image's entrypoint when a script is provided
+- Fix terminal tasks in windows with no workspace folder open, with end-to-end coverage for empty windows
+- Organize extension source modules by responsibility
+
 ## 0.1.0
 
 Initial release.
