@@ -1,0 +1,891 @@
+{
+  "name": "apple-container",
+  "displayName": "%displayName%",
+  "description": "%description%",
+  "version": "0.1.0",
+  "publisher": "fqix",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/fqix/mac-container.git"
+  },
+  "bugs": {
+    "url": "https://github.com/fqix/mac-container/issues"
+  },
+  "homepage": "https://github.com/fqix/mac-container#readme",
+  "icon": "resources/icon.png",
+  "galleryBanner": {
+    "color": "#4338CA",
+    "theme": "dark"
+  },
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "keywords": [
+    "container",
+    "apple",
+    "macos",
+    "docker",
+    "oci"
+  ],
+  "os": [
+    "darwin"
+  ],
+  "extensionKind": [
+    "ui"
+  ],
+  "main": "./dist/extension.js",
+  "activationEvents": [],
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "appleContainer",
+          "title": "%viewsContainer.title%",
+          "icon": "resources/container.svg"
+        }
+      ]
+    },
+    "views": {
+      "appleContainer": [
+        {
+          "id": "appleContainer.containers",
+          "name": "%view.containers%"
+        },
+        {
+          "id": "appleContainer.images",
+          "name": "%view.images%"
+        },
+        {
+          "id": "appleContainer.networks",
+          "name": "%view.networks%",
+          "visibility": "collapsed"
+        },
+        {
+          "id": "appleContainer.volumes",
+          "name": "%view.volumes%",
+          "visibility": "collapsed"
+        },
+        {
+          "id": "appleContainer.registries",
+          "name": "%view.registries%",
+          "visibility": "collapsed"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "appleContainer.containers",
+        "contents": "%welcome.cliMissing%",
+        "when": "appleContainer.cliMissing"
+      },
+      {
+        "view": "appleContainer.containers",
+        "contents": "%welcome.serviceStopped%",
+        "when": "!appleContainer.cliMissing && appleContainer.serviceStopped"
+      },
+      {
+        "view": "appleContainer.containers",
+        "contents": "%welcome.noContainers%",
+        "when": "!appleContainer.cliMissing && !appleContainer.serviceStopped"
+      },
+      {
+        "view": "appleContainer.images",
+        "contents": "%welcome.noImages%",
+        "when": "!appleContainer.cliMissing && !appleContainer.serviceStopped"
+      },
+      {
+        "view": "appleContainer.volumes",
+        "contents": "%welcome.noVolumes%",
+        "when": "!appleContainer.cliMissing && !appleContainer.serviceStopped"
+      },
+      {
+        "view": "appleContainer.registries",
+        "contents": "%welcome.noRegistries%",
+        "when": "!appleContainer.cliMissing && !appleContainer.serviceStopped"
+      }
+    ],
+    "commands": [
+      {
+        "command": "appleContainer.refresh",
+        "title": "%command.refresh%",
+        "category": "%category%",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "appleContainer.container.start",
+        "title": "%command.container.start%",
+        "category": "%category%",
+        "icon": "$(debug-start)"
+      },
+      {
+        "command": "appleContainer.container.stop",
+        "title": "%command.container.stop%",
+        "category": "%category%",
+        "icon": "$(debug-stop)"
+      },
+      {
+        "command": "appleContainer.container.restart",
+        "title": "%command.container.restart%",
+        "category": "%category%",
+        "icon": "$(debug-restart)"
+      },
+      {
+        "command": "appleContainer.container.kill",
+        "title": "%command.container.kill%",
+        "category": "%category%"
+      },
+      {
+        "command": "appleContainer.container.delete",
+        "title": "%command.container.delete%",
+        "category": "%category%",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "appleContainer.container.logs",
+        "title": "%command.container.logs%",
+        "category": "%category%",
+        "icon": "$(output)"
+      },
+      {
+        "command": "appleContainer.container.bootLogs",
+        "title": "%command.container.bootLogs%",
+        "category": "%category%"
+      },
+      {
+        "command": "appleContainer.container.exec",
+        "title": "%command.container.exec%",
+        "category": "%category%",
+        "icon": "$(terminal)"
+      },
+      {
+        "command": "appleContainer.container.inspect",
+        "title": "%command.container.inspect%",
+        "category": "%category%"
+      },
+      {
+        "command": "appleContainer.container.stats",
+        "title": "%command.container.stats%",
+        "category": "%category%"
+      },
+      {
+        "command": "appleContainer.container.copyId",
+        "title": "%command.container.copyId%",
+        "category": "%category%"
+      },
+      {
+        "command": "appleContainer.container.copyIp",
+        "title": "%command.container.copyIp%",
+        "category": "%category%"
+      },
+      {
+        "command": "appleContainer.container.prune",
+        "title": "%command.container.prune%",
+        "category": "%category%",
+        "icon": "$(clear-all)"
+      },
+      {
+        "command": "appleContainer.image.pull",
+        "title": "%command.image.pull%",
+        "category": "%category%",
+        "icon": "$(cloud-download)"
+      },
+      {
+        "command": "appleContainer.image.build",
+        "title": "%command.image.build%",
+        "category": "%category%",
+        "icon": "$(tools)"
+      },
+      {
+        "command": "appleContainer.image.run",
+        "title": "%command.image.run%",
+        "category": "%category%",
+        "icon": "$(play)"
+      },
+      {
+        "command": "appleContainer.image.tag",
+        "title": "%command.image.tag%",
+        "category": "%category%"
+      },
+      {
+        "command": "appleContainer.image.inspect",
+        "title": "%command.image.inspect%",
+        "category": "%category%"
+      },
+      {
+        "command": "appleContainer.image.copyName",
+        "title": "%command.image.copyName%",
+        "category": "%category%"
+      },
+      {
+        "command": "appleContainer.image.delete",
+        "title": "%command.image.delete%",
+        "category": "%category%",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "appleContainer.image.prune",
+        "title": "%command.image.prune%",
+        "category": "%category%",
+        "icon": "$(clear-all)"
+      },
+      {
+        "command": "appleContainer.network.create",
+        "title": "%command.network.create%",
+        "category": "%category%",
+        "icon": "$(add)"
+      },
+      {
+        "command": "appleContainer.network.inspect",
+        "title": "%command.network.inspect%",
+        "category": "%category%"
+      },
+      {
+        "command": "appleContainer.network.delete",
+        "title": "%command.network.delete%",
+        "category": "%category%",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "appleContainer.network.prune",
+        "title": "%command.network.prune%",
+        "category": "%category%",
+        "icon": "$(clear-all)"
+      },
+      {
+        "command": "appleContainer.volume.create",
+        "title": "%command.volume.create%",
+        "category": "%category%",
+        "icon": "$(add)"
+      },
+      {
+        "command": "appleContainer.volume.inspect",
+        "title": "%command.volume.inspect%",
+        "category": "%category%"
+      },
+      {
+        "command": "appleContainer.volume.delete",
+        "title": "%command.volume.delete%",
+        "category": "%category%",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "appleContainer.volume.prune",
+        "title": "%command.volume.prune%",
+        "category": "%category%",
+        "icon": "$(clear-all)"
+      },
+      {
+        "command": "appleContainer.system.start",
+        "title": "%command.system.start%",
+        "category": "%category%"
+      },
+      {
+        "command": "appleContainer.system.stop",
+        "title": "%command.system.stop%",
+        "category": "%category%"
+      },
+      {
+        "command": "appleContainer.system.status",
+        "title": "%command.system.status%",
+        "category": "%category%"
+      },
+      {
+        "command": "appleContainer.system.df",
+        "title": "%command.system.df%",
+        "category": "%category%"
+      },
+      {
+        "command": "appleContainer.system.logs",
+        "title": "%command.system.logs%",
+        "category": "%category%"
+      },
+      {
+        "command": "appleContainer.system.menu",
+        "title": "%command.system.menu%",
+        "category": "%category%"
+      },
+      {
+        "command": "appleContainer.registry.login",
+        "title": "%command.registry.login%",
+        "category": "%category%",
+        "icon": "$(sign-in)"
+      },
+      {
+        "command": "appleContainer.registry.logout",
+        "title": "%command.registry.logout%",
+        "category": "%category%",
+        "icon": "$(sign-out)"
+      },
+      {
+        "command": "appleContainer.registry.copyHostname",
+        "title": "%command.registry.copyHostname%",
+        "category": "%category%"
+      },
+      {
+        "command": "appleContainer.compose.up",
+        "title": "%command.compose.up%",
+        "category": "%category%",
+        "icon": "$(run-all)"
+      },
+      {
+        "command": "appleContainer.compose.down",
+        "title": "%command.compose.down%",
+        "category": "%category%",
+        "icon": "$(debug-stop)"
+      },
+      {
+        "command": "appleContainer.compose.start",
+        "title": "%command.compose.start%",
+        "category": "%category%",
+        "icon": "$(debug-start)"
+      },
+      {
+        "command": "appleContainer.compose.stop",
+        "title": "%command.compose.stop%",
+        "category": "%category%",
+        "icon": "$(debug-stop)"
+      },
+      {
+        "command": "appleContainer.compose.restart",
+        "title": "%command.compose.restart%",
+        "category": "%category%",
+        "icon": "$(debug-restart)"
+      },
+      {
+        "command": "appleContainer.compose.delete",
+        "title": "%command.compose.delete%",
+        "category": "%category%",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "appleContainer.compose.openFile",
+        "title": "%command.compose.openFile%",
+        "category": "%category%",
+        "icon": "$(go-to-file)"
+      },
+      {
+        "command": "appleContainer.port.open",
+        "title": "%command.port.open%",
+        "category": "%category%",
+        "icon": "$(globe)"
+      },
+      {
+        "command": "appleContainer.port.copyUrl",
+        "title": "%command.port.copyUrl%",
+        "category": "%category%"
+      },
+      {
+        "command": "appleContainer.mount.reveal",
+        "title": "%command.mount.reveal%",
+        "category": "%category%",
+        "icon": "$(folder-opened)"
+      },
+      {
+        "command": "appleContainer.container.edit",
+        "title": "%command.container.edit%",
+        "category": "%category%",
+        "icon": "$(edit)"
+      }
+    ],
+    "menus": {
+      "commandPalette": [
+        {
+          "command": "appleContainer.container.start",
+          "when": "false"
+        },
+        {
+          "command": "appleContainer.container.stop",
+          "when": "false"
+        },
+        {
+          "command": "appleContainer.container.restart",
+          "when": "false"
+        },
+        {
+          "command": "appleContainer.container.kill",
+          "when": "false"
+        },
+        {
+          "command": "appleContainer.container.delete",
+          "when": "false"
+        },
+        {
+          "command": "appleContainer.container.logs",
+          "when": "false"
+        },
+        {
+          "command": "appleContainer.container.bootLogs",
+          "when": "false"
+        },
+        {
+          "command": "appleContainer.container.exec",
+          "when": "false"
+        },
+        {
+          "command": "appleContainer.container.inspect",
+          "when": "false"
+        },
+        {
+          "command": "appleContainer.container.stats",
+          "when": "false"
+        },
+        {
+          "command": "appleContainer.container.copyId",
+          "when": "false"
+        },
+        {
+          "command": "appleContainer.container.copyIp",
+          "when": "false"
+        },
+        {
+          "command": "appleContainer.image.tag",
+          "when": "false"
+        },
+        {
+          "command": "appleContainer.image.inspect",
+          "when": "false"
+        },
+        {
+          "command": "appleContainer.image.copyName",
+          "when": "false"
+        },
+        {
+          "command": "appleContainer.image.delete",
+          "when": "false"
+        },
+        {
+          "command": "appleContainer.network.inspect",
+          "when": "false"
+        },
+        {
+          "command": "appleContainer.network.delete",
+          "when": "false"
+        },
+        {
+          "command": "appleContainer.volume.inspect",
+          "when": "false"
+        },
+        {
+          "command": "appleContainer.volume.delete",
+          "when": "false"
+        },
+        {
+          "command": "appleContainer.registry.logout",
+          "when": "false"
+        },
+        {
+          "command": "appleContainer.registry.copyHostname",
+          "when": "false"
+        },
+        {
+          "command": "appleContainer.compose.start",
+          "when": "false"
+        },
+        {
+          "command": "appleContainer.compose.stop",
+          "when": "false"
+        },
+        {
+          "command": "appleContainer.compose.restart",
+          "when": "false"
+        },
+        {
+          "command": "appleContainer.compose.delete",
+          "when": "false"
+        },
+        {
+          "command": "appleContainer.compose.openFile",
+          "when": "false"
+        },
+        {
+          "command": "appleContainer.port.open",
+          "when": "false"
+        },
+        {
+          "command": "appleContainer.port.copyUrl",
+          "when": "false"
+        },
+        {
+          "command": "appleContainer.mount.reveal",
+          "when": "false"
+        },
+        {
+          "command": "appleContainer.container.edit",
+          "when": "false"
+        }
+      ],
+      "view/title": [
+        {
+          "command": "appleContainer.refresh",
+          "when": "view =~ /^appleContainer\\./",
+          "group": "navigation@9"
+        },
+        {
+          "command": "appleContainer.container.prune",
+          "when": "view == appleContainer.containers",
+          "group": "navigation@1"
+        },
+        {
+          "command": "appleContainer.image.pull",
+          "when": "view == appleContainer.images",
+          "group": "navigation@1"
+        },
+        {
+          "command": "appleContainer.image.build",
+          "when": "view == appleContainer.images",
+          "group": "navigation@2"
+        },
+        {
+          "command": "appleContainer.image.prune",
+          "when": "view == appleContainer.images",
+          "group": "navigation@3"
+        },
+        {
+          "command": "appleContainer.network.create",
+          "when": "view == appleContainer.networks",
+          "group": "navigation@1"
+        },
+        {
+          "command": "appleContainer.network.prune",
+          "when": "view == appleContainer.networks",
+          "group": "navigation@2"
+        },
+        {
+          "command": "appleContainer.volume.create",
+          "when": "view == appleContainer.volumes",
+          "group": "navigation@1"
+        },
+        {
+          "command": "appleContainer.volume.prune",
+          "when": "view == appleContainer.volumes",
+          "group": "navigation@2"
+        },
+        {
+          "command": "appleContainer.registry.login",
+          "when": "view == appleContainer.registries",
+          "group": "navigation@1"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "appleContainer.container.start",
+          "when": "viewItem =~ /^container\\.stopped/",
+          "group": "inline@1"
+        },
+        {
+          "command": "appleContainer.container.stop",
+          "when": "viewItem =~ /^container\\.running/",
+          "group": "inline@1"
+        },
+        {
+          "command": "appleContainer.container.exec",
+          "when": "viewItem =~ /^container\\.running/",
+          "group": "inline@2"
+        },
+        {
+          "command": "appleContainer.container.start",
+          "when": "viewItem =~ /^container\\.stopped/",
+          "group": "1_lifecycle@1"
+        },
+        {
+          "command": "appleContainer.container.stop",
+          "when": "viewItem =~ /^container\\.running/",
+          "group": "1_lifecycle@1"
+        },
+        {
+          "command": "appleContainer.container.restart",
+          "when": "viewItem =~ /^container\\.running/",
+          "group": "1_lifecycle@2"
+        },
+        {
+          "command": "appleContainer.container.kill",
+          "when": "viewItem =~ /^container\\.running/",
+          "group": "1_lifecycle@3"
+        },
+        {
+          "command": "appleContainer.container.exec",
+          "when": "viewItem =~ /^container\\.running/",
+          "group": "2_view@1"
+        },
+        {
+          "command": "appleContainer.container.logs",
+          "when": "viewItem =~ /^container\\./",
+          "group": "2_view@2"
+        },
+        {
+          "command": "appleContainer.container.bootLogs",
+          "when": "viewItem =~ /^container\\./",
+          "group": "2_view@3"
+        },
+        {
+          "command": "appleContainer.container.stats",
+          "when": "viewItem =~ /^container\\.running/",
+          "group": "2_view@4"
+        },
+        {
+          "command": "appleContainer.container.inspect",
+          "when": "viewItem =~ /^container\\./",
+          "group": "2_view@5"
+        },
+        {
+          "command": "appleContainer.container.copyId",
+          "when": "viewItem =~ /^container\\./",
+          "group": "3_copy@1"
+        },
+        {
+          "command": "appleContainer.container.copyIp",
+          "when": "viewItem =~ /^container\\.running/",
+          "group": "3_copy@2"
+        },
+        {
+          "command": "appleContainer.container.delete",
+          "when": "viewItem =~ /^container\\./",
+          "group": "9_delete@1"
+        },
+        {
+          "command": "appleContainer.image.run",
+          "when": "viewItem == image",
+          "group": "inline@1"
+        },
+        {
+          "command": "appleContainer.image.run",
+          "when": "viewItem == image",
+          "group": "1_run@1"
+        },
+        {
+          "command": "appleContainer.image.tag",
+          "when": "viewItem == image",
+          "group": "2_view@1"
+        },
+        {
+          "command": "appleContainer.image.inspect",
+          "when": "viewItem == image",
+          "group": "2_view@2"
+        },
+        {
+          "command": "appleContainer.image.copyName",
+          "when": "viewItem == image",
+          "group": "3_copy@1"
+        },
+        {
+          "command": "appleContainer.image.delete",
+          "when": "viewItem == image",
+          "group": "9_delete@1"
+        },
+        {
+          "command": "appleContainer.network.inspect",
+          "when": "viewItem =~ /^network/",
+          "group": "2_view@1"
+        },
+        {
+          "command": "appleContainer.network.delete",
+          "when": "viewItem == network",
+          "group": "9_delete@1"
+        },
+        {
+          "command": "appleContainer.volume.inspect",
+          "when": "viewItem == volume",
+          "group": "2_view@1"
+        },
+        {
+          "command": "appleContainer.volume.delete",
+          "when": "viewItem == volume",
+          "group": "9_delete@1"
+        },
+        {
+          "command": "appleContainer.registry.logout",
+          "when": "viewItem == registry",
+          "group": "inline@1"
+        },
+        {
+          "command": "appleContainer.registry.copyHostname",
+          "when": "viewItem == registry",
+          "group": "3_copy@1"
+        },
+        {
+          "command": "appleContainer.registry.logout",
+          "when": "viewItem == registry",
+          "group": "9_delete@1"
+        },
+        {
+          "command": "appleContainer.compose.start",
+          "when": "viewItem == composeProject",
+          "group": "inline@1"
+        },
+        {
+          "command": "appleContainer.compose.stop",
+          "when": "viewItem == composeProject",
+          "group": "inline@2"
+        },
+        {
+          "command": "appleContainer.compose.start",
+          "when": "viewItem == composeProject",
+          "group": "1_lifecycle@1"
+        },
+        {
+          "command": "appleContainer.compose.stop",
+          "when": "viewItem == composeProject",
+          "group": "1_lifecycle@2"
+        },
+        {
+          "command": "appleContainer.compose.restart",
+          "when": "viewItem == composeProject",
+          "group": "1_lifecycle@3"
+        },
+        {
+          "command": "appleContainer.compose.up",
+          "when": "viewItem == composeProject",
+          "group": "2_compose@1"
+        },
+        {
+          "command": "appleContainer.compose.down",
+          "when": "viewItem == composeProject",
+          "group": "2_compose@2"
+        },
+        {
+          "command": "appleContainer.compose.openFile",
+          "when": "viewItem == composeProject",
+          "group": "2_compose@3"
+        },
+        {
+          "command": "appleContainer.compose.delete",
+          "when": "viewItem == composeProject",
+          "group": "9_delete@1"
+        },
+        {
+          "command": "appleContainer.port.open",
+          "when": "viewItem == port.tcp",
+          "group": "inline@1"
+        },
+        {
+          "command": "appleContainer.port.open",
+          "when": "viewItem == port.tcp",
+          "group": "1_open@1"
+        },
+        {
+          "command": "appleContainer.port.copyUrl",
+          "when": "viewItem =~ /^port/",
+          "group": "3_copy@1"
+        },
+        {
+          "command": "appleContainer.mount.reveal",
+          "when": "viewItem == mount.bind",
+          "group": "inline@1"
+        },
+        {
+          "command": "appleContainer.mount.reveal",
+          "when": "viewItem == mount.bind",
+          "group": "1_open@1"
+        },
+        {
+          "command": "appleContainer.container.edit",
+          "when": "viewItem =~ /^container\\.(running|stopped)$/",
+          "group": "1_lifecycle@9"
+        }
+      ],
+      "explorer/context": [
+        {
+          "command": "appleContainer.image.build",
+          "when": "resourceFilename =~ /^(Dockerfile|Containerfile)(\\..*)?$|\\.(Dockerfile|Containerfile)$/",
+          "group": "apple-container@1"
+        },
+        {
+          "command": "appleContainer.compose.up",
+          "when": "resourceFilename =~ /^(docker-)?compose(\\..+)?\\.ya?ml$/",
+          "group": "apple-container@2"
+        },
+        {
+          "command": "appleContainer.compose.down",
+          "when": "resourceFilename =~ /^(docker-)?compose(\\..+)?\\.ya?ml$/",
+          "group": "apple-container@3"
+        }
+      ],
+      "editor/title/context": [
+        {
+          "command": "appleContainer.compose.up",
+          "when": "resourceFilename =~ /^(docker-)?compose(\\..+)?\\.ya?ml$/",
+          "group": "apple-container@1"
+        },
+        {
+          "command": "appleContainer.compose.down",
+          "when": "resourceFilename =~ /^(docker-)?compose(\\..+)?\\.ya?ml$/",
+          "group": "apple-container@2"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "%category%",
+      "properties": {
+        "appleContainer.path": {
+          "type": "string",
+          "default": "container",
+          "markdownDescription": "%config.path%",
+          "scope": "machine"
+        },
+        "appleContainer.refreshInterval": {
+          "type": "number",
+          "default": 5,
+          "minimum": 0,
+          "markdownDescription": "%config.refreshInterval%"
+        },
+        "appleContainer.execShell": {
+          "type": "string",
+          "default": "/bin/sh",
+          "markdownDescription": "%config.execShell%"
+        },
+        "appleContainer.logTail": {
+          "type": "number",
+          "default": 200,
+          "minimum": 0,
+          "markdownDescription": "%config.logTail%"
+        },
+        "appleContainer.composePath": {
+          "type": "string",
+          "default": "container-compose",
+          "scope": "machine",
+          "markdownDescription": "%config.composePath%"
+        },
+        "appleContainer.statsInterval": {
+          "type": "number",
+          "default": 2,
+          "minimum": 1,
+          "markdownDescription": "%config.statsInterval%"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "node esbuild.mjs --production && npm --prefix webview-ui run build",
+    "build": "node esbuild.mjs && npm --prefix webview-ui run build",
+    "watch": "node esbuild.mjs --watch",
+    "typecheck": "tsc --noEmit && npm --prefix webview-ui run typecheck",
+    "compile-tests": "tsc -p tsconfig.test.json",
+    "test:unit": "npm run compile-tests && mocha \"out/test/unit/**/*.test.js\"",
+    "test": "npm run typecheck && npm run check:l10n && npm run test:unit",
+    "package": "vsce package --no-dependencies --target darwin-arm64",
+    "publish": "vsce publish --no-dependencies --target darwin-arm64",
+    "check:l10n": "node scripts/check-l10n.mjs",
+    "test:e2e": "npm run build && npm run compile-tests && node out/test/runE2E.js",
+    "watch:webview": "npm --prefix webview-ui run dev",
+    "postinstall": "npm --prefix webview-ui install",
+    "demo": "npm run build && npm run compile-tests && node out/test/demo/runDemo.js"
+  },
+  "devDependencies": {
+    "@types/mocha": "^10.0.10",
+    "@types/node": "^22.20.5",
+    "@types/pngjs": "6.0.5",
+    "@types/vscode": "^1.90.0",
+    "@vscode/test-electron": "^3.1.0",
+    "@vscode/vsce": "^4.0.0",
+    "esbuild": "^0.28.2",
+    "gifenc": "1.0.3",
+    "mocha": "^12.0.3",
+    "pngjs": "7.0.0",
+    "typescript": "^7.0.2"
+  },
+  "l10n": "./l10n"
+}

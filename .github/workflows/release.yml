@@ -1,0 +1,82 @@
+name: Release
+
+# Publishing runs only when a GitHub release is published; CI never uploads to a store.
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    uses: ./.github/workflows/ci.yml
+    with:
+      package: true
+
+  publish:
+    name: Publish
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # The Marketplace identity's federated credential is bound to this environment.
+    environment: marketplace-publish
+    permissions:
+      contents: write
+      id-token: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: '.nvmrc'
+
+      - name: Check release tag matches package.json version
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          version="$(node -p "require('./package.json').version")"
+          if [ "$version" != "${TAG#v}" ]; then
+            echo "::error::release tag $TAG does not match package.json version $version"
+            exit 1
+          fi
+
+      - name: Download VSIX package
+        uses: actions/download-artifact@v7
+        with:
+          name: apple-container-vsix
+          path: vsix
+
+      # Azure DevOps retires global PATs on 2026-12-01; the Marketplace accepts a
+      # managed identity through workload identity federation instead (no secret).
+      - name: Sign in to Azure
+        # Third-party action in the job holding the publishing identity: pinned to a
+        # commit so a moved tag cannot publish as us. (v3)
+        uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          allow-no-subscriptions: true
+
+      # Exact versions: `npx` resolves at publish time, so a floating major would run
+      # code published after this workflow was reviewed, with credentials in scope.
+      # The VSIX is platform-specific; vsce and ovsx read the target (darwin-arm64) from it.
+      - name: Publish to VS Code Marketplace
+        run: npx --yes @vscode/vsce@4.0.0 publish --azure-credential --packagePath vsix/*.vsix
+
+      # Trusted publishing exchanges this job's OIDC token for a short-lived Open VSX
+      # token (no secret). The registration on open-vsx.org must pin this repository,
+      # release.yml and the marketplace-publish environment. --trusted-publishing
+      # fails instead of falling back when no ID token is available.
+      - name: Publish to Open VSX
+        run: npx --yes ovsx@1.2.0 publish --trusted-publishing --packagePath vsix/*.vsix
+
+      - name: Attach VSIX package to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.event.release.tag_name }}
+        run: gh release upload "$TAG" vsix/*.vsix --clobber

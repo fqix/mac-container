@@ -1,0 +1,120 @@
+name: CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+  workflow_dispatch:
+  # Lets release.yml reuse the build so the published VSIX comes from the same pipeline.
+  workflow_call:
+    inputs:
+      package:
+        description: Upload the VSIX artifact (release only)
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: darwin-arm64
+    # Apple container only runs on Apple silicon Macs, so the extension ships for darwin-arm64 only.
+    runs-on: macos-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: '.nvmrc'
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            webview-ui/package-lock.json
+
+      - name: Install dependencies
+        # Install strictly from the committed lockfiles; only esbuild needs its install script.
+        # --ignore-scripts also skips the root postinstall, so webview-ui is installed explicitly.
+        run: |
+          npm ci --ignore-scripts --no-audit --no-fund
+          npm ci --ignore-scripts --no-audit --no-fund --prefix webview-ui
+          npm rebuild esbuild
+
+      - name: Check types
+        run: npm run typecheck
+
+      - name: Check translations
+        run: npm run check:l10n
+
+      - name: Build extension
+        run: npm run build
+
+      - name: Run unit tests
+        run: npm run test:unit
+
+      # The end-to-end suite (npm run test:e2e) drives the real container service, which starts a
+      # Linux VM per container. Hosted macOS runners are themselves VMs without nested
+      # virtualization, so it runs locally before a release instead of here.
+
+  package:
+    name: package
+    needs: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: '.nvmrc'
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            webview-ui/package-lock.json
+
+      - name: Install dependencies
+        run: |
+          npm ci --ignore-scripts --no-audit --no-fund
+          npm ci --ignore-scripts --no-audit --no-fund --prefix webview-ui
+          npm rebuild esbuild
+
+      # Platform-specific VSIX: the Marketplace only offers it to darwin-arm64.
+      - name: Package VSIX
+        run: npm run package
+
+      - name: Verify VSIX contents
+        run: |
+          vsix="$(ls apple-container-darwin-arm64-*.vsix)"
+          mkdir -p vsix-check && unzip -q "$vsix" -d vsix-check
+          test -f vsix-check/extension/dist/extension.js
+          test -f vsix-check/extension/dist/webview/webview.js
+          test -f vsix-check/extension/dist/webview/webview.css
+          test -f vsix-check/extension/l10n/bundle.l10n.zh-cn.json
+          grep -q 'TargetPlatform="darwin-arm64"' vsix-check/extension.vsixmanifest
+          if unzip -l "$vsix" | grep -E '\.map$|node_modules/|webview-ui/|/test/'; then
+            echo "::error::VSIX contains source maps, node_modules or development files"
+            exit 1
+          fi
+
+      # Only release.yml consumes the VSIX artifact; push and PR runs skip the upload.
+      - name: Upload VSIX
+        if: inputs.package
+        uses: actions/upload-artifact@v7
+        with:
+          name: apple-container-vsix
+          path: apple-container-darwin-arm64-*.vsix
+          if-no-files-found: error
+          retention-days: 14

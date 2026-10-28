@@ -1,0 +1,13 @@
+import './styles.css';
+
+import { StrictMode } from 'react';
+import { createRoot } from 'react-dom/client';
+
+import { EditView } from './views/EditView';
+import { StatsView } from './views/StatsView';
+
+// One bundle serves every panel; the extension host picks the view with <body data-view>
+const views = { stats: StatsView, edit: EditView };
+const View = views[document.body.dataset.view as keyof typeof views];
+
+createRoot(document.getElementById('root')!).render(<StrictMode>{View ? <View /> : null}</StrictMode>);

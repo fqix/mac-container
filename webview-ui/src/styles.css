@@ -1,0 +1,182 @@
+:root {
+  --border: var(--vscode-editorWidget-border, rgba(128, 128, 128, 0.3));
+}
+
+body {
+  padding: 16px 20px;
+  color: var(--vscode-foreground);
+  font-family: var(--vscode-font-family);
+  font-size: var(--vscode-font-size);
+}
+
+h1 {
+  font-size: 1.3em;
+  font-weight: 600;
+  margin: 0 0 4px;
+}
+
+h2 {
+  font-size: 1.05em;
+  font-weight: 600;
+  margin: 20px 0 8px;
+}
+
+.muted {
+  color: var(--vscode-descriptionForeground);
+}
+
+.error {
+  color: var(--vscode-errorForeground);
+  white-space: pre-wrap;
+}
+
+.card {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 10px 12px;
+}
+
+/* Stats */
+.status {
+  min-height: 1.4em;
+  margin-bottom: 12px;
+}
+
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.tile-value {
+  font-size: 1.5em;
+  font-weight: 600;
+  margin-top: 2px;
+  font-variant-numeric: tabular-nums;
+}
+
+.tile-sub {
+  font-size: 0.85em;
+  font-variant-numeric: tabular-nums;
+}
+
+.charts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+  gap: 16px;
+}
+
+.charts h2 {
+  font-size: 1em;
+  margin: 0 0 6px;
+}
+
+.chart-canvas {
+  position: relative;
+  height: 200px;
+}
+
+/* Edit form */
+.edit {
+  max-width: 960px;
+}
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+th {
+  text-align: left;
+  font-weight: normal;
+  color: var(--vscode-descriptionForeground);
+  padding: 4px 6px;
+}
+
+td {
+  padding: 3px 6px;
+  vertical-align: middle;
+}
+
+input[type='text'],
+input[type='number'],
+select {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 4px 6px;
+  color: var(--vscode-input-foreground);
+  background: var(--vscode-input-background);
+  border: 1px solid var(--vscode-input-border, transparent);
+  border-radius: 2px;
+  font: inherit;
+}
+
+input:focus,
+select:focus {
+  outline: 1px solid var(--vscode-focusBorder);
+  outline-offset: -1px;
+}
+
+input[aria-invalid='true'] {
+  border-color: var(--vscode-inputValidation-errorBorder);
+}
+
+button {
+  white-space: nowrap;
+  padding: 4px 12px;
+  border: none;
+  border-radius: 2px;
+  cursor: pointer;
+  font: inherit;
+  color: var(--vscode-button-foreground);
+  background: var(--vscode-button-background);
+}
+
+button:hover {
+  background: var(--vscode-button-hoverBackground);
+}
+
+button.secondary {
+  color: var(--vscode-button-secondaryForeground);
+  background: var(--vscode-button-secondaryBackground);
+}
+
+button.secondary:hover {
+  background: var(--vscode-button-secondaryHoverBackground);
+}
+
+button.icon {
+  background: transparent;
+  color: var(--vscode-foreground);
+  padding: 2px 6px;
+}
+
+button.icon:hover {
+  background: var(--vscode-toolbar-hoverBackground);
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.row {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 24px;
+}
+
+.col-narrow {
+  width: 90px;
+}
+
+.col-select {
+  width: 130px;
+}
