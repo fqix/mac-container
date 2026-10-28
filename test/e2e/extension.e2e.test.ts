@@ -29,6 +29,9 @@ const names = {
   editVolume: `e2e-editvol-${suffix}`,
 };
 
+/** Containers named by the extension, removed in the after hook if a test fails half way */
+const generatedNames: string[] = [];
+
 type Restore = () => void;
 const restores: Restore[] = [];
 
@@ -140,7 +143,7 @@ describe('Apple Container e2e', function () {
     // Best-effort cleanup in case a test failed half way
     const ignore = () => undefined;
     await api?.cli
-      .run(['delete', '--force', names.container, `${names.container}-run`, `${names.project}-web`, `${names.project}-worker`, names.edit])
+      .run(['delete', '--force', ...generatedNames, names.container, `${names.container}-run`, `${names.project}-web`, `${names.project}-worker`, names.edit])
       .catch(ignore);
     await api?.cli.run(['volume', 'delete', names.editVolume]).catch(ignore);
     const snapshots = (await api?.cli.listImages().catch(() => [])) ?? [];
@@ -174,14 +177,30 @@ describe('Apple Container e2e', function () {
 
   it('runs a container from an image', async () => {
     const image = (await children(api.views.images)).find((n) => n.resource.reference === IMAGE)!;
-    // Container name, then published ports. alpine's default command exits at once, so only check it was created.
-    answerInputs(`${names.container}-run`, '18099:80');
+    // Container name, published ports, then no script. alpine's default command exits at once, so only check it was created.
+    answerInputs(`${names.container}-run`, '18099:80', '');
     await vscode.commands.executeCommand('appleContainer.image.run', image);
     const created = (await api.cli.listContainers()).find((c) => c.id === `${names.container}-run`);
     assert.ok(created, 'container was not created');
     assert.strictEqual(created.image, IMAGE);
     assert.deepStrictEqual(created.ports, ['18099->80/tcp']);
     await api.cli.run(['delete', '--force', created.id]);
+  });
+
+  it('runs a custom script in a container with a generated name', async () => {
+    const image = (await children(api.views.images)).find((n) => n.resource.reference === IMAGE)!;
+    const before = new Set((await api.cli.listContainers()).map((c) => c.id));
+    // Empty name: the extension generates a Docker-style one instead of the CLI's UUID
+    answerInputs('', '', 'echo scripted > /tmp/out && exec sleep 3600');
+    await vscode.commands.executeCommand('appleContainer.image.run', image);
+    const created = (await api.cli.listContainers()).filter((c) => !before.has(c.id));
+    assert.strictEqual(created.length, 1, 'expected one new container');
+    const [container] = created;
+    generatedNames.push(container.id);
+    assert.match(container.id, /^[a-z]+_[a-z]+\d*$/);
+    assert.strictEqual(container.state, 'running', 'the script keeps the container running');
+    assert.strictEqual((await api.cli.run(['exec', container.id, 'cat', '/tmp/out'])).trim(), 'scripted');
+    await api.cli.run(['delete', '--force', container.id]);
   });
 
   it('stops, starts, inspects and deletes a container', async () => {

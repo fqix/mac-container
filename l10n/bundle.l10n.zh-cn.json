@@ -23,7 +23,6 @@
   "Image name and tag": "镜像名称和标签",
   "Build {0}": "构建 {0}",
   "Run {0}": "运行 {0}",
-  "Container name (optional)": "容器名称（可选）",
   "Published ports (optional), comma separated, e.g. 8080:80, 127.0.0.1:8443:443": "端口映射（可选），用逗号分隔，例如 8080:80, 127.0.0.1:8443:443",
   "Starting container from {0}...": "正在用 {0} 启动容器...",
   "Tag {0}": "给 {0} 打标签",
@@ -176,5 +175,7 @@
   "container-compose project {0}": "container-compose 项目 {0}",
   "Volumes": "卷",
   "Destination": "目标路径",
-  "Compose Project": "Compose 项目"
+  "Compose Project": "Compose 项目",
+  "Container name; leave empty for a random name": "容器名称，留空则随机生成",
+  "Command or shell script (optional), run with /bin/sh -c; empty uses the image default": "命令或 shell 脚本（可选），用 /bin/sh -c 执行；留空使用镜像默认命令"
 }

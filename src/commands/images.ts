@@ -1,6 +1,7 @@
 import * as path from 'path';
 import * as vscode from 'vscode';
 
+import { generateContainerName } from '../names';
 import { runCliTask } from '../terminal';
 import type { ImageSummary } from '../types';
 import type { ImageNode } from '../views/images';
@@ -65,9 +66,11 @@ export function registerImageCommands(ctx: CommandContext): void {
     if (!image) {
       return;
     }
+    const generated = generateContainerName(new Set((await cli.listContainers()).map((c) => c.id)));
     const name = await ask({
       title: vscode.l10n.t('Run {0}', image),
-      prompt: vscode.l10n.t('Container name (optional)'),
+      prompt: vscode.l10n.t('Container name; leave empty for a random name'),
+      value: generated,
       allowEmpty: true,
     });
     if (name === undefined) {
@@ -81,14 +84,21 @@ export function registerImageCommands(ctx: CommandContext): void {
     if (ports === undefined) {
       return;
     }
-    const args = ['run', '--detach'];
-    if (name) {
-      args.push('--name', name);
+    const script = await ask({
+      title: vscode.l10n.t('Run {0}', image),
+      prompt: vscode.l10n.t('Command or shell script (optional), run with /bin/sh -c; empty uses the image default'),
+      placeHolder: 'apk add curl && exec sleep infinity',
+      allowEmpty: true,
+    });
+    if (script === undefined) {
+      return;
     }
+    const args = ['run', '--detach', '--name', name || generated];
     for (const p of ports.split(',').map((s) => s.trim()).filter(Boolean)) {
       args.push('--publish', p);
     }
-    args.push(image);
+    // --entrypoint replaces the image ENTRYPOINT too, so the script runs as is
+    args.push(...(script ? ['--entrypoint', '/bin/sh', image, '-c', script] : [image]));
     await withProgress(vscode.l10n.t('Starting container from {0}...', image), () => cli.run(args, { timeoutMs: 10 * 60_000 }));
     await ctx.refreshAll();
   });

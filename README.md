@@ -39,7 +39,7 @@ Containers started by [container-compose](https://github.com/mcrich23/container-
 
 ### Images, networks, volumes, registries
 
-- Images: pull, build from a `Dockerfile` / `Containerfile` (also from the explorer context menu), run with name and published ports, tag, inspect, delete, prune.
+- Images: pull, build from a `Dockerfile` / `Containerfile` (also from the explorer context menu), run with a name (a Docker-style random name such as `brave_hopper` is suggested), published ports and an optional command or shell script (run with `/bin/sh -c`), tag, inspect, delete, prune.
 - Networks: create with an optional subnet, inspect, delete, prune. The built-in `default` network is protected.
 - Volumes: create with an optional size, inspect, delete, prune.
 - Registries: log in (the password is passed to `container registry login --password-stdin`, never on the command line), log out.
