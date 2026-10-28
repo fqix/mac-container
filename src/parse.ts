@@ -68,6 +68,14 @@ function parseMount(mount: Json): ContainerMount {
   return { kind: Object.keys(type)[0] ?? 'unknown', source: mount.source ?? '', destination: mount.destination, readOnly };
 }
 
+/** initProcess.user is either {raw: {userString}} or {id: {uid, gid}} */
+function parseUser(user: Json | undefined): string | undefined {
+  if (typeof user?.raw?.userString === 'string' && user.raw.userString) {
+    return user.raw.userString;
+  }
+  return typeof user?.id?.uid === 'number' ? String(user.id.uid) : undefined;
+}
+
 export function parseContainers(data: unknown): ContainerSummary[] {
   return asArray(data).map((item) => {
     const config: Json = item.configuration ?? {};
@@ -96,6 +104,7 @@ export function parseContainers(data: unknown): ContainerSummary[] {
       cpus: config.resources?.cpus,
       memoryBytes: config.resources?.memoryInBytes,
       platform: platform ? [platform.os, platform.architecture, platform.variant].filter(Boolean).join('/') : undefined,
+      user: parseUser(init.user),
     };
   });
 }

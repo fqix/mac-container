@@ -16,6 +16,7 @@
 - 启动、停止、重启、强制终止、删除（支持多选）、清理已停止的容器。
 - 在集成终端中 **打开 Shell**（`container exec -it`）、**查看日志**（`logs -f`）和 **查看启动日志**。
 - 展开容器可以看到 **卷** 和 **端口** 两个子节点，没有内容的不显示。TCP 端口可以直接在浏览器中打开或复制 URL，绑定挂载的目录可以在访达中显示。
+- **在 Remote-SSH 中打开** 通过 Remote - SSH 扩展，把运行中的容器作为远程工作区在 VS Code 或 Cursor 中打开（见[下文](#通过-remote-ssh-打开容器)）。
 - **查看资源用量** 打开 CPU、内存、网络 I/O、磁盘 I/O 的实时图表。
 
   ![实时资源用量图表](docs/media/stats.gif)
@@ -57,11 +58,29 @@ CLI 未安装或服务未启动时，视图中会给出处理提示。
 | `appleContainer.statsInterval` | `2` | 资源用量图表的采样间隔（秒） |
 | `appleContainer.execShell` | `/bin/sh` | **打开 Shell** 使用的 shell |
 | `appleContainer.logTail` | `200` | 查看日志时显示的末尾行数，`0` 表示全部 |
+| `appleContainer.sshUser` | _（空）_ | **在 Remote-SSH 中打开** 时登录的用户；留空自动使用容器自身的用户（镜像 `USER` 或 `--user`，默认 root） |
 
 ## 远程开发
 
 插件运行在本地 UI 端（`extensionKind: ["ui"]`），即使工作区通过 Remote-SSH、Dev Containers 或 WSL 打开，管理的也始终是你面前这台 Mac 上的容器。
 构建镜像和 Compose 需要本机文件，远程工作区中的文件会提示不支持。
+
+## 通过 Remote-SSH 打开容器
+
+ssh 通过 `ProxyCommand container exec -i <id> sshd -i` 连接容器，不依赖容器 IP、端口映射，也不需要容器里常驻 sshd。
+
+1. 容器内没有 `sshd` 时，插件会用镜像自带的包管理器（`apk`、`apt-get`、`dnf`、`microdnf`、`yum`、`zypper`）自动安装 `openssh-server`。这需要容器能访问外网；安装失败或镜像没有包管理器时，会给出手动安装命令。
+2. 在 `~/.ssh/config`（或 `remote.SSH.configFile` 指定的文件）顶部、所有 `Host` 之前加一行：
+
+   ```
+   Include ~/.ssh/apple-container/config
+   ```
+
+   插件把主机条目（`apple-container.<id>`）和自己的密钥对写在 `~/.ssh/apple-container/`，不会修改你的 SSH 配置。
+3. 右键运行中的容器 → **在 Remote-SSH 中打开**，确认目录后会打开新窗口。
+
+每次打开时，插件会在缺失时生成 SSH 主机密钥，把公钥加入登录用户的 `authorized_keys`；如果该账号未设密码（`/etc/shadow` 中为 `!`，sshd 视为锁定），会改成 `*` 以允许密钥登录。
+VS Code / Cursor Server 会在容器内下载，需要容器能访问外网；否则开启 `remote.SSH.localServerDownload`。
 
 ## 开发
 
@@ -75,7 +94,7 @@ npm run package      # 生成 apple-container-tools-darwin-arm64-<version>.vsix
 
 e2e 测试会启动本机安装的 VS Code（`/Applications/Visual Studio Code.app`，可用 `VSCODE_EXECUTABLE` 覆盖），需要 `container` 服务处于运行状态。
 测试只操作自己创建的资源（`e2e-` 前缀），不会执行任何 prune。设置 `E2E_SKIP_BUILD=1` 跳过镜像构建用例，`E2E_GREP=<pattern>` 只运行部分用例。
-测试会启动两次 VS Code：一次带工作区文件夹，一次是空窗口，用来覆盖不依赖文件夹的命令。
+测试会启动两次 VS Code：一次带工作区文件夹，一次是空窗口，用来覆盖不依赖文件夹的命令。Remote-SSH 用例会让插件从 Alpine 源自动安装 `openssh-server`，并拉取 `busybox` 覆盖没有包管理器的情况，密钥和 SSH 配置都放在临时目录，不会写入 `~/.ssh`。
 
 README 中的动画由 `npm run demo` 录制：它用调试端口启动 VS Code，针对演示容器（结束后自动删除）播放脚本化的场景，再通过 Chrome DevTools Protocol 抓取窗口画面生成 `docs/media/*.gif`。`DEMO_SCENES=stats npm run demo` 只录制单个场景。
 

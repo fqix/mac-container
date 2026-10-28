@@ -21,11 +21,21 @@ async function main(): Promise<void> {
     `name: e2e-compose-${Date.now().toString(36)}\nservices:\n  app:\n    image: docker.io/library/alpine:latest\n    command: ["sleep", "3600"]\n`,
   );
 
+  // Remote-SSH: keep the generated key and host config out of the real ~/.ssh, and point Remote-SSH at a scratch user config
+  const sshDir = path.join(tmp, 'ssh');
+  const userSshConfig = path.join(tmp, 'ssh_config');
+  fs.mkdirSync(path.join(tmp, 'user-data', 'User'), { recursive: true });
+  fs.writeFileSync(
+    path.join(tmp, 'user-data', 'User', 'settings.json'),
+    JSON.stringify({ 'remote.SSH.configFile': userSshConfig }),
+  );
+
   try {
     await runTests({
       vscodeExecutablePath,
       extensionDevelopmentPath: root,
       extensionTestsPath: path.join(__dirname, 'e2e', 'index.js'),
+      extensionTestsEnv: { APPLE_CONTAINER_SSH_DIR: sshDir, E2E_USER_SSH_CONFIG: userSshConfig },
       launchArgs: [
         workspace,
         '--disable-extensions',

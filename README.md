@@ -17,6 +17,7 @@ Manage [Apple `container`](https://github.com/apple/container) — native Linux 
 - **Attach Shell** (`container exec -it`), **View Logs** (`logs -f`) and **View Boot Logs** in the integrated terminal.
 - Expand a container to see its **Volumes** and **Ports** — each section is shown only when it has entries.
   Open a TCP port in the browser, copy its URL, or reveal a bind-mounted folder in Finder.
+- **Open in Remote-SSH** opens a running container as a remote workspace in VS Code or Cursor through the Remote - SSH extension (see [below](#open-a-container-over-remote-ssh)).
 - **Show Stats** opens live charts for CPU, memory, network I/O and block I/O.
 
   ![Live stats charts](docs/media/stats.gif)
@@ -59,11 +60,29 @@ When the CLI is missing or the service is stopped, the views explain what to do.
 | `appleContainer.statsInterval` | `2` | Sampling interval of the stats charts in seconds. |
 | `appleContainer.execShell` | `/bin/sh` | Shell started by **Attach Shell**. |
 | `appleContainer.logTail` | `200` | Lines shown when opening logs; `0` shows everything. |
+| `appleContainer.sshUser` | _(empty)_ | User for **Open in Remote-SSH**. Empty uses the container's own user (image `USER` or `--user`, root by default). |
 
 ## Remote development
 
 The extension runs on the local UI side (`extensionKind: ["ui"]`), so it always manages the containers of the Mac you are sitting at, also when the workspace is opened over Remote-SSH, in a Dev Container or in WSL.
 Building images and running Compose need the files on this Mac; files from a remote workspace are rejected with a message.
+
+## Open a container over Remote-SSH
+
+ssh reaches the container through `ProxyCommand container exec -i <id> sshd -i`, so the container needs no IP route, published port or running SSH daemon.
+
+1. If the container has no `sshd`, the extension installs `openssh-server` with the image's package manager (`apk`, `apt-get`, `dnf`, `microdnf`, `yum` or `zypper`). This needs network access from the container; when it fails, or the image has no package manager, it shows the command to run yourself.
+2. Add this line at the top of `~/.ssh/config` (or the file set in `remote.SSH.configFile`), before any `Host` entry:
+
+   ```
+   Include ~/.ssh/apple-container/config
+   ```
+
+   The extension writes its host entries (`apple-container.<id>`) and its own key pair to `~/.ssh/apple-container/` and never edits your SSH config.
+3. Right-click a running container → **Open in Remote-SSH**, confirm the folder, and a new window connects.
+
+On each open the extension generates SSH host keys if missing, adds its public key to the user's `authorized_keys` and, if the account has no password (`!` in `/etc/shadow`, which sshd treats as locked), changes it to `*` so key login works.
+The VS Code / Cursor server is downloaded inside the container, so it needs internet access; otherwise enable `remote.SSH.localServerDownload`.
 
 ## Development
 
@@ -77,7 +96,7 @@ npm run package      # build apple-container-tools-darwin-arm64-<version>.vsix
 
 The e2e suite launches the installed VS Code (`/Applications/Visual Studio Code.app`, override with `VSCODE_EXECUTABLE`) and needs the `container` service running.
 It only touches resources it creates (prefixed with `e2e-`) and never runs prune. Set `E2E_SKIP_BUILD=1` to skip the image build test and `E2E_GREP=<pattern>` to run a subset.
-It runs twice: once with a workspace folder and once as an empty window, for commands that must work without a folder.
+It runs twice: once with a workspace folder and once as an empty window, for commands that must work without a folder. The Remote-SSH test lets the extension install `openssh-server` from the Alpine repositories, pulls `busybox` for the no-package-manager case, and keeps its key and SSH config in a temporary directory, never in `~/.ssh`.
 
 The README animations are recorded with `npm run demo`: it starts VS Code with a remote debugging port, plays scripted scenes against demo containers (removed afterwards) and captures the window over the Chrome DevTools Protocol into `docs/media/*.gif`. `DEMO_SCENES=stats npm run demo` records a single scene.
 

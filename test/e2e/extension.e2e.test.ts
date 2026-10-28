@@ -2,8 +2,10 @@
 // Every resource created here uses a unique e2e- prefix and is removed afterwards.
 // Prune commands are intentionally not exercised because they would touch the user's own resources.
 import * as assert from 'assert';
+import { execFile } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
+import { promisify } from 'util';
 
 import * as vscode from 'vscode';
 
@@ -27,6 +29,8 @@ const names = {
   project: `e2e-proj-${suffix}`,
   edit: `e2e-edit-${suffix}`,
   editVolume: `e2e-editvol-${suffix}`,
+  ssh: `e2e-ssh-${suffix}`,
+  sshBare: `e2e-sshbare-${suffix}`,
 };
 
 /** Containers named by the extension, removed in the after hook if a test fails half way */
@@ -43,6 +47,32 @@ function stub<K extends keyof typeof vscode.window>(key: K, impl: (...args: any[
   restores.push(() => {
     target[key] = original;
   });
+}
+
+/** The e2e host runs with --disable-extensions, so pretend Remote - SSH is installed */
+function stubRemoteSshExtension(): void {
+  const original = Object.getOwnPropertyDescriptor(vscode.extensions, 'all')!;
+  const fake = { id: 'ms-vscode-remote.remote-ssh' } as vscode.Extension<unknown>;
+  Object.defineProperty(vscode.extensions, 'all', { configurable: true, get: () => [...original.get!.call(vscode.extensions), fake] });
+  restores.push(() => Object.defineProperty(vscode.extensions, 'all', original));
+}
+
+/** Records vscode.openFolder calls instead of opening a new window */
+function captureOpenFolder(): vscode.Uri[] {
+  const opened: vscode.Uri[] = [];
+  const commands = vscode.commands as any;
+  const original = commands.executeCommand;
+  commands.executeCommand = (id: string, ...args: unknown[]) => {
+    if (id === 'vscode.openFolder') {
+      opened.push(args[0] as vscode.Uri);
+      return Promise.resolve();
+    }
+    return original.call(vscode.commands, id, ...args);
+  };
+  restores.push(() => {
+    commands.executeCommand = original;
+  });
+  return opened;
 }
 
 /** Answers input boxes in order; fails the test if more are opened than expected */
@@ -143,7 +173,7 @@ describe('Apple Container e2e', function () {
     // Best-effort cleanup in case a test failed half way
     const ignore = () => undefined;
     await api?.cli
-      .run(['delete', '--force', ...generatedNames, names.container, `${names.container}-run`, `${names.project}-web`, `${names.project}-worker`, names.edit])
+      .run(['delete', '--force', ...generatedNames, names.ssh, names.sshBare, names.container, `${names.container}-run`, `${names.project}-web`, `${names.project}-worker`, names.edit])
       .catch(ignore);
     await api?.cli.run(['volume', 'delete', names.editVolume]).catch(ignore);
     const snapshots = (await api?.cli.listImages().catch(() => [])) ?? [];
@@ -371,6 +401,102 @@ describe('Apple Container e2e', function () {
     assert.strictEqual(after.status.state, 'running');
     assert.deepStrictEqual(after.configuration.publishedPorts, before.configuration.publishedPorts);
     await api.cli.run(['delete', '--force', names.edit]);
+  });
+
+  it('opens a container over Remote-SSH and logs in as the detected user', async function () {
+    const sshDir = process.env.APPLE_CONTAINER_SSH_DIR;
+    const userSshConfig = process.env.E2E_USER_SSH_CONFIG;
+    if (!sshDir || !userSshConfig) {
+      this.skip();
+    }
+    this.timeout(10 * 60_000);
+    const hostConfig = path.join(sshDir, 'config');
+    const alias = `apple-container.${names.ssh}`;
+    const ssh = async (command: string) =>
+      (await promisify(execFile)('/usr/bin/ssh', ['-F', hostConfig, '-o', 'BatchMode=yes', alias, command], { timeout: 60_000 })).stdout.trim();
+    stubRemoteSshExtension();
+    const opened = captureOpenFolder();
+    const messages: string[] = [];
+    stub('showErrorMessage', async (message: string) => {
+      messages.push(message);
+      return undefined;
+    });
+    stub('showWarningMessage', async (message: string) => {
+      messages.push(message);
+      return undefined;
+    });
+
+    // uid 1000 has no passwd entry yet; the extension must map it to a name once the user exists
+    await api.cli.run(['run', '--detach', '--name', names.ssh, '--user', '1000', IMAGE, 'sleep', '3600'], { timeoutMs: 120_000 });
+    const node = await waitFor('ssh container', async () =>
+      (await children(api.views.containers)).find((n) => n.resource.id === names.ssh && n.contextValue === 'container.running'),
+    );
+    assert.strictEqual(node.resource.user, '1000');
+
+    await api.cli.run(['exec', '-u', '0', names.ssh, 'adduser', '-D', '-u', '1000', 'dev']);
+    const hasSshd = () =>
+      api.cli.run(['exec', names.ssh, 'test', '-x', '/usr/sbin/sshd']).then(
+        () => true,
+        () => false,
+      );
+    assert.ok(!(await hasSshd()), 'alpine should not ship sshd');
+
+    // 1. No sshd and the user SSH config lacks the Include: sshd is installed with apk and the host config written,
+    //    but the user config is left alone and nothing opens
+    const unrelated = 'Host example\n  HostName example.com\n';
+    fs.writeFileSync(userSshConfig, unrelated);
+    await vscode.commands.executeCommand('appleContainer.container.openRemoteSsh', node);
+    assert.ok(await hasSshd(), 'openssh-server was not installed');
+    assert.strictEqual(messages.length, 1, `expected only the Include prompt, got ${JSON.stringify(messages)}`);
+    assert.strictEqual(opened.length, 0);
+    assert.strictEqual(fs.readFileSync(userSshConfig, 'utf8'), unrelated);
+    assert.match(fs.readFileSync(hostConfig, 'utf8'), new RegExp(`^Host ${alias.replace(/\./g, '\\.')}$`, 'm'));
+    messages.length = 0;
+
+    // 2. With the Include: opens the user's home over Remote-SSH, and ssh really logs in as dev
+    fs.writeFileSync(userSshConfig, `Include "${hostConfig}"\n${unrelated}`);
+    stub('showInputBox', async (options: vscode.InputBoxOptions) => options.value);
+    await vscode.commands.executeCommand('appleContainer.container.openRemoteSsh', node);
+    assert.deepStrictEqual(messages, []);
+    assert.strictEqual(opened.length, 1);
+    assert.strictEqual(opened[0].scheme, 'vscode-remote');
+    assert.strictEqual(opened[0].authority, `ssh-remote+${alias}`);
+    assert.strictEqual(opened[0].path, '/home/dev');
+    assert.strictEqual(await ssh('id -un; echo $HOME'), 'dev\n/home/dev');
+
+    // 3. The sshUser setting overrides the detected user
+    const config = vscode.workspace.getConfiguration('appleContainer');
+    await config.update('sshUser', 'root', vscode.ConfigurationTarget.Global);
+    try {
+      await vscode.commands.executeCommand('appleContainer.container.openRemoteSsh', node);
+      assert.deepStrictEqual(messages, []);
+      assert.strictEqual(opened[1]?.path, '/root');
+      assert.strictEqual(await ssh('id -un'), 'root');
+    } finally {
+      await config.update('sshUser', undefined, vscode.ConfigurationTarget.Global);
+    }
+    await api.cli.run(['delete', '--force', names.ssh]);
+  });
+
+  it('explains how to install sshd when the image has no package manager', async function () {
+    this.timeout(5 * 60_000);
+    stubRemoteSshExtension();
+    const opened = captureOpenFolder();
+    const messages: string[] = [];
+    stub('showErrorMessage', async (message: string) => {
+      messages.push(message);
+      return undefined;
+    });
+    // busybox has a shell but no package manager
+    await api.cli.run(['run', '--detach', '--name', names.sshBare, 'docker.io/library/busybox:latest', 'sleep', '3600'], { timeoutMs: 5 * 60_000 });
+    const node = await waitFor('busybox container', async () =>
+      (await children(api.views.containers)).find((n) => n.resource.id === names.sshBare && n.contextValue === 'container.running'),
+    );
+    await vscode.commands.executeCommand('appleContainer.container.openRemoteSsh', node);
+    assert.strictEqual(messages.length, 1, JSON.stringify(messages));
+    assert.ok(messages[0].includes('openssh-server'), messages[0]);
+    assert.strictEqual(opened.length, 0);
+    await api.cli.run(['delete', '--force', names.sshBare]);
   });
 
   it('does not delete when the confirmation is dismissed', async () => {

@@ -159,6 +159,12 @@
         "icon": "$(terminal)"
       },
       {
+        "command": "appleContainer.container.openRemoteSsh",
+        "title": "%command.container.openRemoteSsh%",
+        "category": "%category%",
+        "icon": "$(remote-explorer)"
+      },
+      {
         "command": "appleContainer.container.inspect",
         "title": "%command.container.inspect%",
         "category": "%category%"
@@ -423,6 +429,10 @@
           "when": "false"
         },
         {
+          "command": "appleContainer.container.openRemoteSsh",
+          "when": "false"
+        },
+        {
           "command": "appleContainer.container.inspect",
           "when": "false"
         },
@@ -602,6 +612,11 @@
           "command": "appleContainer.container.kill",
           "when": "viewItem =~ /^container\\.running/",
           "group": "1_lifecycle@3"
+        },
+        {
+          "command": "appleContainer.container.openRemoteSsh",
+          "when": "viewItem =~ /^container\\.running/",
+          "group": "2_view@0"
         },
         {
           "command": "appleContainer.container.exec",
@@ -833,6 +848,12 @@
           "type": "string",
           "default": "/bin/sh",
           "markdownDescription": "%config.execShell%"
+        },
+        "appleContainer.sshUser": {
+          "type": "string",
+          "default": "",
+          "scope": "machine",
+          "markdownDescription": "%config.sshUser%"
         },
         "appleContainer.logTail": {
           "type": "number",

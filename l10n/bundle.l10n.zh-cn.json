@@ -176,6 +176,22 @@
   "Volumes": "卷",
   "Destination": "目标路径",
   "Compose Project": "Compose 项目",
+  "Preparing SSH access to {0}...": "正在为 {0} 准备 SSH 访问...",
+  "User {0} does not exist in container {1}.": "容器 {1} 中不存在用户 {0}。",
+  "Open {0} over Remote-SSH": "通过 Remote-SSH 打开 {0}",
+  "Folder inside the container": "容器内的目录",
+  "Find Extension": "查找扩展",
+  "Opening a container over SSH needs the Remote - SSH extension.": "通过 SSH 打开容器需要安装 Remote - SSH 扩展。",
+  "Copy Install Command": "复制安装命令",
+  "Attach Shell": "打开 Shell",
+  "Copy Include Line": "复制 Include 行",
+  "Open SSH Config": "打开 SSH 配置",
+  "Add the container hosts to your SSH config": "需要把容器主机加入 SSH 配置",
+  "Add this line at the top of {0}, before any Host entry, then run the command again:\n\n{1}\n\nThe extension writes its hosts to {2} and does not modify your own SSH config.": "请在 {0} 顶部（所有 Host 之前）添加下面这一行，然后重新执行命令：\n\n{1}\n\n插件只把主机写入 {2}，不会修改你自己的 SSH 配置。",
   "Container name; leave empty for a random name": "容器名称，留空则随机生成",
-  "Command or shell script (optional), run with /bin/sh -c; empty uses the image default": "命令或 shell 脚本（可选），用 /bin/sh -c 执行；留空使用镜像默认命令"
+  "Command or shell script (optional), run with /bin/sh -c; empty uses the image default": "命令或 shell 脚本（可选），用 /bin/sh -c 执行；留空使用镜像默认命令",
+  "Installing openssh-server in {0}...": "正在为 {0} 安装 openssh-server...",
+  "No supported package manager was found.": "没有找到支持的包管理器。",
+  "Could not install openssh-server in container {0}.": "无法在容器 {0} 中安装 openssh-server。",
+  "{0}\n\nInstall it inside the container yourself, for example:\n{1}": "{0}\n\n请在容器内手动安装，例如：\n{1}"
 }

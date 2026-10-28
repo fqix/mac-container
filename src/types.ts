@@ -37,6 +37,8 @@ export interface ContainerSummary {
   cpus?: number;
   memoryBytes?: number;
   platform?: string;
+  /** Process user from the image USER or --user: a name, uid or name:group */
+  user?: string;
 }
 
 export interface ImageSummary {
