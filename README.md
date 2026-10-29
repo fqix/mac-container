@@ -43,7 +43,7 @@
 - **VSIX**: download `apple-container-tools-darwin-arm64-<version>.vsix` from [GitHub Releases](https://github.com/fqix/mac-container/releases) and install it:
 
   ```bash
-  code --install-extension apple-container-tools-darwin-arm64-0.3.0.vsix
+  code --install-extension apple-container-tools-darwin-arm64-0.4.0.vsix
   ```
 
 ## Quick start
