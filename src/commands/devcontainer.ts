@@ -15,6 +15,7 @@ import {
   type DevContainerTarget,
   prepareDockerWrapper,
   readConfiguration,
+  runDefaults,
   upArgs,
 } from '../services/devcontainerCli';
 import { parseEnvOutput, resolveContainerEnv } from '../utils/env';
@@ -157,13 +158,14 @@ export async function openDevContainer(ctx: CommandContext, configFile: string, 
   }
 
   const paths = await cliPaths(ctx);
+  const defaultMemory = vscode.workspace.getConfiguration('appleContainer').get<string>('devcontainer.memory', '4G');
   // The task terminal shows the CLI log: image builds, features, lifecycle commands and shim warnings
   const code = await runTask(
     vscode.l10n.t('Dev Container: {0}', name),
     paths.node,
     upArgs(paths, target, { removeExisting: rebuild && !!existing }),
     target.workspaceFolder,
-    cliEnv(paths),
+    cliEnv(paths, runDefaults(config.hostRequirements, defaultMemory)),
   );
   await ctx.refreshAll();
   if (code !== 0) {

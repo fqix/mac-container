@@ -128,6 +128,7 @@ VS Code / Cursor Server 会在容器内下载，需要容器能访问外网；�
 | 生命周期命令，从 `initializeCommand`（在本机执行）到 `postAttachCommand` | ✅ |
 | `appPort` | ✅ 通过 `container run --publish` 发布 |
 | `forwardPorts` | ⚠️ 不发布；Remote-SSH 会转发它检测到在容器内监听的端口，本机也可以直接访问容器 IP |
+| `hostRequirements.cpus` / `memory` | ✅ 以 `--cpus` / `--memory` 应用；内存至少为 `appleContainer.devcontainer.memory`（4G） |
 | `capAdd`、`init`、`overrideCommand` | ✅ |
 | `runArgs` | ⚠️ 传给 `container run`；Docker 专有选项会被丢弃并给出警告，见[已知限制](#已知限制) |
 | `privileged` | ⚠️ 转为 `--cap-add ALL` |
@@ -151,6 +152,7 @@ Apple `container` 的每个容器都运行在独立的轻量虚拟机里，有�
 对 `devcontainer.json` 的影响：
 
 - docker 兼容层会丢弃 Apple `container` 无法应用的 `runArgs`（`--ipc`、`--pid`、`--security-opt`、`--device`、`--gpus`、`--add-host`、`--network host`，以及挂载 `/dev`、`/proc`、`/sys` 或本机不存在的路径），并在任务终端中给出警告。`--privileged`（包括来自 `privileged: true` 或 feature 的）会转为 `--cap-add ALL`。容器可以启动，但依赖这些选项的功能无法工作。
+- Apple `container` 的每个容器都是内存固定的虚拟机（默认 1 GB），而 Docker 容器共享整个 Docker 虚拟机。开发容器使用 `appleContainer.devcontainer.memory`（4G）与 `hostRequirements.memory` 中较大的值；构建较重时调大该值并重建容器。
 - 依赖特权模式或 Docker daemon 的 features（如 `docker-in-docker`）能安装但无法工作；`docker-outside-of-docker` 没有可连接的 Docker socket。
 - 为 Codespaces 或 Docker 编写、在开发容器里运行 containerd、Kubernetes 等嵌套容器运行时的配置只能部分工作：需要宿主设备或嵌套容器的部分会失败。
 
@@ -166,6 +168,7 @@ Apple `container` 的每个容器都运行在独立的轻量虚拟机里，有�
 | `appleContainer.execShell` | `/bin/sh` | **打开 Shell** 使用的 shell |
 | `appleContainer.logTail` | `200` | 查看日志时显示的末尾行数，`0` 表示全部 |
 | `appleContainer.sshUser` | _（空）_ | **在 Remote-SSH 中打开** 时登录的用户；留空自动使用容器自身的用户（镜像 `USER` 或 `--user`，默认 root） |
+| `appleContainer.devcontainer.memory` | `4G` | 开发容器的内存，`hostRequirements.memory` 更大时以它为准。Apple `container` 默认每个容器 1 GB，而 Docker 容器不限内存。留空使用 Apple `container` 的默认值 |
 
 ## 常见问题
 

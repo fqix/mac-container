@@ -976,6 +976,13 @@
           "scope": "machine",
           "markdownDescription": "%config.sshUser%"
         },
+        "appleContainer.devcontainer.memory": {
+          "type": "string",
+          "default": "4G",
+          "pattern": "^(\\d+[KMGTkmgt]?)?$",
+          "scope": "machine",
+          "markdownDescription": "%config.devcontainerMemory%"
+        },
         "appleContainer.logTail": {
           "type": "number",
           "default": 200,

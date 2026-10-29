@@ -4,7 +4,7 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 
-import { cliEnv, dockerWrapper, parseReadConfiguration, prepareDockerWrapper, upArgs } from '../../src/services/devcontainerCli';
+import { cliEnv, dockerWrapper, parseReadConfiguration, prepareDockerWrapper, runDefaults, upArgs } from '../../src/services/devcontainerCli';
 
 const paths = {
   node: '/Applications/Visual Studio Code.app/Contents/Frameworks/Code Helper (Plugin).app/Contents/MacOS/Code Helper (Plugin)',
@@ -24,7 +24,22 @@ describe('devcontainers/cli integration', () => {
       '--log-format', 'text',
     ]);
     assert.deepStrictEqual(upArgs(paths, target, { removeExisting: true }).slice(-1), ['--remove-existing-container']);
-    assert.deepStrictEqual(cliEnv(paths), { ELECTRON_RUN_AS_NODE: '1', APPLE_CONTAINER_CLI: '/usr/local/bin/container' });
+    assert.deepStrictEqual(cliEnv(paths, ['--memory', '4G']), {
+      ELECTRON_RUN_AS_NODE: '1',
+      APPLE_CONTAINER_CLI: '/usr/local/bin/container',
+      DOCKER_SHIM_RUN_DEFAULTS: '["--memory","4G"]',
+    });
+  });
+
+  it('sizes the dev container from hostRequirements and the default memory', () => {
+    assert.deepStrictEqual(runDefaults(undefined, '4G'), ['--memory', '4G']);
+    // The larger of the two wins, as hostRequirements is a minimum
+    assert.deepStrictEqual(runDefaults({ cpus: 8, memory: '16gb' }, '4G'), ['--cpus', '8', '--memory', '16G']);
+    assert.deepStrictEqual(runDefaults({ memory: '512mb' }, '4G'), ['--memory', '4G']);
+    assert.deepStrictEqual(runDefaults({ memory: '1.5gb' }, '1G'), ['--memory', '1536M']);
+    // An empty setting leaves the Apple container default unless hostRequirements asks for more
+    assert.deepStrictEqual(runDefaults(undefined, ''), []);
+    assert.deepStrictEqual(runDefaults({ cpus: 'many', memory: 'lots' }, 'bogus'), []);
   });
 
   it('writes an executable docker wrapper that quotes paths and forwards arguments', async () => {

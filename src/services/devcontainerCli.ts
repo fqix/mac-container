@@ -5,6 +5,9 @@ import { execFile } from 'child_process';
 import { chmod, mkdir, readFile, writeFile } from 'fs/promises';
 import * as path from 'path';
 
+import { RUN_DEFAULTS_ENV } from '../dockerShim/translate';
+import { memorySpec } from './devcontainer';
+
 export interface DevContainerCliPaths {
   /** Electron (or Node) binary that runs the scripts */
   node: string;
@@ -40,9 +43,38 @@ export async function prepareDockerWrapper(storageDir: string, node: string, shi
   return file;
 }
 
-/** Environment for the CLI process; ELECTRON_RUN_AS_NODE is removed again by run.js before user commands run */
-export function cliEnv(paths: DevContainerCliPaths): Record<string, string> {
-  return { ELECTRON_RUN_AS_NODE: '1', APPLE_CONTAINER_CLI: paths.containerCli };
+/**
+ * Environment for the CLI process, passed on to the shim; ELECTRON_RUN_AS_NODE is removed again by run.js
+ * before user commands run. runDefaults are `container run` options for resources (see runDefaults()).
+ */
+export function cliEnv(paths: DevContainerCliPaths, runDefaults: string[] = []): Record<string, string> {
+  return { ELECTRON_RUN_AS_NODE: '1', APPLE_CONTAINER_CLI: paths.containerCli, [RUN_DEFAULTS_ENV]: JSON.stringify(runDefaults) };
+}
+
+/** "4G" / "512M" (container CLI sizes) in bytes */
+function sizeBytes(size: string): number | undefined {
+  const m = /^(\d+)([KMGT])?$/i.exec(size.trim());
+  return m ? Number(m[1]) * 1024 ** ('KMGT'.indexOf((m[2] ?? 'M').toUpperCase()) + 1) : undefined;
+}
+
+/**
+ * CPUs and memory for the dev container. devcontainers/cli only checks hostRequirements, and Docker containers are
+ * not limited by default, but an Apple container VM gets 1 GB unless told otherwise. So the memory is the larger of
+ * hostRequirements.memory and the configured default, and hostRequirements.cpus is passed on as is.
+ */
+export function runDefaults(hostRequirements: Record<string, unknown> | undefined, defaultMemory: string): string[] {
+  const args: string[] = [];
+  const cpus = Number(hostRequirements?.cpus);
+  if (Number.isInteger(cpus) && cpus > 0) {
+    args.push('--cpus', String(cpus));
+  }
+  const required = typeof hostRequirements?.memory === 'string' ? memorySpec(hostRequirements.memory) : undefined;
+  const candidates = [required, defaultMemory.trim() || undefined].filter((s): s is string => !!s && sizeBytes(s) !== undefined);
+  const memory = candidates.sort((a, b) => sizeBytes(b)! - sizeBytes(a)!)[0];
+  if (memory) {
+    args.push('--memory', memory);
+  }
+  return args;
 }
 
 function targetArgs(paths: DevContainerCliPaths, target: DevContainerTarget): string[] {

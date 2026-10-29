@@ -53,6 +53,7 @@
   "config.refreshInterval": "Auto refresh interval (seconds) while a view is visible. Set to `0` to disable.",
   "config.execShell": "Shell to run inside the container for `Attach Shell`.",
   "config.sshUser": "User to log in as when opening a container with **Open in Remote-SSH**. Leave empty to use the container's own user (image `USER` or `--user`, root by default). If the container has no `sshd`, `openssh-server` is installed with its package manager.",
+  "config.devcontainerMemory": "Memory for dev containers (for example `4G` or `512M`). Apple container gives each container 1 GB unless told otherwise, while Docker containers are not limited, so dev containers get this much, or `hostRequirements.memory` from `devcontainer.json` when that is larger. Empty uses the Apple container default. Applies when a dev container is created or rebuilt.",
   "config.logTail": "Number of trailing lines to show when viewing logs. `0` shows all.",
   "view.registries": "Registries",
   "welcome.noRegistries": "Not logged in to any registry.\n[Log In to Registry](command:appleContainer.registry.login)",

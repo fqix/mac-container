@@ -183,6 +183,40 @@ export function translateRunOptions(
   return { args, warnings };
 }
 
+/** Environment variable with a JSON array of `container run` options added when the run does not set them itself */
+export const RUN_DEFAULTS_ENV = 'DOCKER_SHIM_RUN_DEFAULTS';
+
+/** Option names that set the same thing, so a default is skipped when any of them is already present */
+const ALIASES: Record<string, string[]> = {
+  '--cpus': ['--cpus', '-c'],
+  '--memory': ['--memory', '-m'],
+};
+
+/**
+ * Adds default options (pairs such as ["--memory", "4G"]) that the translated run arguments do not set.
+ * Docker containers share the whole Docker VM, while every Apple container VM gets 1 GB unless told otherwise.
+ */
+export function applyRunDefaults(args: string[], defaults: string[]): string[] {
+  const result = [...args];
+  for (let i = 0; i + 1 < defaults.length; i += 2) {
+    const names = ALIASES[defaults[i]] ?? [defaults[i]];
+    if (!args.some((arg) => names.includes(arg))) {
+      result.push(defaults[i], defaults[i + 1]);
+    }
+  }
+  return result;
+}
+
+/** Parses the run defaults from the environment; anything malformed is ignored */
+export function parseRunDefaults(value: string | undefined): string[] {
+  try {
+    const parsed: unknown = value ? JSON.parse(value) : [];
+    return Array.isArray(parsed) && parsed.every((v) => typeof v === 'string') ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
 /** Options passed through when Apple container knows them; others are dropped with a warning */
 export function passKnownOptions(options: DockerOption[], apple: Map<string, boolean>): Translated {
   const args: string[] = [];

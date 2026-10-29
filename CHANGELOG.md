@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Apply `hostRequirements.cpus` / `memory` to dev containers again; the Dev Containers CLI only checks them
+- Give dev containers 4 GB of memory by default instead of the 1 GB Apple container default, configurable with `appleContainer.devcontainer.memory`
+
 ## 0.4.0
 
 - Create dev containers with the bundled Dev Containers CLI (`@devcontainers/cli` 0.90.0) through a docker-compatible shim for Apple `container`: `devcontainer.json` features are now installed, and lifecycle commands, variables and image metadata follow the reference implementation. Nothing extra needs to be installed

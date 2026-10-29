@@ -6,11 +6,14 @@ import { appendFileSync, existsSync } from 'fs';
 import * as path from 'path';
 
 import {
+  applyRunDefaults,
   diffEvents,
   filterContainers,
   parseFilters,
   parseHelpOptions,
+  parseRunDefaults,
   passKnownOptions,
+  RUN_DEFAULTS_ENV,
   SHIM_VERSION,
   snapshot,
   splitOptions,
@@ -174,8 +177,9 @@ async function run(args: string[]): Promise<number> {
     return fail('docker-shim: run needs an image');
   }
   const detach = options.some((o) => o.name === '-d' || o.name === '--detach');
-  const { args: runArgs, warnings } = translateRunOptions(options, appleOptions('run'), existsSync);
-  warn(warnings);
+  const translated = translateRunOptions(options, appleOptions('run'), existsSync);
+  warn(translated.warnings);
+  const runArgs = applyRunDefaults(translated.args, parseRunDefaults(process.env[RUN_DEFAULTS_ENV]));
   // Always start detached: a foreground `container run` could take the container down with the client
   // when devcontainers/cli exits. Attached runs are emulated by following the logs instead.
   const started = await capture(['run', '--detach', ...runArgs, image, ...command]);

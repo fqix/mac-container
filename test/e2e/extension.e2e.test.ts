@@ -638,6 +638,8 @@ describe('Apple Container e2e', function () {
       // Docker-only options are dropped (or downgraded) by the docker shim instead of failing the run
       "runArgs": ["--privileged", "--ipc=host"],
       "appPort": ["127.0.0.1:18093:18093"],
+      // Applied by the extension through the shim: devcontainers/cli only checks them
+      "hostRequirements": { "cpus": 2, "memory": "6gb" },
       "initializeCommand": "touch initialized",
       "onCreateCommand": "echo create >> /tmp/lifecycle",
       "postCreateCommand": ["sh", "-c", "echo post-create >> /tmp/lifecycle"],
@@ -662,6 +664,8 @@ describe('Apple Container e2e', function () {
     assert.strictEqual(created.labels['devcontainer.config_file'], configFile);
     assert.deepStrictEqual(created.ports, ['127.0.0.1:18093->18093/tcp']);
     assert.match(created.image, /vsc-devc-.*-features/);
+    assert.strictEqual(created.cpus, 2);
+    assert.strictEqual(created.memoryBytes, 6 * 1024 ** 3);
     assert.strictEqual(await exec(created.id, 'command -v bash'), '/bin/bash');
     assert.strictEqual(opened.length, 1);
     assert.strictEqual(opened[0].authority, `ssh-remote+apple-container.${created.id}`);
@@ -698,6 +702,8 @@ describe('Apple Container e2e', function () {
     assert.strictEqual(opened.length, 4);
 
     await api.cli.run(['delete', '--force', created.id]);
+    // The image with the features installed is generated per folder, so it goes too
+    await api.cli.run(['image', 'delete', created.image]).catch(() => undefined);
     fs.rmSync(folder, { recursive: true, force: true });
   });
 
@@ -719,6 +725,8 @@ describe('Apple Container e2e', function () {
     assert.ok(container, 'dev container not created');
     devContainers.push(container.id);
     assert.match(container.image, /vsc-devcb-[^:]+:latest$/);
+    // No hostRequirements: appleContainer.devcontainer.memory (4G) instead of the 1 GB Apple container default
+    assert.strictEqual(container.memoryBytes, 4 * 1024 ** 3);
     assert.strictEqual((await api.cli.run(['exec', container.id, 'cat', '/built'])).trim(), 'from-build');
     assert.strictEqual(opened[0]?.path, `/workspaces/devcb-${suffix}`);
 

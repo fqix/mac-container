@@ -3,10 +3,12 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 import {
+  applyRunDefaults,
   diffEvents,
   filterContainers,
   parseFilters,
   parseHelpOptions,
+  parseRunDefaults,
   passKnownOptions,
   snapshot,
   splitOptions,
@@ -107,6 +109,16 @@ describe('docker shim', () => {
     assert.match(warnings.join('\n'), /\/dev is not available/);
     assert.match(warnings.join('\n'), /--network host/);
     assert.match(warnings.join('\n'), /--security-opt seccomp=unconfined/);
+  });
+
+  it('adds default resources the run does not set itself', () => {
+    const defaults = parseRunDefaults('["--cpus","8","--memory","4G"]');
+    assert.deepStrictEqual(applyRunDefaults(['-e', 'A=1'], defaults), ['-e', 'A=1', '--cpus', '8', '--memory', '4G']);
+    // runArgs such as --memory=16g or -c 2 win over the defaults
+    assert.deepStrictEqual(applyRunDefaults(['--memory', '16g', '-c', '2'], defaults), ['--memory', '16g', '-c', '2']);
+    assert.deepStrictEqual(parseRunDefaults(undefined), []);
+    assert.deepStrictEqual(parseRunDefaults('not json'), []);
+    assert.deepStrictEqual(parseRunDefaults('[1]'), []);
   });
 
   it('translates build and exec options', () => {

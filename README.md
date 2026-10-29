@@ -128,6 +128,7 @@ The container is named `devc-<folder>-<hash>` and labelled with `devcontainer.lo
 | Lifecycle commands, from `initializeCommand` (on this Mac) to `postAttachCommand` | ✅ |
 | `appPort` | ✅ published with `container run --publish` |
 | `forwardPorts` | ⚠️ not published; Remote-SSH forwards ports it sees listening in the container, and the container IP is reachable from the Mac |
+| `hostRequirements.cpus` / `memory` | ✅ applied with `--cpus` / `--memory`; memory is at least `appleContainer.devcontainer.memory` (4G) |
 | `capAdd`, `init`, `overrideCommand` | ✅ |
 | `runArgs` | ⚠️ passed to `container run`; Docker-only options are dropped with a warning, see [Limitations](#limitations) |
 | `privileged` | ⚠️ becomes `--cap-add ALL` |
@@ -151,6 +152,7 @@ Apple `container` runs every container in its own lightweight VM with its own Li
 For `devcontainer.json` this means:
 
 - The docker shim drops `runArgs` that Apple `container` cannot apply (`--ipc`, `--pid`, `--security-opt`, `--device`, `--gpus`, `--add-host`, `--network host`, and mounts of `/dev`, `/proc`, `/sys` or of paths that do not exist on the Mac) and prints a warning in the task terminal. `--privileged` (also from `privileged: true` or a feature) becomes `--cap-add ALL`. The container starts, but whatever relied on those options does not work.
+- Every Apple `container` container is a VM with a fixed amount of memory (1 GB unless set), while Docker containers share the whole Docker VM. Dev containers get `appleContainer.devcontainer.memory` (4G) or `hostRequirements.memory`, whichever is larger; raise it for heavy builds and rebuild the container.
 - Features that need privileged mode or a Docker daemon, such as `docker-in-docker`, install but do not work. `docker-outside-of-docker` has no Docker socket to connect to.
 - Configurations written for Codespaces or Docker that run containerd, Kubernetes or other nested container runtimes inside the dev container only partly work: anything that needs host devices or nested containers fails.
 
@@ -166,6 +168,7 @@ For `devcontainer.json` this means:
 | `appleContainer.execShell` | `/bin/sh` | Shell started by **Attach Shell**. |
 | `appleContainer.logTail` | `200` | Lines shown when opening logs; `0` shows everything. |
 | `appleContainer.sshUser` | _(empty)_ | User for **Open in Remote-SSH**. Empty uses the container's own user (image `USER` or `--user`, root by default). |
+| `appleContainer.devcontainer.memory` | `4G` | Memory for dev containers, or `hostRequirements.memory` when larger. Apple `container` gives a container 1 GB by default, while Docker containers are not limited. Empty keeps the Apple `container` default. |
 
 ## FAQ
 
