@@ -72,13 +72,7 @@ Building images and running Compose need the files on this Mac; files from a rem
 ssh reaches the container through `ProxyCommand container exec -i <id> sshd -i`, so the container needs no IP route, published port or running SSH daemon.
 
 1. If the container has no `sshd`, the extension installs `openssh-server` with the image's package manager (`apk`, `apt-get`, `dnf`, `microdnf`, `yum` or `zypper`). This needs network access from the container; when it fails, or the image has no package manager, it shows the command to run yourself.
-2. Add this line at the top of `~/.ssh/config` (or the file set in `remote.SSH.configFile`), before any `Host` entry:
-
-   ```
-   Include ~/.ssh/apple-container/config
-   ```
-
-   The extension writes its host entries (`apple-container.<id>`) and its own key pair to `~/.ssh/apple-container/` and never edits your SSH config.
+2. On the first open, the extension automatically adds `Include ~/.ssh/apple-container/config` at the top of `~/.ssh/config` (or the file set in `remote.SSH.configFile`) when needed. It preserves your existing configuration and does not add duplicate Include lines. Its host entries (`apple-container.<id>`) and key pair stay in `~/.ssh/apple-container/`; no manual SSH configuration is needed.
 3. Right-click a running container → **Open in Remote-SSH**, confirm the folder, and a new window connects.
 
 On each open the extension generates SSH host keys if missing, adds its public key to the user's `authorized_keys` and, if the account has no password (`!` in `/etc/shadow`, which sshd treats as locked), changes it to `*` so key login works.

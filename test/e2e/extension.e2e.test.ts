@@ -413,7 +413,7 @@ describe('Apple Container e2e', function () {
     const hostConfig = path.join(sshDir, 'config');
     const alias = `apple-container.${names.ssh}`;
     const ssh = async (command: string) =>
-      (await promisify(execFile)('/usr/bin/ssh', ['-F', hostConfig, '-o', 'BatchMode=yes', alias, command], { timeout: 60_000 })).stdout.trim();
+      (await promisify(execFile)('/usr/bin/ssh', ['-F', userSshConfig, '-o', 'BatchMode=yes', alias, command], { timeout: 60_000 })).stdout.trim();
     stubRemoteSshExtension();
     const opened = captureOpenFolder();
     const messages: string[] = [];
@@ -441,36 +441,48 @@ describe('Apple Container e2e', function () {
       );
     assert.ok(!(await hasSshd()), 'alpine should not ship sshd');
 
-    // 1. No sshd and the user SSH config lacks the Include: sshd is installed with apk and the host config written,
-    //    but the user config is left alone and nothing opens
+    stub('showInputBox', async (options: vscode.InputBoxOptions) => options.value);
+
+    // 1. No sshd or Include: install sshd, prepend the Include and open the user's home in one command
     const unrelated = 'Host example\n  HostName example.com\n';
+    const included = `Include "${hostConfig}"\n${unrelated}`;
     fs.writeFileSync(userSshConfig, unrelated);
     await vscode.commands.executeCommand('appleContainer.container.openRemoteSsh', node);
     assert.ok(await hasSshd(), 'openssh-server was not installed');
-    assert.strictEqual(messages.length, 1, `expected only the Include prompt, got ${JSON.stringify(messages)}`);
-    assert.strictEqual(opened.length, 0);
-    assert.strictEqual(fs.readFileSync(userSshConfig, 'utf8'), unrelated);
-    assert.match(fs.readFileSync(hostConfig, 'utf8'), new RegExp(`^Host ${alias.replace(/\./g, '\\.')}$`, 'm'));
-    messages.length = 0;
-
-    // 2. With the Include: opens the user's home over Remote-SSH, and ssh really logs in as dev
-    fs.writeFileSync(userSshConfig, `Include "${hostConfig}"\n${unrelated}`);
-    stub('showInputBox', async (options: vscode.InputBoxOptions) => options.value);
-    await vscode.commands.executeCommand('appleContainer.container.openRemoteSsh', node);
     assert.deepStrictEqual(messages, []);
     assert.strictEqual(opened.length, 1);
+    assert.strictEqual(fs.readFileSync(userSshConfig, 'utf8'), included);
+    assert.match(fs.readFileSync(hostConfig, 'utf8'), new RegExp(`^Host ${alias.replace(/\./g, '\\.')}$`, 'm'));
     assert.strictEqual(opened[0].scheme, 'vscode-remote');
     assert.strictEqual(opened[0].authority, `ssh-remote+${alias}`);
     assert.strictEqual(opened[0].path, '/home/dev');
     assert.strictEqual(await ssh('id -un; echo $HOME'), 'dev\n/home/dev');
 
-    // 3. The sshUser setting overrides the detected user
+    // 2. Reopening preserves the complete user config, without adding a duplicate Include
+    await vscode.commands.executeCommand('appleContainer.container.openRemoteSsh', node);
+    assert.deepStrictEqual(messages, []);
+    assert.strictEqual(opened.length, 2);
+    assert.strictEqual(opened[1].path, '/home/dev');
+    assert.strictEqual(fs.readFileSync(userSshConfig, 'utf8'), included);
+    assert.strictEqual(await ssh('id -un'), 'dev');
+
+    // 3. A missing custom SSH config is created automatically inside the test's temporary directory
+    fs.unlinkSync(userSshConfig);
+    await vscode.commands.executeCommand('appleContainer.container.openRemoteSsh', node);
+    assert.deepStrictEqual(messages, []);
+    assert.strictEqual(opened.length, 3);
+    assert.strictEqual(opened[2].path, '/home/dev');
+    assert.strictEqual(fs.readFileSync(userSshConfig, 'utf8'), `Include "${hostConfig}"\n`);
+    assert.strictEqual(await ssh('id -un'), 'dev');
+
+    // 4. The sshUser setting overrides the detected user
     const config = vscode.workspace.getConfiguration('appleContainer');
     await config.update('sshUser', 'root', vscode.ConfigurationTarget.Global);
     try {
       await vscode.commands.executeCommand('appleContainer.container.openRemoteSsh', node);
       assert.deepStrictEqual(messages, []);
-      assert.strictEqual(opened[1]?.path, '/root');
+      assert.strictEqual(opened.length, 4);
+      assert.strictEqual(opened[3]?.path, '/root');
       assert.strictEqual(await ssh('id -un'), 'root');
     } finally {
       await config.update('sshUser', undefined, vscode.ConfigurationTarget.Global);

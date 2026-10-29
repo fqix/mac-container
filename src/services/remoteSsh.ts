@@ -2,7 +2,7 @@
 // so no container IP, published port or long-running sshd is needed. Everything here is free of the vscode API for unit tests.
 
 import { execFile } from 'child_process';
-import { mkdir, readFile, writeFile, chmod, access } from 'fs/promises';
+import { mkdir, readFile, writeFile, chmod, access, realpath } from 'fs/promises';
 import * as os from 'os';
 import * as path from 'path';
 
@@ -13,7 +13,7 @@ const DEFAULT_SSH_DIR = path.join(os.homedir(), '.ssh', 'apple-container');
 export const SSH_DIR = process.env.APPLE_CONTAINER_SSH_DIR || DEFAULT_SSH_DIR;
 export const CONFIG_FILE = path.join(SSH_DIR, 'config');
 export const KEY_FILE = path.join(SSH_DIR, 'id_ed25519');
-/** Line the user adds to the top of ~/.ssh/config, kept with ~ so it reads the same on every Mac */
+/** Line added to the top of the user's SSH config, kept with ~ so it reads the same on every Mac. */
 export const INCLUDE_LINE =
   SSH_DIR === DEFAULT_SSH_DIR ? 'Include ~/.ssh/apple-container/config' : `Include "${CONFIG_FILE}"`;
 export const DEFAULT_SSHD = '/usr/sbin/sshd';
@@ -81,7 +81,14 @@ export function renderConfig(hosts: SshHost[], cliPath: string, keyFile = KEY_FI
 
 /** Splits the arguments of an ssh config line, honouring double quotes */
 function splitArgs(text: string): string[] {
-  return [...text.matchAll(/"([^"]*)"|(\S+)/g)].map((m) => m[1] ?? m[2]);
+  const args: string[] = [];
+  for (const match of text.matchAll(/"([^"]*)"|(\S+)/g)) {
+    if (match[2]?.startsWith('#')) {
+      break;
+    }
+    args.push(match[1] ?? match[2]);
+  }
+  return args;
 }
 
 function globToRegExp(glob: string): RegExp {
@@ -89,10 +96,13 @@ function globToRegExp(glob: string): RegExp {
   return new RegExp(`^${escaped}$`);
 }
 
-/** Whether a user ssh config pulls in the managed config via an Include directive */
+/** Whether the managed config is included globally, before any Host or Match block. */
 export function isIncluded(sshConfig: string, home = os.homedir(), target = CONFIG_FILE): boolean {
   for (const line of sshConfig.split('\n')) {
-    const m = /^\s*include\s+(.+?)\s*$/i.exec(line);
+    if (/^\s*(?:host|match)(?:\s|=)/i.test(line)) {
+      break;
+    }
+    const m = /^\s*include(?:\s*=\s*|\s+)(.+?)\s*$/i.exec(line);
     if (!m) {
       continue;
     }
@@ -109,6 +119,39 @@ export function isIncluded(sshConfig: string, home = os.homedir(), target = CONF
     }
   }
   return false;
+}
+
+/** Add the global Include once, preserving existing SSH config contents and permissions. */
+export async function ensureUserConfigIncluded(userConfig: string, target = CONFIG_FILE): Promise<void> {
+  // A custom Remote-SSH config may already point directly to the managed file.
+  // Including that file from itself would exceed ssh's include depth limit.
+  if (path.resolve(userConfig) === path.resolve(target)) {
+    return;
+  }
+  try {
+    if ((await realpath(userConfig)) === (await realpath(target))) {
+      return;
+    }
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+      throw error;
+    }
+  }
+  let text = '';
+  try {
+    text = await readFile(userConfig, 'utf8');
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+      throw error;
+    }
+  }
+  if (isIncluded(text, os.homedir(), target)) {
+    return;
+  }
+  const include = target === CONFIG_FILE ? INCLUDE_LINE : `Include "${target}"`;
+  const newline = text.includes('\r\n') ? '\r\n' : '\n';
+  await mkdir(path.dirname(userConfig), { recursive: true, mode: 0o700 });
+  await writeFile(userConfig, include + newline + text, { mode: 0o600 });
 }
 
 export interface PrepareResult {

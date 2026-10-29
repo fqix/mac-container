@@ -70,13 +70,7 @@ CLI 未安装或服务未启动时，视图中会给出处理提示。
 ssh 通过 `ProxyCommand container exec -i <id> sshd -i` 连接容器，不依赖容器 IP、端口映射，也不需要容器里常驻 sshd。
 
 1. 容器内没有 `sshd` 时，插件会用镜像自带的包管理器（`apk`、`apt-get`、`dnf`、`microdnf`、`yum`、`zypper`）自动安装 `openssh-server`。这需要容器能访问外网；安装失败或镜像没有包管理器时，会给出手动安装命令。
-2. 在 `~/.ssh/config`（或 `remote.SSH.configFile` 指定的文件）顶部、所有 `Host` 之前加一行：
-
-   ```
-   Include ~/.ssh/apple-container/config
-   ```
-
-   插件把主机条目（`apple-container.<id>`）和自己的密钥对写在 `~/.ssh/apple-container/`，不会修改你的 SSH 配置。
+2. 首次打开时，插件会按需在 `~/.ssh/config`（或 `remote.SSH.configFile` 指定的文件）顶部自动补齐 `Include ~/.ssh/apple-container/config`，保留原有配置，不会重复插入。主机条目（`apple-container.<id>`）和插件自己的密钥对仍放在 `~/.ssh/apple-container/`，无需手动配置 SSH。
 3. 右键运行中的容器 → **在 Remote-SSH 中打开**，确认目录后会打开新窗口。
 
 每次打开时，插件会在缺失时生成 SSH 主机密钥，把公钥加入登录用户的 `authorized_keys`；如果该账号未设密码（`/etc/shadow` 中为 `!`，sshd 视为锁定），会改成 `*` 以允许密钥登录。

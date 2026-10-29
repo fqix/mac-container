@@ -1,21 +1,18 @@
 import * as os from 'os';
 import * as path from 'path';
-import { access, readFile } from 'fs/promises';
 
 import * as vscode from 'vscode';
 
 import {
-  CONFIG_FILE,
   DEFAULT_SSHD,
-  INCLUDE_LINE,
   NoPackageManagerError,
   type SshHost,
   SshdMissingError,
   SshUserMissingError,
   ensureClientKey,
+  ensureUserConfigIncluded,
   hostAlias,
   installSshd,
-  isIncluded,
   prepareContainer,
   renderConfig,
   writeConfig,
@@ -94,9 +91,7 @@ export function registerRemoteSshCommands(ctx: CommandContext): void {
       throw error;
     }
 
-    if (!(await ensureIncluded())) {
-      return;
-    }
+    await ensureIncluded();
 
     // Remembered per login, since another user starts in another home
     const folderKey = `${prepared.user}@${id}`;
@@ -153,51 +148,9 @@ async function reportMissingSshd(id: string, cause: unknown): Promise<void> {
   }
 }
 
-/** Remote-SSH reads ~/.ssh/config (or remote.SSH.configFile); the extension never edits it, the user adds the Include line */
-async function ensureIncluded(): Promise<boolean> {
+/** Connect the managed host entries to the SSH config used by Remote-SSH automatically. */
+async function ensureIncluded(): Promise<void> {
   const configured = vscode.workspace.getConfiguration('remote.SSH').get<string>('configFile', '').trim();
   const userConfig = configured ? configured.replace(/^~(?=\/)/, os.homedir()) : path.join(os.homedir(), '.ssh', 'config');
-  let text = '';
-  try {
-    text = await readFile(userConfig, 'utf8');
-  } catch {
-    // A missing config simply has no Include
-  }
-  if (isIncluded(text)) {
-    return true;
-  }
-  const copy = vscode.l10n.t('Copy Include Line');
-  const open = vscode.l10n.t('Open SSH Config');
-  const answer = await vscode.window.showWarningMessage(
-    vscode.l10n.t('Add the container hosts to your SSH config'),
-    {
-      modal: true,
-      detail: vscode.l10n.t(
-        'Add this line at the top of {0}, before any Host entry, then run the command again:\n\n{1}\n\nThe extension writes its hosts to {2} and does not modify your own SSH config.',
-        userConfig,
-        INCLUDE_LINE,
-        CONFIG_FILE,
-      ),
-    },
-    copy,
-    open,
-  );
-  if (answer === copy) {
-    await vscode.env.clipboard.writeText(INCLUDE_LINE + '\n');
-  } else if (answer === open) {
-    const uri = vscode.Uri.file(userConfig);
-    const exists = text.length > 0 || (await fileExists(userConfig));
-    await vscode.window.showTextDocument(exists ? uri : uri.with({ scheme: 'untitled' }));
-    await vscode.env.clipboard.writeText(INCLUDE_LINE + '\n');
-  }
-  return false;
-}
-
-async function fileExists(file: string): Promise<boolean> {
-  try {
-    await access(file);
-    return true;
-  } catch {
-    return false;
-  }
+  await ensureUserConfigIncluded(userConfig);
 }
