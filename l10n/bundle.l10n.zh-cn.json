@@ -244,5 +244,20 @@
   "CPUs must be a whole number of at least 1": "CPU 数必须是不小于 1 的整数",
   "memory must be a number with an optional K, M, G, T or P suffix": "内存应为数字，可带 K、M、G、T 或 P 后缀",
   "the working directory must be absolute": "工作目录必须是绝对路径",
-  "use letters, digits, _ . and -, starting with a letter or digit": "只能使用字母、数字、_ . -，且以字母或数字开头"
+  "use letters, digits, _ . and -, starting with a letter or digit": "只能使用字母、数字、_ . -，且以字母或数字开头",
+  "Open in Dev Container": "在开发容器中打开",
+  "Don't Show Again": "不再提示",
+  "This folder has a dev container configuration. Open it in a container with Apple container?": "此文件夹包含开发容器配置，要用 Apple container 在容器中打开吗？",
+  "No devcontainer.json was found. Add .devcontainer/devcontainer.json to a local workspace folder.": "没有找到 devcontainer.json。请在本地工作区文件夹中添加 .devcontainer/devcontainer.json。",
+  "Select a dev container configuration": "选择开发容器配置",
+  "Rebuild": "重建",
+  "Use Existing Container": "使用现有容器",
+  "The dev container configuration of {0} changed since the container was created.": "{0} 的开发容器配置在容器创建后有改动。",
+  "Rebuilding deletes the container {0} and creates it again. Files outside the workspace folder and mounts are lost.": "重建会删除容器 {0} 并重新创建，工作区文件夹和挂载之外的文件会丢失。",
+  "Removing {0}...": "正在删除 {0}...",
+  "Building the dev container image failed (exit {0}). See the task output.": "构建开发容器镜像失败（退出码 {0}），请查看任务输出。",
+  "Starting dev container {0}...": "正在启动开发容器 {0}...",
+  "Continue": "继续",
+  "Some dev container settings are not supported by Apple container and will be ignored.": "部分开发容器设置 Apple container 不支持，将被忽略。",
+  "{0} of the dev container failed (exit {1}). See the task output.": "开发容器的 {0} 执行失败（退出码 {1}），请查看任务输出。"
 }

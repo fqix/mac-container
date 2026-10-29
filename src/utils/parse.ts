@@ -105,6 +105,7 @@ export function parseContainers(data: unknown): ContainerSummary[] {
       memoryBytes: config.resources?.memoryInBytes,
       platform: platform ? [platform.os, platform.architecture, platform.variant].filter(Boolean).join('/') : undefined,
       user: parseUser(init.user),
+      labels: { ...labels },
       workdir: typeof init.workingDirectory === 'string' && init.workingDirectory ? init.workingDirectory : undefined,
     };
   });

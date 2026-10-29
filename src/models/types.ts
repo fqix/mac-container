@@ -41,6 +41,7 @@ export interface ContainerSummary {
   user?: string;
   /** Working directory of the init process */
   workdir?: string;
+  labels: Record<string, string>;
 }
 
 export interface ImageSummary {

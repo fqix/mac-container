@@ -35,7 +35,11 @@
     "ui"
   ],
   "main": "./dist/extension.js",
-  "activationEvents": [],
+  "activationEvents": [
+    "workspaceContains:.devcontainer/devcontainer.json",
+    "workspaceContains:.devcontainer.json",
+    "workspaceContains:.devcontainer/*/devcontainer.json"
+  ],
   "contributes": {
     "viewsContainers": {
       "activitybar": [
@@ -427,6 +431,18 @@
         "title": "%command.container.edit%",
         "category": "%category%",
         "icon": "$(edit)"
+      },
+      {
+        "command": "appleContainer.devcontainer.open",
+        "title": "%command.devcontainer.open%",
+        "category": "%category%",
+        "icon": "$(remote-explorer)"
+      },
+      {
+        "command": "appleContainer.devcontainer.rebuild",
+        "title": "%command.devcontainer.rebuild%",
+        "category": "%category%",
+        "icon": "$(refresh)"
       }
     ],
     "menus": {
@@ -904,6 +920,16 @@
           "command": "appleContainer.file.uploadToContainer",
           "when": "resourceScheme == file",
           "group": "apple-container@5"
+        },
+        {
+          "command": "appleContainer.devcontainer.open",
+          "when": "resourceFilename == devcontainer.json || resourceFilename == .devcontainer.json",
+          "group": "apple-container@6"
+        },
+        {
+          "command": "appleContainer.devcontainer.rebuild",
+          "when": "resourceFilename == devcontainer.json || resourceFilename == .devcontainer.json",
+          "group": "apple-container@7"
         }
       ],
       "editor/title/context": [
@@ -916,6 +942,11 @@
           "command": "appleContainer.compose.down",
           "when": "resourceFilename =~ /^(docker-)?compose(\\..+)?\\.ya?ml$/",
           "group": "apple-container@2"
+        },
+        {
+          "command": "appleContainer.devcontainer.open",
+          "when": "resourceFilename == devcontainer.json || resourceFilename == .devcontainer.json",
+          "group": "apple-container@3"
         }
       ]
     },
@@ -1004,5 +1035,8 @@
     "pngjs": "7.0.0",
     "typescript": "^7.0.2"
   },
-  "l10n": "./l10n"
+  "l10n": "./l10n",
+  "dependencies": {
+    "jsonc-parser": "3.3.1"
+  }
 }

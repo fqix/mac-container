@@ -78,7 +78,16 @@ ssh 通过 `ProxyCommand container exec -i <id> sshd -i` 连接容器，不依�
 3. 右键运行中的容器 → **在 Remote-SSH 中打开**，确认目录后会打开新窗口。
 
 每次打开时，插件会在缺失时生成 SSH 主机密钥，把公钥加入登录用户的 `authorized_keys`；如果该账号未设密码（`/etc/shadow` 中为 `!`，sshd 视为锁定），会改成 `*` 以允许密钥登录。
+SSH 会话不会继承容器的环境变量，所以插件还会把它们（镜像 `ENV`、`--env`，开发容器还包括 `remoteEnv`）写入登录用户的 `~/.ssh/environment`，sshd 以 `PermitUserEnvironment=yes` 读取。这样 VS Code Server 和终端里看到的变量与 `container exec` 一致。
 VS Code / Cursor Server 会在容器内下载，需要容器能访问外网；否则开启 `remote.SSH.localServerDownload`。
+
+## 开发容器（devcontainer.json）
+
+**在开发容器中打开文件夹** 会读取文件夹中的 `devcontainer.json`（`.devcontainer/devcontainer.json`、`.devcontainer.json` 或 `.devcontainer/<名称>/devcontainer.json`），用 Apple `container` 运行容器，再按上一节的方式通过 Remote-SSH 打开容器内的工作区文件夹。打开带有该配置的本地文件夹时会提示；在该文件上右键也有这个命令，以及 **重建并打开开发容器**。
+
+- 文件夹默认挂载到 `/workspaces/<文件夹名>`，可用 `workspaceMount` / `workspaceFolder` 修改。容器名为 `devc-<文件夹>-<哈希>`，带 `devcontainer.local_folder` / `devcontainer.config_file` 标签，下次打开会复用；配置或其 Dockerfile 有改动时会询问是否重建。
+- 支持：`image`、`build`（`dockerfile`、`context`、`args`、`target`、`options`）、`workspaceFolder`、`workspaceMount`、`mounts`、`containerEnv`、`remoteEnv`（其中的 `${containerEnv:NAME}` 按容器环境解析）、`containerUser`、`remoteUser`、`forwardPorts`（发布到 `127.0.0.1`）、`appPort`、`hostRequirements.cpus` / `memory`、`capAdd`、`init`、`overrideCommand`、`runArgs`（原样传给 `container run`），以及字符串、数组、对象三种形式的全部生命周期命令：`initializeCommand` 每次打开时在本机执行，`onCreateCommand` / `updateContentCommand` / `postCreateCommand` 在容器创建时执行，`postStartCommand` 在容器启动时执行，`postAttachCommand` 每次打开时执行。支持 `${localWorkspaceFolder}`、`${localEnv:NAME:默认值}`、`${containerWorkspaceFolder}` 等变量。
+- 不支持：`features`、`dockerComposeFile`、`privileged`、`securityOpt`、`customizations.vscode.extensions`；启动容器前会列出被忽略的设置。
 
 ## 开发
 

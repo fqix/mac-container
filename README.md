@@ -80,7 +80,16 @@ ssh reaches the container through `ProxyCommand container exec -i <id> sshd -i`,
 3. Right-click a running container → **Open in Remote-SSH**, confirm the folder, and a new window connects.
 
 On each open the extension generates SSH host keys if missing, adds its public key to the user's `authorized_keys` and, if the account has no password (`!` in `/etc/shadow`, which sshd treats as locked), changes it to `*` so key login works.
+SSH sessions do not inherit the container's environment, so the extension also writes it (image `ENV`, `--env`, and `remoteEnv` for dev containers) to the user's `~/.ssh/environment`, which sshd reads with `PermitUserEnvironment=yes`; the VS Code server and terminals see the same variables as `container exec`.
 The VS Code / Cursor server is downloaded inside the container, so it needs internet access; otherwise enable `remote.SSH.localServerDownload`.
+
+## Dev containers (devcontainer.json)
+
+**Open Folder in Dev Container** reads the folder's `devcontainer.json` (`.devcontainer/devcontainer.json`, `.devcontainer.json` or `.devcontainer/<name>/devcontainer.json`), runs the container with Apple `container` and opens the workspace folder in it over Remote-SSH, as described above. Opening a local folder that has one offers to do so; the file's context menu has the command as well, plus **Rebuild and Open Dev Container**.
+
+- The folder is mounted at `/workspaces/<folder name>` unless `workspaceMount` / `workspaceFolder` say otherwise. The container is named `devc-<folder>-<hash>` and labelled with `devcontainer.local_folder` / `devcontainer.config_file`, so the next open reuses it; when the configuration or its Dockerfile changed, you are asked whether to rebuild.
+- Supported: `image`, `build` (`dockerfile`, `context`, `args`, `target`, `options`), `workspaceFolder`, `workspaceMount`, `mounts`, `containerEnv`, `remoteEnv` (`${containerEnv:NAME}` resolved against the container), `containerUser`, `remoteUser`, `forwardPorts` (published on `127.0.0.1`), `appPort`, `hostRequirements.cpus` / `memory`, `capAdd`, `init`, `overrideCommand`, `runArgs` (passed to `container run` as is) and all lifecycle commands in string, array and object form: `initializeCommand` runs on this Mac on every open, `onCreateCommand` / `updateContentCommand` / `postCreateCommand` when the container is created, `postStartCommand` when it starts and `postAttachCommand` on every open. Variables such as `${localWorkspaceFolder}`, `${localEnv:NAME:default}` and `${containerWorkspaceFolder}` are resolved.
+- Not supported: `features`, `dockerComposeFile`, `privileged`, `securityOpt` and `customizations.vscode.extensions`; you are told which settings are ignored before the container starts.
 
 ## Development
 

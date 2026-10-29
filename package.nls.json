@@ -78,5 +78,7 @@
   "config.insecureRegistries": "Registries reached over plain http when pulling or pushing, as `host` or `host:port`. `localhost`, `127.0.0.1` and `[::1]` always are.",
   "command.container.upload": "Upload Files...",
   "command.container.download": "Download...",
-  "command.file.uploadToContainer": "Upload to Container..."
+  "command.file.uploadToContainer": "Upload to Container...",
+  "command.devcontainer.open": "Open Folder in Dev Container",
+  "command.devcontainer.rebuild": "Rebuild and Open Dev Container"
 }

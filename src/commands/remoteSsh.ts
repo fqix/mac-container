@@ -16,8 +16,10 @@ import {
   prepareContainer,
   renderConfig,
   writeConfig,
+  writeSessionEnvironment,
 } from '../services/remoteSsh';
 import { describeError } from '../utils/i18n';
+import type { ContainerSummary } from '../models/types';
 import type { ContainerNode } from '../views/containers';
 import { CommandContext, ask, register, withProgress } from './common';
 
@@ -32,83 +34,107 @@ const INSTALL_HINT = [
 ].join('\n');
 
 export function registerRemoteSshCommands(ctx: CommandContext): void {
+  register(ctx, 'appleContainer.container.openRemoteSsh', async (node?: ContainerNode) => {
+    if (node) {
+      await openContainerOverSsh(ctx, node.resource);
+    }
+  });
+}
+
+export interface SshOpenOptions {
+  /** Login user; defaults to the appleContainer.sshUser setting, then the container's own user */
+  user?: string;
+  /** Folder to open; when missing the user is asked, starting from the last folder or the home directory */
+  folder?: string;
+  /** Extra variables for SSH sessions on top of the container environment (devcontainer.json remoteEnv) */
+  remoteEnv?: Record<string, string>;
+}
+
+/**
+ * Makes a running container reachable over SSH (sshd installed if needed, key authorized, host entry written)
+ * and opens a folder in it with Remote-SSH in a new window. Resolves false when it stopped early.
+ */
+export async function openContainerOverSsh(
+  ctx: CommandContext,
+  container: Pick<ContainerSummary, 'id' | 'user'>,
+  options: SshOpenOptions = {},
+): Promise<boolean> {
   const { cli } = ctx;
   const state = ctx.extension.globalState;
+  const id = container.id;
+  if (!(await ensureRemoteSshExtension())) {
+    return false;
+  }
+  // An explicit setting wins; otherwise log in as the container's own process user (image USER or --user)
+  const configured = vscode.workspace.getConfiguration('appleContainer').get<string>('sshUser', '').trim();
+  const user = options.user || configured || container.user || 'root';
 
-  register(ctx, 'appleContainer.container.openRemoteSsh', async (node?: ContainerNode) => {
-    if (!node) {
-      return;
-    }
-    const id = node.resource.id;
-    if (!(await ensureRemoteSshExtension())) {
-      return;
-    }
-    // An explicit setting wins; otherwise log in as the container's own process user (image USER or --user)
-    const configured = vscode.workspace.getConfiguration('appleContainer').get<string>('sshUser', '').trim();
-    const user = configured || node.resource.user || 'root';
+  const prepare = () =>
+    withProgress(vscode.l10n.t('Preparing SSH access to {0}...', id), async () => {
+      const publicKey = await ensureClientKey();
+      const result = await prepareContainer(cli, id, user, publicKey);
 
-    const prepare = () =>
-      withProgress(vscode.l10n.t('Preparing SSH access to {0}...', id), async () => {
-        const publicKey = await ensureClientKey();
-        const result = await prepareContainer(cli, id, user, publicKey);
-
-        const saved = { ...state.get<Record<string, SshHost>>(HOSTS_KEY, {}), [id]: { id, sshd: result.sshd, user: result.user } };
-        const containers = await cli.listContainers();
-        const known = new Set(containers.map((c) => c.id));
-        for (const key of Object.keys(saved)) {
-          if (!known.has(key)) {
-            delete saved[key];
-          }
+      const saved = { ...state.get<Record<string, SshHost>>(HOSTS_KEY, {}), [id]: { id, sshd: result.sshd, user: result.user } };
+      const containers = await cli.listContainers();
+      const known = new Set(containers.map((c) => c.id));
+      for (const key of Object.keys(saved)) {
+        if (!known.has(key)) {
+          delete saved[key];
         }
-        await state.update(HOSTS_KEY, saved);
-        // Containers never prepared get defaults; they connect once sshd and the key are set up
-        const hosts = containers.map((c) => saved[c.id] ?? { id: c.id, sshd: DEFAULT_SSHD, user: c.user?.split(':')[0] || 'root' });
-        await writeConfig(renderConfig(hosts, await cli.executable()));
-        return result;
-      });
+      }
+      await state.update(HOSTS_KEY, saved);
+      // Containers never prepared get defaults; they connect once sshd and the key are set up
+      const hosts = containers.map((c) => saved[c.id] ?? { id: c.id, sshd: DEFAULT_SSHD, user: c.user?.split(':')[0] || 'root' });
+      await writeConfig(renderConfig(hosts, await cli.executable()));
+      return result;
+    });
 
-    let prepared;
+  let prepared;
+  try {
     try {
-      try {
-        prepared = await prepare();
-      } catch (error) {
-        if (!(error instanceof SshdMissingError)) {
-          throw error;
-        }
-        try {
-          await withProgress(vscode.l10n.t('Installing openssh-server in {0}...', id), () => installSshd(cli, id));
-        } catch (installError) {
-          await reportMissingSshd(id, installError);
-          return;
-        }
-        prepared = await prepare();
-      }
+      prepared = await prepare();
     } catch (error) {
-      if (error instanceof SshUserMissingError) {
-        void vscode.window.showErrorMessage(vscode.l10n.t('User {0} does not exist in container {1}.', error.user, id));
-        return;
+      if (!(error instanceof SshdMissingError)) {
+        throw error;
       }
-      throw error;
+      try {
+        await withProgress(vscode.l10n.t('Installing openssh-server in {0}...', id), () => installSshd(cli, id));
+      } catch (installError) {
+        await reportMissingSshd(id, installError);
+        return false;
+      }
+      prepared = await prepare();
     }
+  } catch (error) {
+    if (error instanceof SshUserMissingError) {
+      void vscode.window.showErrorMessage(vscode.l10n.t('User {0} does not exist in container {1}.', error.user, id));
+      return false;
+    }
+    throw error;
+  }
 
-    await ensureIncluded();
+  await writeSessionEnvironment(cli, id, prepared.user, options.remoteEnv);
+  await ensureIncluded();
 
-    // Remembered per login, since another user starts in another home
-    const folderKey = `${prepared.user}@${id}`;
-    const folders = state.get<Record<string, string>>(FOLDERS_KEY, {});
-    const folder = await ask({
+  // Remembered per login, since another user starts in another home
+  const folderKey = `${prepared.user}@${id}`;
+  const folders = state.get<Record<string, string>>(FOLDERS_KEY, {});
+  const folder =
+    options.folder ??
+    (await ask({
       title: vscode.l10n.t('Open {0} over Remote-SSH', id),
       prompt: vscode.l10n.t('Folder inside the container'),
       value: folders[folderKey] ?? prepared.home,
-    });
-    if (!folder) {
-      return;
-    }
-    await state.update(FOLDERS_KEY, { ...folders, [folderKey]: folder });
-    const uri = vscode.Uri.from({ scheme: 'vscode-remote', authority: `ssh-remote+${hostAlias(id)}`, path: folder });
-    await vscode.commands.executeCommand('vscode.openFolder', uri, { forceNewWindow: true });
-  });
+    }));
+  if (!folder) {
+    return false;
+  }
+  await state.update(FOLDERS_KEY, { ...folders, [folderKey]: folder });
+  const uri = vscode.Uri.from({ scheme: 'vscode-remote', authority: `ssh-remote+${hostAlias(id)}`, path: folder });
+  await vscode.commands.executeCommand('vscode.openFolder', uri, { forceNewWindow: true });
+  return true;
 }
+
 
 /** VS Code ships ms-vscode-remote.remote-ssh, Cursor anysphere.remote-ssh, VSCodium-based editors open-remote-ssh */
 async function ensureRemoteSshExtension(): Promise<boolean> {

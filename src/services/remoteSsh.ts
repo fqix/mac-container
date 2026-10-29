@@ -6,6 +6,7 @@ import { mkdir, readFile, writeFile, chmod, access, realpath } from 'fs/promises
 import * as os from 'os';
 import * as path from 'path';
 
+import { parseEnvOutput, sessionEnvironment } from '../utils/env';
 import type { ContainerCli } from './cli';
 
 const DEFAULT_SSH_DIR = path.join(os.homedir(), '.ssh', 'apple-container');
@@ -72,7 +73,7 @@ export function renderConfig(hosts: SshHost[], cliPath: string, keyFile = KEY_FI
       '  StrictHostKeyChecking no',
       '  UserKnownHostsFile /dev/null',
       '  LogLevel ERROR',
-      `  ProxyCommand "${cliPath}" exec -i -u 0 ${host.id} ${host.sshd} -i -o PermitRootLogin=prohibit-password -o PasswordAuthentication=no -o AuthorizedKeysFile=.ssh/authorized_keys`,
+      `  ProxyCommand "${cliPath}" exec -i -u 0 ${host.id} ${host.sshd} -i -o PermitRootLogin=prohibit-password -o PasswordAuthentication=no -o AuthorizedKeysFile=.ssh/authorized_keys -o PermitUserEnvironment=yes`,
       '',
     );
   }
@@ -247,6 +248,30 @@ export async function installSshd(cli: ContainerCli, id: string): Promise<void> 
     }
     throw error;
   }
+}
+
+// Writes stdin to ~/.ssh/environment of the login user ($1); runs as root
+const SESSION_ENV_SCRIPT = `
+set -e
+entry=$(getent passwd "$1" 2>/dev/null || awk -F: -v u="$1" '$1 == u { print; exit }' /etc/passwd)
+uid=$(echo "$entry" | cut -d: -f3)
+gid=$(echo "$entry" | cut -d: -f4)
+home=$(echo "$entry" | cut -d: -f6)
+mkdir -p "$home/.ssh"
+cat > "$home/.ssh/environment"
+chmod 600 "$home/.ssh/environment"
+chown "$uid:$gid" "$home/.ssh/environment"
+`;
+
+/**
+ * SSH sessions do not inherit the container's environment (image ENV, run --env), so it is written to the login user's
+ * ~/.ssh/environment together with the extra variables; sshd runs with PermitUserEnvironment=yes to read it.
+ */
+export async function writeSessionEnvironment(cli: ContainerCli, id: string, user: string, extra: Record<string, string> = {}): Promise<void> {
+  const containerEnv = parseEnvOutput(await cli.run(['exec', id, 'env']));
+  await cli.run(['exec', '-i', '-u', '0', id, 'sh', '-c', SESSION_ENV_SCRIPT, 'sh', user], {
+    input: sessionEnvironment(containerEnv, extra),
+  });
 }
 
 /** Creates the extension's own key pair on first use and returns the public key */

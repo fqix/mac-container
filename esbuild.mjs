@@ -17,6 +17,8 @@ const contexts = await Promise.all([
     target: 'node20',
     outfile: 'dist/extension.js',
     external: ['vscode'],
+    // Prefer ESM entries: the UMD build of jsonc-parser loads its modules with a dynamic require esbuild cannot follow
+    mainFields: ['module', 'main'],
   }),
 ]);
 

@@ -78,5 +78,7 @@
   "config.insecureRegistries": "拉取和推送时使用 http 访问的镜像仓库，格式为 `host` 或 `host:port`。`localhost`、`127.0.0.1` 和 `[::1]` 始终使用 http。",
   "command.container.upload": "上传文件...",
   "command.container.download": "下载...",
-  "command.file.uploadToContainer": "上传到容器..."
+  "command.file.uploadToContainer": "上传到容器...",
+  "command.devcontainer.open": "在开发容器中打开文件夹",
+  "command.devcontainer.rebuild": "重建并打开开发容器"
 }

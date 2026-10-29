@@ -39,6 +39,7 @@ const names = {
 
 /** Containers named by the extension, removed in the after hook if a test fails half way */
 const generatedNames: string[] = [];
+const devContainers: string[] = [];
 
 type Restore = () => void;
 const restores: Restore[] = [];
@@ -220,7 +221,7 @@ describe('Apple Container e2e', function () {
     // Best-effort cleanup in case a test failed half way
     const ignore = () => undefined;
     await api?.cli
-      .run(['delete', '--force', ...generatedNames, names.files, names.ssh, names.sshBare, names.container, `${names.container}-run`, `${names.project}-web`, `${names.project}-worker`, names.edit])
+      .run(['delete', '--force', ...generatedNames, ...devContainers, names.files, names.ssh, names.sshBare, names.container, `${names.container}-run`, `${names.project}-web`, `${names.project}-worker`, names.edit])
       .catch(ignore);
     await api?.cli.run(['volume', 'delete', names.editVolume]).catch(ignore);
     const snapshots = (await api?.cli.listImages().catch(() => [])) ?? [];
@@ -614,6 +615,110 @@ describe('Apple Container e2e', function () {
       await config.update('sshUser', undefined, vscode.ConfigurationTarget.Global);
     }
     await api.cli.run(['delete', '--force', names.ssh]);
+  });
+
+  it('opens a folder in a dev container from devcontainer.json and runs its lifecycle', async function () {
+    const sshDir = process.env.APPLE_CONTAINER_SSH_DIR;
+    if (!sshDir) {
+      this.skip();
+    }
+    this.timeout(10 * 60_000);
+    const folder = path.join(vscode.workspace.workspaceFolders![0].uri.fsPath, `devc-${suffix}`);
+    const configFile = path.join(folder, '.devcontainer', 'devcontainer.json');
+    fs.mkdirSync(path.dirname(configFile), { recursive: true });
+    fs.writeFileSync(path.join(folder, 'README.md'), 'mounted');
+    const config = (name: string) => `{
+      // JSON with comments, as written by hand
+      "name": "${name}",
+      "image": "${IMAGE}",
+      "containerEnv": { "E2E_FROM": "\${localWorkspaceFolderBasename}" },
+      "remoteEnv": { "E2E_REMOTE": "\${containerEnv:E2E_FROM}-remote" },
+      "forwardPorts": [18093],
+      "initializeCommand": "touch initialized",
+      "onCreateCommand": "echo create >> /tmp/lifecycle",
+      "postCreateCommand": ["sh", "-c", "echo post-create >> /tmp/lifecycle"],
+      "postStartCommand": { "a": "echo start >> /tmp/lifecycle", "b": "touch /tmp/start-b" },
+      "postAttachCommand": "echo attach >> /tmp/lifecycle",
+    }`;
+    fs.writeFileSync(configFile, config('E2E Dev'));
+    stubRemoteSshExtension();
+    const opened = captureOpenFolder();
+    const prompts = confirmAll();
+
+    const open = () => vscode.commands.executeCommand('appleContainer.devcontainer.open', vscode.Uri.file(configFile));
+    const find = async () => (await api.cli.listContainers()).find((c) => c.labels['devcontainer.local_folder'] === folder);
+    const exec = async (id: string, script: string) => (await api.cli.run(['exec', id, 'sh', '-c', script])).trim();
+
+    // 1. First open creates the container and runs the create, start and attach commands
+    await open();
+    const created = await find();
+    assert.ok(created, 'dev container not created');
+    devContainers.push(created.id);
+    assert.strictEqual(created.state, 'running');
+    assert.strictEqual(created.labels['devcontainer.config_file'], configFile);
+    assert.deepStrictEqual(created.ports, ['127.0.0.1:18093->18093/tcp']);
+    assert.strictEqual(opened.length, 1);
+    assert.strictEqual(opened[0].authority, `ssh-remote+apple-container.${created.id}`);
+    assert.strictEqual(opened[0].path, `/workspaces/devc-${suffix}`);
+    assert.ok(fs.existsSync(path.join(folder, 'initialized')), 'initializeCommand did not run on the host');
+    assert.strictEqual(await exec(created.id, `cat /workspaces/devc-${suffix}/README.md`), 'mounted');
+    assert.strictEqual(await exec(created.id, 'echo $E2E_FROM'), `devc-${suffix}`);
+    assert.strictEqual(await exec(created.id, 'cat /tmp/lifecycle; test -f /tmp/start-b && echo b'), 'create\npost-create\nstart\nattach\nb');
+    // SSH sessions (not only login shells) see containerEnv and the resolved remoteEnv, as the VS Code server needs
+    const ssh = await promisify(execFile)(
+      '/usr/bin/ssh',
+      ['-F', path.join(sshDir, 'config'), '-o', 'BatchMode=yes', `apple-container.${created.id}`, 'echo "$E2E_FROM $E2E_REMOTE"'],
+      { timeout: 60_000 },
+    );
+    assert.strictEqual(ssh.stdout.trim(), `devc-${suffix} devc-${suffix}-remote`);
+
+    // 2. Opening again reuses the running container: only postAttach runs
+    await open();
+    assert.strictEqual((await find())?.id, created.id);
+    assert.strictEqual(await exec(created.id, 'cat /tmp/lifecycle'), 'create\npost-create\nstart\nattach\nattach');
+
+    // 3. A stopped container is started again, which runs postStart
+    await api.cli.run(['stop', created.id], { timeoutMs: 120_000 });
+    await open();
+    assert.strictEqual((await find())?.state, 'running');
+    assert.strictEqual(await exec(created.id, 'cat /tmp/lifecycle'), 'create\npost-create\nstart\nattach\nattach\nstart\nattach');
+    assert.deepStrictEqual(prompts, []);
+
+    // 4. A changed configuration offers a rebuild; confirming recreates the container from scratch
+    fs.writeFileSync(configFile, config('E2E Dev renamed'));
+    await open();
+    assert.strictEqual(prompts.length, 1, 'expected the rebuild prompt');
+    assert.strictEqual(await exec(created.id, 'cat /tmp/lifecycle'), 'create\npost-create\nstart\nattach');
+    assert.strictEqual(opened.length, 4);
+
+    await api.cli.run(['delete', '--force', created.id]);
+    fs.rmSync(folder, { recursive: true, force: true });
+  });
+
+  it('builds the dev container image from a Dockerfile', async function () {
+    if (process.env.E2E_SKIP_BUILD) {
+      this.skip();
+    }
+    this.timeout(15 * 60_000);
+    const folder = path.join(vscode.workspace.workspaceFolders![0].uri.fsPath, `devcb-${suffix}`);
+    const dir = path.join(folder, '.devcontainer');
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(path.join(dir, 'Dockerfile'), `FROM ${IMAGE}\nARG GREETING\nRUN echo "$GREETING" > /built\n`);
+    fs.writeFileSync(path.join(dir, 'devcontainer.json'), '{ "build": { "dockerfile": "Dockerfile", "args": { "GREETING": "from-build" } } }');
+    stubRemoteSshExtension();
+    const opened = captureOpenFolder();
+
+    await vscode.commands.executeCommand('appleContainer.devcontainer.open', vscode.Uri.file(path.join(dir, 'devcontainer.json')));
+    const container = (await api.cli.listContainers()).find((c) => c.labels['devcontainer.local_folder'] === folder);
+    assert.ok(container, 'dev container not created');
+    devContainers.push(container.id);
+    assert.match(container.image, /vsc-devcb-[a-z0-9]+-[0-9a-f]{8}:latest$/);
+    assert.strictEqual((await api.cli.run(['exec', container.id, 'cat', '/built'])).trim(), 'from-build');
+    assert.strictEqual(opened[0]?.path, `/workspaces/devcb-${suffix}`);
+
+    await api.cli.run(['delete', '--force', container.id]);
+    await api.cli.run(['image', 'delete', container.image]).catch(() => undefined);
+    fs.rmSync(folder, { recursive: true, force: true });
   });
 
   it('explains how to install sshd when the image has no package manager', async function () {
