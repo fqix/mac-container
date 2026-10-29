@@ -27,13 +27,19 @@ export async function runCliTask(cli: ContainerCli, name: string, args: string[]
  * Runs any executable as a VS Code task and resolves with its exit code.
  * Without a cwd VS Code falls back to ${workspaceFolder}, which fails in a window with no folder open, so default to the home directory.
  */
-export async function runTask(name: string, executable: string, args: string[], cwd?: string): Promise<number | undefined> {
+export async function runTask(
+  name: string,
+  executable: string,
+  args: string[],
+  cwd?: string,
+  env?: Record<string, string>,
+): Promise<number | undefined> {
   const task = new vscode.Task(
     { type: 'appleContainer', id: `${name}-${Date.now()}` },
     vscode.TaskScope.Workspace,
     name,
     'Apple Container',
-    new vscode.ProcessExecution(executable, args, { cwd: cwd ?? os.homedir() }),
+    new vscode.ProcessExecution(executable, args, { cwd: cwd ?? os.homedir(), env }),
   );
   task.presentationOptions = { reveal: vscode.TaskRevealKind.Always, panel: vscode.TaskPanelKind.Dedicated, clear: true };
   const execution = await vscode.tasks.executeTask(task);

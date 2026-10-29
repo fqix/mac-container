@@ -1,5 +1,7 @@
 **
 !dist/extension.js
+!dist/docker-shim.js
+!dist/devcontainer-cli/**
 !dist/webview/webview.js
 !dist/webview/webview.css
 !resources/icon.png

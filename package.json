@@ -1037,6 +1037,7 @@
   },
   "l10n": "./l10n",
   "dependencies": {
+    "@devcontainers/cli": "0.90.0",
     "jsonc-parser": "3.3.1"
   }
 }

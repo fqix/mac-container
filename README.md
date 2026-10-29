@@ -12,7 +12,7 @@
 [![Platform](https://img.shields.io/badge/platform-macOS%20Apple%20silicon-lightgrey?logo=apple)](#requirements)
 [![License: MIT](https://img.shields.io/github/license/fqix/mac-container)](LICENSE)
 
-[Install](#installation) · [Features](#features) · [Remote-SSH](#open-a-container-over-remote-ssh) · [Dev containers](#dev-containers-devcontainerjson) · [Settings](#settings) · [Contributing](CONTRIBUTING.md) · English | [简体中文](README.zh-CN.md)
+[Install](#installation) · [Features](#features) · [Remote-SSH](#open-a-container-over-remote-ssh) · [Dev containers](#dev-containers-devcontainerjson) · [Limitations](#limitations) · [Settings](#settings) · [Contributing](CONTRIBUTING.md) · English | [简体中文](README.zh-CN.md)
 
 ![Containers grouped by compose project, with their volumes and ports](docs/media/overview.gif)
 
@@ -22,7 +22,7 @@
 
 - 🧭 **One sidebar for everything**: containers, images, networks, volumes, registries, container-compose projects and the `container` system service.
 - 🖥️ **Open a container as a remote workspace** in VS Code or Cursor over Remote-SSH, with no published port and no SSH daemon running. `openssh-server` is installed for you.
-- 📦 **`devcontainer.json` without Docker**: open a folder in a dev container built and run by Apple `container`, including lifecycle commands.
+- 📦 **`devcontainer.json` without Docker**: open a folder in a dev container built and run by Apple `container`, with features and lifecycle commands, powered by the bundled Dev Containers CLI.
 - 📝 **Run and edit containers in a form**: ports, mounts, environment variables, networks, CPUs, memory, user and working directory.
 - 📊 **Live stats, logs, shell, file upload and download**, all from the context menu.
 - 🌐 **Bilingual**: English and Simplified Chinese.
@@ -113,24 +113,46 @@ The VS Code / Cursor server is downloaded inside the container, so it needs inte
 
 ## Dev containers (devcontainer.json)
 
-**Open Folder in Dev Container** reads the folder's `devcontainer.json` (`.devcontainer/devcontainer.json`, `.devcontainer.json` or `.devcontainer/<name>/devcontainer.json`), runs the container with Apple `container` and opens the workspace folder in it [over Remote-SSH](#open-a-container-over-remote-ssh). Opening a local folder that has one offers to do so; the file's context menu also has **Rebuild and Open Dev Container**.
+**Open Folder in Dev Container** reads the folder's `devcontainer.json` (`.devcontainer/devcontainer.json`, `.devcontainer.json` or `.devcontainer/<name>/devcontainer.json`), creates the container with Apple `container` and opens the workspace folder in it [over Remote-SSH](#open-a-container-over-remote-ssh). Opening a local folder that has one offers to do so; the file's context menu also has **Rebuild and Open Dev Container**.
 
-The folder is mounted at `/workspaces/<folder name>` unless `workspaceMount` / `workspaceFolder` say otherwise. The container is named `devc-<folder>-<hash>` and labelled with `devcontainer.local_folder` / `devcontainer.config_file`, so the next open reuses it; when the configuration or its Dockerfile changed, you are asked whether to rebuild.
+The container is created by the [Dev Containers CLI](https://github.com/devcontainers/cli) (`@devcontainers/cli` 0.90.0), the reference implementation of the spec, so `devcontainer.json` behaves as it does with Docker, features included. It is bundled with the extension and runs on the editor's own Node runtime; nothing needs to be installed. The CLI talks to Apple `container` through a docker-compatible shim that ships with the extension (`dist/docker-shim.js`), and its log, including image builds, features and lifecycle commands, is shown in a task terminal.
+
+The container is named `devc-<folder>-<hash>` and labelled with `devcontainer.local_folder` / `devcontainer.config_file`, so the next open reuses it. When the configuration or its Dockerfile changed since the last open, you are asked whether to rebuild.
 
 | Property | Support |
 |---|---|
-| `image`, `build` (`dockerfile`, `context`, `args`, `target`, `options`) | ✅ |
+| `image`, `build` | ✅ |
+| `features` | ✅ installed into an image built on top of the base image |
 | `workspaceFolder`, `workspaceMount`, `mounts` | ✅ |
-| `containerEnv`, `remoteEnv` (`${containerEnv:NAME}` resolved against the container) | ✅ |
-| `containerUser`, `remoteUser` | ✅ |
-| `forwardPorts` (published on `127.0.0.1`), `appPort` | ✅ |
-| `hostRequirements.cpus` / `memory`, `capAdd`, `init`, `overrideCommand` | ✅ |
-| `runArgs` | ✅ passed to `container run` as is |
-| Lifecycle commands (string, array and object form) | ✅ see below |
-| Variables (`${localWorkspaceFolder}`, `${localEnv:NAME:default}`, `${containerWorkspaceFolder}`, ...) | ✅ |
-| `features`, `dockerComposeFile`, `privileged`, `securityOpt`, `customizations.vscode.extensions` | ❌ listed as ignored before the container starts |
+| `containerEnv`, `remoteEnv`, `containerUser`, `remoteUser` | ✅ |
+| Lifecycle commands, from `initializeCommand` (on this Mac) to `postAttachCommand` | ✅ |
+| `appPort` | ✅ published with `container run --publish` |
+| `forwardPorts` | ⚠️ not published; Remote-SSH forwards ports it sees listening in the container, and the container IP is reachable from the Mac |
+| `capAdd`, `init`, `overrideCommand` | ✅ |
+| `runArgs` | ⚠️ passed to `container run`; Docker-only options are dropped with a warning, see [Limitations](#limitations) |
+| `privileged` | ⚠️ becomes `--cap-add ALL` |
+| `securityOpt` | ❌ ignored with a warning |
+| `dockerComposeFile` | ❌ not supported |
+| `customizations.vscode.extensions` | ❌ not installed; install extensions in the remote window |
 
-Lifecycle commands: `initializeCommand` runs on this Mac on every open; `onCreateCommand`, `updateContentCommand` and `postCreateCommand` when the container is created; `postStartCommand` when it starts; `postAttachCommand` on every open.
+## Limitations
+
+Apple `container` runs every container in its own lightweight VM with its own Linux kernel, not on a shared Docker daemon, so some Docker options have no equivalent (checked against `container` 1.6.1):
+
+| Docker option | In Apple `container` |
+|---|---|
+| `--privileged` | Not available. Add capabilities with `--cap-add` / `capAdd` instead (`ALL` adds every capability). |
+| `--ipc`, `--pid`, `--userns`, `--cgroupns` | Not available: there is no host kernel namespace to share. |
+| `--device`, `--gpus`, bind mounts of `/dev` or `/run/udev` | Not available: the host is macOS, so there are no Linux devices to pass through. |
+| `--security-opt`, `--add-host`, `--hostname` | Not available. |
+| Docker Compose | Not available. [container-compose](#container-compose) projects are supported, `dockerComposeFile` in `devcontainer.json` is not. |
+| Docker-in-Docker | Not available, as it needs privileged mode. |
+
+For `devcontainer.json` this means:
+
+- The docker shim drops `runArgs` that Apple `container` cannot apply (`--ipc`, `--pid`, `--security-opt`, `--device`, `--gpus`, `--add-host`, `--network host`, and mounts of `/dev`, `/proc`, `/sys` or of paths that do not exist on the Mac) and prints a warning in the task terminal. `--privileged` (also from `privileged: true` or a feature) becomes `--cap-add ALL`. The container starts, but whatever relied on those options does not work.
+- Features that need privileged mode or a Docker daemon, such as `docker-in-docker`, install but do not work. `docker-outside-of-docker` has no Docker socket to connect to.
+- Configurations written for Codespaces or Docker that run containerd, Kubernetes or other nested container runtimes inside the dev container only partly work: anything that needs host devices or nested containers fails.
 
 ## Settings
 
@@ -168,7 +190,7 @@ The server is downloaded inside the container. If the container has no internet 
 <details>
 <summary><b>Does it need Docker?</b></summary>
 
-No. Everything goes through the `container` CLI. Docker-only features of `devcontainer.json` (features, Compose, privileged mode) are not available.
+No. Everything goes through the `container` CLI; for dev containers, the bundled Dev Containers CLI reaches it through a docker-compatible shim. Docker-only options such as Compose and privileged mode are not available; see [Limitations](#limitations).
 </details>
 
 ## Contributing
@@ -179,7 +201,7 @@ Issues and pull requests are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for
 
 - [apple/container](https://github.com/apple/container), the container runtime this extension drives.
 - [container-compose](https://github.com/mcrich23/container-compose) for Compose support on Apple `container`.
-- The [Development Containers specification](https://containers.dev/) that `devcontainer.json` support follows.
+- The [Development Containers specification](https://containers.dev/) and the [Dev Containers CLI](https://github.com/devcontainers/cli), bundled to create dev containers.
 
 ## License
 

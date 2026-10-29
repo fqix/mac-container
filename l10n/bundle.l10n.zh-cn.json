@@ -254,10 +254,8 @@
   "Use Existing Container": "使用现有容器",
   "The dev container configuration of {0} changed since the container was created.": "{0} 的开发容器配置在容器创建后有改动。",
   "Rebuilding deletes the container {0} and creates it again. Files outside the workspace folder and mounts are lost.": "重建会删除容器 {0} 并重新创建，工作区文件夹和挂载之外的文件会丢失。",
-  "Removing {0}...": "正在删除 {0}...",
-  "Building the dev container image failed (exit {0}). See the task output.": "构建开发容器镜像失败（退出码 {0}），请查看任务输出。",
-  "Starting dev container {0}...": "正在启动开发容器 {0}...",
-  "Continue": "继续",
-  "Some dev container settings are not supported by Apple container and will be ignored.": "部分开发容器设置 Apple container 不支持，将被忽略。",
-  "{0} of the dev container failed (exit {1}). See the task output.": "开发容器的 {0} 执行失败（退出码 {1}），请查看任务输出。"
+  "Docker Compose dev containers (dockerComposeFile) are not supported by Apple container.": "Apple container 不支持 Docker Compose 开发容器（dockerComposeFile）。",
+  "Dev Container: {0}": "开发容器：{0}",
+  "Starting the dev container failed (exit {0}). See the task output.": "启动开发容器失败（退出码 {0}），请查看任务输出。",
+  "The dev container for {0} was not found after it started.": "{0} 的开发容器启动后未找到。"
 }

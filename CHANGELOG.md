@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Create dev containers with the bundled Dev Containers CLI (`@devcontainers/cli` 0.90.0) through a docker-compatible shim for Apple `container`: `devcontainer.json` features are now installed, and lifecycle commands, variables and image metadata follow the reference implementation. Nothing extra needs to be installed
+- `runArgs` and features that use Docker-only options no longer fail the container start: unsupported options are dropped with a warning, and `--privileged` becomes `--cap-add ALL`
+- `forwardPorts` are no longer published; Remote-SSH forwards ports it detects, and `appPort` is still published
+
 ## 0.3.0
 
 - Open folders in dev containers from `devcontainer.json`: image or Dockerfile builds, workspace mount, mounts, `containerEnv` / `remoteEnv`, users, ports, CPUs and memory, `runArgs` and all lifecycle commands; containers are reused and rebuilt when the configuration changes

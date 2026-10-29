@@ -1,4 +1,5 @@
-// Opens a folder in a dev container described by devcontainer.json, run with Apple container and entered over Remote-SSH
+// Opens a folder in a dev container described by devcontainer.json: the bundled devcontainers/cli creates it
+// with Apple container (through the docker shim) and the folder is entered over Remote-SSH
 
 import { existsSync } from 'fs';
 import { readFile } from 'fs/promises';
@@ -6,25 +7,25 @@ import * as path from 'path';
 
 import * as vscode from 'vscode';
 
+import type { ContainerSummary } from '../models/types';
+import { findConfigFiles, hash, LABEL_CONFIG_FILE, LABEL_LOCAL_FOLDER, localFolderOf, parseConfig } from '../services/devcontainer';
 import {
-  type CommandStep,
-  type DevContainerPlan,
-  execArgs,
-  findConfigFiles,
-  LABEL_CONFIG_HASH,
-  type LifecycleName,
-  localFolderOf,
-  parseConfig,
-  planDevContainer,
-} from '../services/devcontainer';
+  cliEnv,
+  type DevContainerCliPaths,
+  type DevContainerTarget,
+  prepareDockerWrapper,
+  readConfiguration,
+  upArgs,
+} from '../services/devcontainerCli';
 import { parseEnvOutput, resolveContainerEnv } from '../utils/env';
 import { runTask } from '../ui/terminal';
-import { CommandContext, isLocal, register, withProgress } from './common';
+import { CommandContext, isLocal, register } from './common';
 import { openContainerOverSsh } from './remoteSsh';
 
-/** workspaceState keys */
+/** workspaceState key */
 const PROMPT_DISMISSED_KEY = 'devcontainer.promptDismissed';
-const ACKNOWLEDGED_KEY = 'devcontainer.acknowledgedUnsupported';
+/** globalState key: configuration hash per container id, recorded when the container was created or opened */
+const CONFIG_HASHES_KEY = 'devcontainer.configHashes';
 
 export interface DevContainerOptions {
   /** Delete the existing container (and rebuild its image) first */
@@ -97,41 +98,55 @@ async function resolveConfigFile(uri?: vscode.Uri): Promise<string | undefined> 
   return picked?.file;
 }
 
-async function loadPlan(configFile: string): Promise<DevContainerPlan> {
-  const configText = await readFile(configFile, 'utf8');
-  const config = parseConfig(configText, configFile);
+/** Hash of the configuration and its Dockerfile, to notice changes since the container was created */
+async function configurationHash(configFile: string, configText: string, config: Record<string, any>): Promise<string> {
   const dockerfile: string | undefined = config.build?.dockerfile ?? config.dockerFile;
   const dockerfilePath = dockerfile ? path.resolve(path.dirname(configFile), dockerfile) : undefined;
-  return planDevContainer({
-    config,
-    configFile,
-    configText,
-    localWorkspaceFolder: localFolderOf(configFile),
-    localEnv: process.env,
-    dockerfileText: dockerfilePath && existsSync(dockerfilePath) ? await readFile(dockerfilePath, 'utf8') : undefined,
-  });
+  const dockerfileText = dockerfilePath && existsSync(dockerfilePath) ? await readFile(dockerfilePath, 'utf8') : '';
+  return hash(configText, dockerfileText);
+}
+
+/** The container devcontainers/cli created for this configuration, found by the labels it sets */
+async function findDevContainer(ctx: CommandContext, target: DevContainerTarget): Promise<ContainerSummary | undefined> {
+  return (await ctx.cli.listContainers()).find(
+    (c) => c.labels[LABEL_LOCAL_FOLDER] === target.workspaceFolder && c.labels[LABEL_CONFIG_FILE] === target.configFile,
+  );
+}
+
+async function cliPaths(ctx: CommandContext): Promise<DevContainerCliPaths> {
+  const dist = vscode.Uri.joinPath(ctx.extension.extensionUri, 'dist').fsPath;
+  const node = process.execPath;
+  return {
+    node,
+    script: path.join(dist, 'devcontainer-cli', 'run.js'),
+    dockerPath: await prepareDockerWrapper(ctx.extension.globalStorageUri.fsPath, node, path.join(dist, 'docker-shim.js')),
+    containerCli: await ctx.cli.executable(),
+  };
 }
 
 /**
- * Creates or reuses the container for the configuration, runs the lifecycle commands the spec asks for
- * and opens the workspace folder over Remote-SSH. Resolves false when it stopped early.
+ * Creates or reuses the container for the configuration with devcontainers/cli, which also installs features and
+ * runs the lifecycle commands, then opens the workspace folder over Remote-SSH. Resolves false when it stopped early.
  */
 export async function openDevContainer(ctx: CommandContext, configFile: string, options: DevContainerOptions): Promise<boolean> {
-  const { cli } = ctx;
-  const plan = await loadPlan(configFile);
-
-  if (plan.unsupported.length && !(await acknowledgeUnsupported(ctx, plan))) {
-    return false;
+  const configText = await readFile(configFile, 'utf8');
+  const config = parseConfig(configText, configFile);
+  if (config.dockerComposeFile) {
+    throw new Error(vscode.l10n.t('Docker Compose dev containers (dockerComposeFile) are not supported by Apple container.'));
   }
+  const target: DevContainerTarget = { workspaceFolder: localFolderOf(configFile), configFile };
+  const name: string = config.name ?? path.basename(target.workspaceFolder);
+  const configHash = await configurationHash(configFile, configText, config);
+  const hashes = ctx.extension.globalState.get<Record<string, string>>(CONFIG_HASHES_KEY, {});
 
-  let existing = (await cli.listContainers()).find((c) => c.id === plan.containerName);
+  const existing = await findDevContainer(ctx, target);
   let rebuild = options.rebuild ?? false;
-  if (existing && !rebuild && existing.labels[LABEL_CONFIG_HASH] !== plan.configHash) {
+  if (existing && !rebuild && hashes[existing.id] !== undefined && hashes[existing.id] !== configHash) {
     const rebuildNow = vscode.l10n.t('Rebuild');
     const keep = vscode.l10n.t('Use Existing Container');
     const answer = await vscode.window.showWarningMessage(
-      vscode.l10n.t('The dev container configuration of {0} changed since the container was created.', plan.name),
-      { modal: true, detail: vscode.l10n.t('Rebuilding deletes the container {0} and creates it again. Files outside the workspace folder and mounts are lost.', plan.containerName) },
+      vscode.l10n.t('The dev container configuration of {0} changed since the container was created.', name),
+      { modal: true, detail: vscode.l10n.t('Rebuilding deletes the container {0} and creates it again. Files outside the workspace folder and mounts are lost.', existing.id) },
       rebuildNow,
       keep,
     );
@@ -140,88 +155,32 @@ export async function openDevContainer(ctx: CommandContext, configFile: string, 
     }
     rebuild = answer === rebuildNow;
   }
-  if (existing && rebuild) {
-    await withProgress(vscode.l10n.t('Removing {0}...', plan.containerName), () =>
-      cli.run(['delete', '--force', plan.containerName], { timeoutMs: 120_000 }),
-    );
-    existing = undefined;
-  }
 
-  // initializeCommand runs on this Mac on every open, before anything else
-  await runSteps(plan, 'initializeCommand', (step) => ({ executable: step.argv[0], args: step.argv.slice(1), cwd: localFolderOf(configFile) }));
-
-  const created = !existing;
-  const started = created || existing!.state !== 'running';
-  if (created) {
-    if (plan.build) {
-      const code = await runTask(vscode.l10n.t('Build {0}', plan.image), await cli.executable(), plan.build.args, plan.build.context);
-      if (code !== 0) {
-        throw new Error(vscode.l10n.t('Building the dev container image failed (exit {0}). See the task output.', String(code)));
-      }
-    }
-    await withProgress(vscode.l10n.t('Starting dev container {0}...', plan.name), () => cli.run(plan.runArgs, { timeoutMs: 10 * 60_000 }));
-  } else if (started) {
-    await withProgress(vscode.l10n.t('Starting dev container {0}...', plan.name), () => cli.run(['start', plan.containerName], { timeoutMs: 120_000 }));
-  }
+  const paths = await cliPaths(ctx);
+  // The task terminal shows the CLI log: image builds, features, lifecycle commands and shim warnings
+  const code = await runTask(
+    vscode.l10n.t('Dev Container: {0}', name),
+    paths.node,
+    upArgs(paths, target, { removeExisting: rebuild && !!existing }),
+    target.workspaceFolder,
+    cliEnv(paths),
+  );
   await ctx.refreshAll();
+  if (code !== 0) {
+    throw new Error(vscode.l10n.t('Starting the dev container failed (exit {0}). See the task output.', String(code)));
+  }
+  const container = await findDevContainer(ctx, target);
+  if (!container) {
+    throw new Error(vscode.l10n.t('The dev container for {0} was not found after it started.', name));
+  }
+  await ctx.extension.globalState.update(CONFIG_HASHES_KEY, { ...hashes, [container.id]: configHash });
 
+  const resolved = await readConfiguration(paths, target);
   // remoteEnv may refer to the container's variables and can change without a rebuild, so it is resolved on every open
-  const remoteEnv = resolveContainerEnv(plan.remoteEnv, parseEnvOutput(await cli.run(['exec', plan.containerName, 'env'])));
-  const cliPath = await cli.executable();
-  const inContainer = (step: CommandStep) => ({ executable: cliPath, args: execArgs(plan, step, remoteEnv) });
-  if (created) {
-    for (const hook of ['onCreateCommand', 'updateContentCommand', 'postCreateCommand'] as const) {
-      await runSteps(plan, hook, inContainer);
-    }
-  }
-  if (started) {
-    await runSteps(plan, 'postStartCommand', inContainer);
-  }
-  await runSteps(plan, 'postAttachCommand', inContainer);
-
-  const container = (await cli.listContainers()).find((c) => c.id === plan.containerName);
-  return openContainerOverSsh(ctx, { id: plan.containerName, user: container?.user }, { user: plan.remoteUser, folder: plan.workspaceFolder, remoteEnv });
-}
-
-/** Shows the properties that will be ignored once per configuration version */
-async function acknowledgeUnsupported(ctx: CommandContext, plan: DevContainerPlan): Promise<boolean> {
-  const state = ctx.extension.workspaceState;
-  const acknowledged = state.get<Record<string, string>>(ACKNOWLEDGED_KEY, {});
-  if (acknowledged[plan.containerName] === plan.configHash) {
-    return true;
-  }
-  const proceed = vscode.l10n.t('Continue');
-  const answer = await vscode.window.showWarningMessage(
-    vscode.l10n.t('Some dev container settings are not supported by Apple container and will be ignored.'),
-    { modal: true, detail: plan.unsupported.join('\n') },
-    proceed,
+  const remoteEnv = resolveContainerEnv(resolved.remoteEnv, parseEnvOutput(await ctx.cli.run(['exec', container.id, 'env'])));
+  return openContainerOverSsh(
+    ctx,
+    { id: container.id, user: container.user },
+    { user: resolved.remoteUser ?? resolved.containerUser, folder: resolved.workspaceFolder, remoteEnv },
   );
-  if (answer !== proceed) {
-    return false;
-  }
-  await state.update(ACKNOWLEDGED_KEY, { ...acknowledged, [plan.containerName]: plan.configHash });
-  return true;
-}
-
-/** Runs a lifecycle command as tasks so its output is visible; entries of the object form run in parallel */
-async function runSteps(
-  plan: DevContainerPlan,
-  hook: LifecycleName,
-  toProcess: (step: CommandStep) => { executable: string; args: string[]; cwd?: string },
-): Promise<void> {
-  const steps = plan.lifecycle[hook];
-  if (!steps?.length) {
-    return;
-  }
-  const codes = await Promise.all(
-    steps.map((step) => {
-      const { executable, args, cwd } = toProcess(step);
-      return runTask(step.label ? `${hook}: ${step.label}` : hook, executable, args, cwd);
-    }),
-  );
-  const failed = codes.find((code) => code !== 0);
-  if (failed !== undefined) {
-    // The spec skips the remaining commands when one fails
-    throw new Error(vscode.l10n.t('{0} of the dev container failed (exit {1}). See the task output.', hook, String(failed)));
-  }
 }

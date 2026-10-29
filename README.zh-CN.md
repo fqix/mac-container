@@ -12,7 +12,7 @@
 [![Platform](https://img.shields.io/badge/platform-macOS%20Apple%20silicon-lightgrey?logo=apple)](#环境要求)
 [![License: MIT](https://img.shields.io/github/license/fqix/mac-container)](LICENSE)
 
-[安装](#安装) · [功能](#功能) · [Remote-SSH](#通过-remote-ssh-打开容器) · [开发容器](#开发容器devcontainerjson) · [设置](#设置) · [参与贡献](CONTRIBUTING.md) · [English](README.md) | 简体中文
+[安装](#安装) · [功能](#功能) · [Remote-SSH](#通过-remote-ssh-打开容器) · [开发容器](#开发容器devcontainerjson) · [已知限制](#已知限制) · [设置](#设置) · [参与贡献](CONTRIBUTING.md) · [English](README.md) | 简体中文
 
 ![按 compose 项目分组的容器及其卷和端口](docs/media/overview.gif)
 
@@ -22,7 +22,7 @@
 
 - 🧭 **一个侧边栏管理全部资源**：容器、镜像、网络、卷、镜像仓库、container-compose 项目和 `container` 系统服务。
 - 🖥️ **把容器作为远程工作区打开**：通过 Remote-SSH 在 VS Code 或 Cursor 中打开，不需要端口映射，也不需要常驻 SSH 服务，`openssh-server` 自动安装。
-- 📦 **不依赖 Docker 的 `devcontainer.json`**：用 Apple `container` 构建并运行开发容器，支持生命周期命令。
+- 📦 **不依赖 Docker 的 `devcontainer.json`**：用 Apple `container` 构建并运行开发容器，支持 features 和生命周期命令，基于内置的 Dev Containers CLI。
 - 📝 **用表单运行和编辑容器**：端口、挂载、环境变量、网络、CPU、内存、用户和工作目录。
 - 📊 **实时资源用量、日志、Shell、文件上传下载**，右键即可使用。
 - 🌐 **中英双语**。
@@ -113,24 +113,46 @@ VS Code / Cursor Server 会在容器内下载，需要容器能访问外网；�
 
 ## 开发容器（devcontainer.json）
 
-**在开发容器中打开文件夹** 会读取文件夹中的 `devcontainer.json`（`.devcontainer/devcontainer.json`、`.devcontainer.json` 或 `.devcontainer/<名称>/devcontainer.json`），用 Apple `container` 运行容器，再[通过 Remote-SSH](#通过-remote-ssh-打开容器) 打开容器内的工作区文件夹。打开带有该配置的本地文件夹时会提示；在该文件上右键还有 **重建并打开开发容器**。
+**在开发容器中打开文件夹** 会读取文件夹中的 `devcontainer.json`（`.devcontainer/devcontainer.json`、`.devcontainer.json` 或 `.devcontainer/<名称>/devcontainer.json`），用 Apple `container` 创建容器，再[通过 Remote-SSH](#通过-remote-ssh-打开容器) 打开容器内的工作区文件夹。打开带有该配置的本地文件夹时会提示；在该文件上右键还有 **重建并打开开发容器**。
 
-文件夹默认挂载到 `/workspaces/<文件夹名>`，可用 `workspaceMount` / `workspaceFolder` 修改。容器名为 `devc-<文件夹>-<哈希>`，带 `devcontainer.local_folder` / `devcontainer.config_file` 标签，下次打开会复用；配置或其 Dockerfile 有改动时会询问是否重建。
+容器由规范的参考实现 [Dev Containers CLI](https://github.com/devcontainers/cli)（`@devcontainers/cli` 0.90.0）创建，所以 `devcontainer.json` 的行为与在 Docker 下一致，包括 features。CLI 随插件打包，用编辑器自带的 Node 运行时执行，无需另外安装。CLI 通过插件自带的 docker 兼容层（`dist/docker-shim.js`）调用 Apple `container`，日志（镜像构建、features、生命周期命令）显示在任务终端中。
+
+容器名为 `devc-<文件夹>-<哈希>`，带 `devcontainer.local_folder` / `devcontainer.config_file` 标签，下次打开会复用；配置或其 Dockerfile 自上次打开后有改动时会询问是否重建。
 
 | 配置项 | 支持情况 |
 |---|---|
-| `image`、`build`（`dockerfile`、`context`、`args`、`target`、`options`） | ✅ |
+| `image`、`build` | ✅ |
+| `features` | ✅ 安装到基于基础镜像构建的新镜像中 |
 | `workspaceFolder`、`workspaceMount`、`mounts` | ✅ |
-| `containerEnv`、`remoteEnv`（其中的 `${containerEnv:NAME}` 按容器环境解析） | ✅ |
-| `containerUser`、`remoteUser` | ✅ |
-| `forwardPorts`（发布到 `127.0.0.1`）、`appPort` | ✅ |
-| `hostRequirements.cpus` / `memory`、`capAdd`、`init`、`overrideCommand` | ✅ |
-| `runArgs` | ✅ 原样传给 `container run` |
-| 生命周期命令（字符串、数组、对象三种形式） | ✅ 见下文 |
-| 变量（`${localWorkspaceFolder}`、`${localEnv:NAME:默认值}`、`${containerWorkspaceFolder}` 等） | ✅ |
-| `features`、`dockerComposeFile`、`privileged`、`securityOpt`、`customizations.vscode.extensions` | ❌ 启动容器前列出被忽略的设置 |
+| `containerEnv`、`remoteEnv`、`containerUser`、`remoteUser` | ✅ |
+| 生命周期命令，从 `initializeCommand`（在本机执行）到 `postAttachCommand` | ✅ |
+| `appPort` | ✅ 通过 `container run --publish` 发布 |
+| `forwardPorts` | ⚠️ 不发布；Remote-SSH 会转发它检测到在容器内监听的端口，本机也可以直接访问容器 IP |
+| `capAdd`、`init`、`overrideCommand` | ✅ |
+| `runArgs` | ⚠️ 传给 `container run`；Docker 专有选项会被丢弃并给出警告，见[已知限制](#已知限制) |
+| `privileged` | ⚠️ 转为 `--cap-add ALL` |
+| `securityOpt` | ❌ 忽略并给出警告 |
+| `dockerComposeFile` | ❌ 不支持 |
+| `customizations.vscode.extensions` | ❌ 不会安装；请在远程窗口中安装扩展 |
 
-生命周期命令：`initializeCommand` 每次打开时在本机执行；`onCreateCommand`、`updateContentCommand`、`postCreateCommand` 在容器创建时执行；`postStartCommand` 在容器启动时执行；`postAttachCommand` 每次打开时执行。
+## 已知限制
+
+Apple `container` 的每个容器都运行在独立的轻量虚拟机里，有自己的 Linux 内核，而不是共享一个 Docker daemon，所以部分 Docker 选项没有对应能力（基于 `container` 1.6.1 核实）：
+
+| Docker 选项 | Apple `container` 中 |
+|---|---|
+| `--privileged` | 不支持。改用 `--cap-add` / `capAdd` 添加 capability（`ALL` 表示全部）。 |
+| `--ipc`、`--pid`、`--userns`、`--cgroupns` | 不支持：没有可共享的宿主内核命名空间。 |
+| `--device`、`--gpus`、绑定挂载 `/dev` 或 `/run/udev` | 不支持：宿主是 macOS，没有可透传的 Linux 设备。 |
+| `--security-opt`、`--add-host`、`--hostname` | 不支持。 |
+| Docker Compose | 不支持。支持 [container-compose](#container-compose) 项目，但不支持 `devcontainer.json` 中的 `dockerComposeFile`。 |
+| Docker-in-Docker | 不支持，它依赖特权模式。 |
+
+对 `devcontainer.json` 的影响：
+
+- docker 兼容层会丢弃 Apple `container` 无法应用的 `runArgs`（`--ipc`、`--pid`、`--security-opt`、`--device`、`--gpus`、`--add-host`、`--network host`，以及挂载 `/dev`、`/proc`、`/sys` 或本机不存在的路径），并在任务终端中给出警告。`--privileged`（包括来自 `privileged: true` 或 feature 的）会转为 `--cap-add ALL`。容器可以启动，但依赖这些选项的功能无法工作。
+- 依赖特权模式或 Docker daemon 的 features（如 `docker-in-docker`）能安装但无法工作；`docker-outside-of-docker` 没有可连接的 Docker socket。
+- 为 Codespaces 或 Docker 编写、在开发容器里运行 containerd、Kubernetes 等嵌套容器运行时的配置只能部分工作：需要宿主设备或嵌套容器的部分会失败。
 
 ## 设置
 
@@ -168,7 +190,7 @@ Server 是在容器内下载的。容器无法访问外网时，开启 `remote.S
 <details>
 <summary><b>需要安装 Docker 吗？</b></summary>
 
-不需要，所有操作都通过 `container` CLI 完成。`devcontainer.json` 中依赖 Docker 的功能（features、Compose、特权模式）暂不可用。
+不需要，所有操作都通过 `container` CLI 完成；开发容器由内置的 Dev Containers CLI 经 docker 兼容层调用它。Compose、特权模式等 Docker 专有选项不可用，见[已知限制](#已知限制)。
 </details>
 
 ## 参与贡献
@@ -179,7 +201,7 @@ Server 是在容器内下载的。容器无法访问外网时，开启 `remote.S
 
 - [apple/container](https://github.com/apple/container)：本插件驱动的容器运行时。
 - [container-compose](https://github.com/mcrich23/container-compose)：为 Apple `container` 提供 Compose 支持。
-- [Development Containers 规范](https://containers.dev/)：`devcontainer.json` 支持所遵循的规范。
+- [Development Containers 规范](https://containers.dev/) 和 [Dev Containers CLI](https://github.com/devcontainers/cli)：内置用于创建开发容器。
 
 ## 许可证
 

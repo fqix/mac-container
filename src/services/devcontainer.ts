@@ -231,6 +231,11 @@ function slug(text: string): string {
   return text.toLowerCase().replace(/[^a-z0-9_.-]+/g, '-').replace(/^[-_.]+|[-_.]+$/g, '') || 'devcontainer';
 }
 
+/** Readable, stable container name for a dev container: devc-<folder>-<hash of folder and config file> */
+export function devContainerName(localWorkspaceFolder: string, configFile: string): string {
+  return `devc-${slug(path.basename(localWorkspaceFolder))}-${hash(localWorkspaceFolder, configFile).slice(0, 8)}`;
+}
+
 export function hash(...parts: string[]): string {
   const h = createHash('sha256');
   for (const part of parts) {
@@ -274,7 +279,7 @@ export function planDevContainer(input: PlanInput): DevContainerPlan {
 
   const configDir = path.dirname(configFile);
   const name = typeof config.name === 'string' && config.name ? config.name : basename;
-  const containerName = `devc-${slug(basename)}-${idHash.slice(0, 8)}`;
+  const containerName = devContainerName(localWorkspaceFolder, configFile);
 
   let image: string;
   let build: DevContainerPlan['build'];

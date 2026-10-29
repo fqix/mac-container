@@ -633,7 +633,11 @@ describe('Apple Container e2e', function () {
       "image": "${IMAGE}",
       "containerEnv": { "E2E_FROM": "\${localWorkspaceFolderBasename}" },
       "remoteEnv": { "E2E_REMOTE": "\${containerEnv:E2E_FROM}-remote" },
-      "forwardPorts": [18093],
+      // Installed by devcontainers/cli into an image built on top of the base image
+      "features": { "ghcr.io/devcontainers/features/common-utils:2": { "installZsh": false, "username": "none" } },
+      // Docker-only options are dropped (or downgraded) by the docker shim instead of failing the run
+      "runArgs": ["--privileged", "--ipc=host"],
+      "appPort": ["127.0.0.1:18093:18093"],
       "initializeCommand": "touch initialized",
       "onCreateCommand": "echo create >> /tmp/lifecycle",
       "postCreateCommand": ["sh", "-c", "echo post-create >> /tmp/lifecycle"],
@@ -657,6 +661,8 @@ describe('Apple Container e2e', function () {
     assert.strictEqual(created.state, 'running');
     assert.strictEqual(created.labels['devcontainer.config_file'], configFile);
     assert.deepStrictEqual(created.ports, ['127.0.0.1:18093->18093/tcp']);
+    assert.match(created.image, /vsc-devc-.*-features/);
+    assert.strictEqual(await exec(created.id, 'command -v bash'), '/bin/bash');
     assert.strictEqual(opened.length, 1);
     assert.strictEqual(opened[0].authority, `ssh-remote+apple-container.${created.id}`);
     assert.strictEqual(opened[0].path, `/workspaces/devc-${suffix}`);
@@ -712,7 +718,7 @@ describe('Apple Container e2e', function () {
     const container = (await api.cli.listContainers()).find((c) => c.labels['devcontainer.local_folder'] === folder);
     assert.ok(container, 'dev container not created');
     devContainers.push(container.id);
-    assert.match(container.image, /vsc-devcb-[a-z0-9]+-[0-9a-f]{8}:latest$/);
+    assert.match(container.image, /vsc-devcb-[^:]+:latest$/);
     assert.strictEqual((await api.cli.run(['exec', container.id, 'cat', '/built'])).trim(), 'from-build');
     assert.strictEqual(opened[0]?.path, `/workspaces/devcb-${suffix}`);
 

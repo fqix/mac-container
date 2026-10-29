@@ -30,7 +30,8 @@ Press `F5` in VS Code to start an Extension Development Host with the extension 
 |---|---|
 | `src/extension.ts` | Activation and wiring |
 | `src/commands/` | Command handlers |
-| `src/services/` | `container` CLI wrapper and core logic (Remote-SSH, devcontainer planning, container settings, stats) |
+| `src/services/` | `container` CLI wrapper and core logic (Remote-SSH, Dev Containers CLI integration, container settings, stats) |
+| `src/dockerShim/` | docker-compatible shim that the bundled Dev Containers CLI runs as its `--docker-path` (bundled to `dist/docker-shim.js`) |
 | `src/views/`, `src/models/` | Tree views and their data types |
 | `src/panels/`, `webview-ui/` | Webview panels (React + Vite) for the run/edit form and stats |
 | `src/ui/`, `src/utils/` | Status bar, terminals, pickers and pure helpers |
@@ -44,6 +45,18 @@ The e2e suite launches the installed VS Code (`/Applications/Visual Studio Code.
 - `E2E_SKIP_BUILD=1` skips the image build test; `E2E_GREP=<pattern>` runs a subset.
 - It runs twice: once with a workspace folder and once as an empty window, for commands that must work without a folder.
 - The Remote-SSH test lets the extension install `openssh-server` from the Alpine repositories, pulls `busybox` for the no-package-manager case, and keeps its key and SSH config in a temporary directory, never in `~/.ssh`.
+
+## Docker shim
+
+The bundled Dev Containers CLI (copied from `node_modules/@devcontainers/cli` to `dist/devcontainer-cli/` by `esbuild.mjs`) creates dev containers through `dist/docker-shim.js`, which implements the docker commands the CLI uses on top of Apple `container`. To try it outside VS Code:
+
+```bash
+npm run build
+printf '#!/bin/sh\nexec node "%s/dist/docker-shim.js" "$@"\n' "$PWD" > /tmp/docker && chmod +x /tmp/docker
+DOCKER_SHIM_LOG=/tmp/docker-shim.log node dist/devcontainer-cli/run.js up --workspace-folder <folder> --docker-path /tmp/docker
+```
+
+`DOCKER_SHIM_LOG` records every docker call and the `container` commands it became. The shim relies on the fields the CLI reads from `docker inspect`, so upgrading `@devcontainers/cli` needs the dev container e2e tests to pass again.
 
 ## README animations
 
