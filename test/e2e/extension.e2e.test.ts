@@ -10,7 +10,8 @@ import { promisify } from 'util';
 import * as vscode from 'vscode';
 
 import { composeProjectName } from '../../src/services/compose';
-import { recreateContainer } from '../../src/panels/editPanel';
+import { recreateContainer } from '../../src/panels/containerFormPanel';
+import { settingsFromConfig } from '../../src/services/containerSettings';
 import type { ExtensionApi } from '../../src/extension';
 import { parseJson } from '../../src/utils/parse';
 import type { ResourceProvider, TreeNode } from '../../src/views/base';
@@ -253,24 +254,47 @@ describe('Apple Container e2e', function () {
     assert.ok(images.some((n) => n.resource.reference === IMAGE));
   });
 
-  it('runs a container from an image', async () => {
+  it('opens the run form for an image', async () => {
     const image = (await children(api.views.images)).find((n) => n.resource.reference === IMAGE)!;
-    // Container name, published ports, then no script. alpine's default command exits at once, so only check it was created.
-    answerInputs(`${names.container}-run`, '18099:80', '');
     await vscode.commands.executeCommand('appleContainer.image.run', image);
-    const created = (await api.cli.listContainers()).find((c) => c.id === `${names.container}-run`);
+    await waitFor('run tab', async () => (webviewTabOpen('appleContainer.run', 'Run: alpine:latest') ? true : undefined), 10_000);
+    await vscode.commands.executeCommand('workbench.action.closeAllEditors');
+  });
+
+  it('runs a container with every form setting', async () => {
+    const image = (await children(api.views.images)).find((n) => n.resource.reference === IMAGE)!;
+    await vscode.commands.executeCommand('appleContainer.image.run', image, {
+      name: `${names.container}-run`,
+      command: 'exec sleep 3600',
+      settings: {
+        ports: [{ hostAddress: '0.0.0.0', hostPort: 18099, containerPort: 80, proto: 'tcp' }],
+        env: ['E2E_A=1', 'E2E_B=two words'],
+        cpus: '2',
+        memory: '640M',
+        user: 'nobody',
+        workdir: '/tmp',
+      },
+    });
+    const id = `${names.container}-run`;
+    const created = (await api.cli.listContainers()).find((c) => c.id === id);
     assert.ok(created, 'container was not created');
-    assert.strictEqual(created.image, IMAGE);
+    assert.strictEqual(created.state, 'running');
     assert.deepStrictEqual(created.ports, ['18099->80/tcp']);
-    await api.cli.run(['delete', '--force', created.id]);
+    assert.strictEqual(created.cpus, 2);
+    assert.strictEqual(created.memoryBytes, 640 * 1024 * 1024);
+    assert.strictEqual(created.user, 'nobody');
+    assert.strictEqual(created.workdir, '/tmp');
+    const exec = (script: string) => api.cli.run(['exec', id, 'sh', '-c', script]).then((o) => o.trim());
+    assert.strictEqual(await exec('echo "$E2E_A|$E2E_B"'), '1|two words');
+    assert.strictEqual(await exec('id -un; pwd'), 'nobody\n/tmp');
+    await api.cli.run(['delete', '--force', id]);
   });
 
   it('runs a custom script in a container with a generated name', async () => {
     const image = (await children(api.views.images)).find((n) => n.resource.reference === IMAGE)!;
     const before = new Set((await api.cli.listContainers()).map((c) => c.id));
     // Empty name: the extension generates a Docker-style one instead of the CLI's UUID
-    answerInputs('', '', 'echo scripted > /tmp/out && exec sleep 3600');
-    await vscode.commands.executeCommand('appleContainer.image.run', image);
+    await vscode.commands.executeCommand('appleContainer.image.run', image, { command: 'echo scripted > /tmp/out && exec sleep 3600' });
     const created = (await api.cli.listContainers()).filter((c) => !before.has(c.id));
     assert.strictEqual(created.length, 1, 'expected one new container');
     const [container] = created;
@@ -444,16 +468,23 @@ describe('Apple Container e2e', function () {
     await vscode.commands.executeCommand('workbench.action.closeAllEditors');
   });
 
-  it('recreates a container with new ports and mounts, keeping its filesystem changes', async () => {
+  it('recreates a container with new settings, keeping its filesystem changes', async () => {
     const inspect = async () => (parseJson(await api.cli.inspect('container', [names.edit])) as any[])[0];
     await api.cli.run(['exec', names.edit, 'sh', '-c', 'echo kept > /marker.txt']);
+    const before = await inspect();
+    const current = settingsFromConfig(before.configuration, [], []);
 
     const snapshot = await recreateContainer(
       api.cli,
-      await inspect(),
+      before,
       {
+        ...current,
         ports: [{ hostAddress: '127.0.0.1', hostPort: 18096, containerPort: 8080, proto: 'tcp' }],
         mounts: [{ kind: 'volume', source: names.editVolume, destination: '/data', readOnly: false }],
+        env: [...current.env, 'E2E_MODE=edited'],
+        cpus: '2',
+        memory: '768M',
+        workdir: '/tmp',
       },
       true,
     );
@@ -471,6 +502,11 @@ describe('Apple Container e2e', function () {
     assert.deepStrictEqual(after.configuration.initProcess.arguments, ['3600']);
     const marker = await api.cli.run(['exec', names.edit, 'cat', '/marker.txt']);
     assert.strictEqual(marker.trim(), 'kept');
+    // The other form fields took effect
+    assert.ok(after.configuration.initProcess.environment.includes('E2E_MODE=edited'));
+    assert.strictEqual(after.configuration.resources.cpus, 2);
+    assert.strictEqual(after.configuration.resources.memoryInBytes, 768 * 1024 * 1024);
+    assert.strictEqual((await api.cli.run(['exec', names.edit, 'pwd'])).trim(), '/tmp');
   });
 
   it('restores the original container when recreating fails', async () => {
@@ -479,7 +515,10 @@ describe('Apple Container e2e', function () {
       recreateContainer(
         api.cli,
         before,
-        { ports: [], mounts: [{ kind: 'bind', source: `/nonexistent/${suffix}`, destination: '/broken', readOnly: false }] },
+        {
+          ...settingsFromConfig(before.configuration, [], []),
+          mounts: [{ kind: 'bind', source: `/nonexistent/${suffix}`, destination: '/broken', readOnly: false }],
+        },
         false,
       ),
       /restored/,

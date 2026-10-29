@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 
-import { EditContainerPanel } from '../panels/editPanel';
+import { ContainerFormPanel } from '../panels/containerFormPanel';
 import { StatsPanel } from '../panels/statsPanel';
 import { openCliTerminal } from '../ui/terminal';
 import type { ContainerSummary } from '../models/types';
@@ -102,7 +102,7 @@ export function registerContainerCommands(ctx: CommandContext): void {
 
   register(ctx, 'appleContainer.container.edit', (node?: ContainerNode) => {
     if (node) {
-      EditContainerPanel.show(ctx.extension.extensionUri, cli, node.resource.id, refresh);
+      ContainerFormPanel.showEdit(ctx.extension.extensionUri, cli, node.resource.id, refresh);
     }
   });
 

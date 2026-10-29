@@ -23,8 +23,8 @@ Manage [Apple `container`](https://github.com/apple/container) — native Linux 
 
   ![Live stats charts](docs/media/stats.gif)
 
-- **Edit...** opens a form to change port forwarding and mounts.
-  Apple `container` cannot change these on an existing container, so saving recreates it with the same image, command, environment, resources, networks and labels.
+- **Edit...** opens a form to change port forwarding, mounts, environment variables (one `KEY=VALUE` per line, or imported from `.env` files), networks, CPUs, memory, user and working directory.
+  Apple `container` cannot change these on an existing container, so saving recreates it with the same image and command, using the form settings and keeping everything the form does not show (labels, DNS, capabilities, ulimits, platform).
   Choose **Keep Changes and Recreate** to commit the container to a snapshot image first, so files changed inside it are preserved.
   If the new container fails to start, the original one is restored.
 
@@ -41,7 +41,7 @@ Containers started by [container-compose](https://github.com/mcrich23/container-
 
 ### Images, networks, volumes, registries
 
-- Images: pull, build from a `Dockerfile` / `Containerfile` (also from the explorer context menu), run with a name (a Docker-style random name such as `brave_hopper` is suggested), published ports and an optional command or shell script (run with `/bin/sh -c`), tag, inspect, delete, prune.
+- Images: pull, build from a `Dockerfile` / `Containerfile` (also from the explorer context menu), run from a form with the same settings as **Edit...** plus a name (a Docker-style random name such as `brave_hopper` when left empty) and an optional command or shell script (run with `/bin/sh -c`), tag, inspect, delete, prune.
   **Push...** pushes an image (a new name tags it first; a finished build also offers to push), **Export to tar...** saves one or more images as an OCI archive and **Import from tar...** loads archives, also from the explorer context menu of a `.tar` file.
   Loopback registries (`localhost:5000`) are reached over http like Docker does; add other plain-http registries to `appleContainer.insecureRegistries`.
 - Networks: create with an optional subnet, inspect, delete, prune. The built-in `default` network is protected.

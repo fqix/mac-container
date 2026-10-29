@@ -4,7 +4,8 @@ import * as path from 'path';
 
 import { composeProjectName, groupByComposeProject, isComposeFileName } from '../../src/services/compose';
 import { parseContainers, parseJson } from '../../src/utils/parse';
-import { buildRecreateArgs, formatPublishSpec, validateEdits } from '../../src/services/recreate';
+import { formatPublishSpec, settingsFromConfig, validateSettings } from '../../src/services/containerSettings';
+import { buildRecreateArgs } from '../../src/services/recreate';
 import { toSample } from '../../src/services/stats';
 import type { ContainerSummary } from '../../src/models/types';
 
@@ -71,18 +72,20 @@ describe('compose', () => {
 describe('recreate', () => {
   const [item] = fixture('compose-web.inspect.json');
   const config = item.configuration;
+  // The container's own settings with replaced ports and mounts, as the edit form would send them
+  const settings = (ports: any[] = [], mounts: any[] = [], c = config) => ({ ...settingsFromConfig(c, [], []), ports, mounts });
 
   it('rebuilds run arguments with edited ports and mounts', () => {
     const args = buildRecreateArgs(
       config,
-      {
-        ports: [{ hostAddress: '127.0.0.1', hostPort: 8080, containerPort: 80, proto: 'tcp' }],
-        mounts: [
+      settings(
+        [{ hostAddress: '127.0.0.1', hostPort: 8080, containerPort: 80, proto: 'tcp' }],
+        [
           { kind: 'volume', source: 'data', destination: '/data', readOnly: false },
           { kind: 'bind', source: '/Users/dev/src', destination: '/src', readOnly: true },
           { kind: 'tmpfs', source: '', destination: '/scratch', readOnly: false },
         ],
-      },
+      ),
       { start: true },
     );
     assert.deepStrictEqual(args.slice(0, 4), ['run', '--detach', '--name', 'ccdemo-web']);
@@ -100,7 +103,7 @@ describe('recreate', () => {
   });
 
   it('uses create for a stopped container and a snapshot image when given', () => {
-    const args = buildRecreateArgs(config, { ports: [], mounts: [] }, { start: false, image: 'web-snapshot:1' });
+    const args = buildRecreateArgs(config, settings(), { start: false, image: 'web-snapshot:1' });
     assert.strictEqual(args[0], 'create');
     assert.ok(!args.includes('--detach'));
     assert.ok(!args.includes('--publish'));
@@ -112,7 +115,7 @@ describe('recreate', () => {
       ...config,
       initProcess: { ...config.initProcess, user: { raw: { userString: 'nginx' } }, rlimits: [{ limit: 'RLIMIT_NOFILE', soft: 1024, hard: 4096 }] },
     };
-    const args = buildRecreateArgs(custom, { ports: [], mounts: [] }, { start: true });
+    const args = buildRecreateArgs(custom, settings([], [], custom), { start: true });
     assert.deepStrictEqual(args.slice(args.indexOf('--user'), args.indexOf('--user') + 2), ['--user', 'nginx']);
     assert.ok(args.includes('nofile=1024:4096'));
   });
@@ -121,9 +124,10 @@ describe('recreate', () => {
     assert.strictEqual(formatPublishSpec({ hostAddress: '0.0.0.0', hostPort: 80, containerPort: 8080, proto: 'udp' }), '80:8080/udp');
   });
 
-  it('validates edits', () => {
-    assert.deepStrictEqual(validateEdits({ ports: [], mounts: [] }), []);
-    const problems = validateEdits({
+  it('validates ports and mounts', () => {
+    assert.deepStrictEqual(validateSettings(settings()), []);
+    const problems = validateSettings({
+      ...settings(),
       ports: [
         { hostAddress: '0.0.0.0', hostPort: 80, containerPort: 0, proto: 'tcp' },
         { hostAddress: '0.0.0.0', hostPort: 80, containerPort: 81, proto: 'tcp' },
@@ -135,7 +139,7 @@ describe('recreate', () => {
       ],
     });
     assert.deepStrictEqual(
-      problems.map((p) => `${p.section}[${p.index}] ${p.reason}`),
+      problems.map((p: { section: string; index: number; reason: string }) => `${p.section}[${p.index}] ${p.reason}`),
       [
         'ports[0] portRange',
         'ports[1] duplicateHostPort',

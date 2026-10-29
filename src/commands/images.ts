@@ -2,6 +2,8 @@ import * as os from 'os';
 import * as path from 'path';
 import * as vscode from 'vscode';
 
+import { ContainerFormPanel } from '../panels/containerFormPanel';
+import { buildRunArgs, EMPTY_SETTINGS, type RunForm } from '../services/containerSettings';
 import { generateContainerName } from '../utils/names';
 import { archiveFileName, schemeArgs } from '../utils/registry';
 import { runCliTask } from '../ui/terminal';
@@ -162,44 +164,18 @@ export function registerImageCommands(ctx: CommandContext): void {
     ctx.views.images.refresh();
   });
 
-  register(ctx, 'appleContainer.image.run', async (node?: ImageNode) => {
+  // Opens the run form; a second argument with form values runs right away without the form (used by tests)
+  register(ctx, 'appleContainer.image.run', async (node?: ImageNode, direct?: Partial<Omit<RunForm, 'image'>>) => {
     const image = node?.resource.reference ?? (await pickImage(ctx));
     if (!image) {
       return;
     }
-    const generated = generateContainerName(new Set((await cli.listContainers()).map((c) => c.id)));
-    const name = await ask({
-      title: vscode.l10n.t('Run {0}', image),
-      prompt: vscode.l10n.t('Container name; leave empty for a random name'),
-      value: generated,
-      allowEmpty: true,
-    });
-    if (name === undefined) {
+    if (!direct) {
+      ContainerFormPanel.showRun(ctx.extension.extensionUri, cli, image, () => ctx.refreshAll());
       return;
     }
-    const ports = await ask({
-      title: vscode.l10n.t('Run {0}', image),
-      prompt: vscode.l10n.t('Published ports (optional), comma separated, e.g. 8080:80, 127.0.0.1:8443:443'),
-      allowEmpty: true,
-    });
-    if (ports === undefined) {
-      return;
-    }
-    const script = await ask({
-      title: vscode.l10n.t('Run {0}', image),
-      prompt: vscode.l10n.t('Command or shell script (optional), run with /bin/sh -c; empty uses the image default'),
-      placeHolder: 'apk add curl && exec sleep infinity',
-      allowEmpty: true,
-    });
-    if (script === undefined) {
-      return;
-    }
-    const args = ['run', '--detach', '--name', name || generated];
-    for (const p of ports.split(',').map((s) => s.trim()).filter(Boolean)) {
-      args.push('--publish', p);
-    }
-    // --entrypoint replaces the image ENTRYPOINT too, so the script runs as is
-    args.push(...(script ? ['--entrypoint', '/bin/sh', image, '-c', script] : [image]));
+    const name = direct.name || generateContainerName(new Set((await cli.listContainers()).map((c) => c.id)));
+    const args = buildRunArgs({ image, name, command: direct.command ?? '', settings: { ...EMPTY_SETTINGS, ...direct.settings } });
     await withProgress(vscode.l10n.t('Starting container from {0}...', image), () => cli.run(args, { timeoutMs: 10 * 60_000 }));
     await ctx.refreshAll();
   });

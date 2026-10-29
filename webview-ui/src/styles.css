@@ -101,7 +101,8 @@ td {
 
 input[type='text'],
 input[type='number'],
-select {
+select,
+textarea {
   width: 100%;
   box-sizing: border-box;
   padding: 4px 6px;
@@ -113,7 +114,8 @@ select {
 }
 
 input:focus,
-select:focus {
+select:focus,
+textarea:focus {
   outline: 1px solid var(--vscode-focusBorder);
   outline-offset: -1px;
 }
@@ -179,4 +181,38 @@ button:disabled {
 
 .col-select {
   width: 130px;
+}
+
+textarea {
+  font-family: var(--vscode-editor-font-family);
+  resize: vertical;
+}
+
+/* Labeled fields laid out in a responsive grid */
+.fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px 16px;
+  margin-top: 12px;
+}
+
+.fields label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.fields label > span {
+  color: var(--vscode-descriptionForeground);
+}
+
+.fields .wide {
+  grid-column: 1 / -1;
+}
+
+.checks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  margin-bottom: 4px;
 }
