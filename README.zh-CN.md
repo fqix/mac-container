@@ -39,6 +39,8 @@
 ### 镜像、网络、卷、镜像仓库
 
 - 镜像：拉取、从 `Dockerfile` / `Containerfile` 构建（也可在资源管理器中右键）、运行（名称默认随机生成 Docker 风格的名字如 `brave_hopper`，可指定端口映射，以及可选的命令或 shell 脚本，用 `/bin/sh -c` 执行）、打标签、查看详情、删除、清理。
+  **推送...** 把镜像推送到仓库（改成别的名字会先打标签；构建完成的通知里也可以直接推送），**导出为 tar...** 把一个或多个镜像保存为 OCI 归档，**从 tar 导入...** 加载归档（也可在资源管理器中右键 `.tar` 文件）。
+  和 Docker 一样，本机回环地址的仓库（如 `localhost:5000`）自动走 http；其他 http 仓库加到 `appleContainer.insecureRegistries`。
 - 网络：创建（可指定子网）、查看详情、删除、清理；内置的 `default` 网络不可删除。
 - 卷：创建（可指定容量）、查看详情、删除、清理。
 - 镜像仓库：登录（密码通过 `container registry login --password-stdin` 传入，不会出现在命令行参数里）、登出。
@@ -54,6 +56,7 @@ CLI 未安装或服务未启动时，视图中会给出处理提示。
 |---|---|---|
 | `appleContainer.path` | `container` | `container` CLI 路径，默认从 `PATH`、`/opt/homebrew/bin`、`/usr/local/bin` 查找 |
 | `appleContainer.composePath` | `container-compose` | `container-compose` CLI 路径 |
+| `appleContainer.insecureRegistries` | `[]` | 使用 http 访问的镜像仓库（`host` 或 `host:port`），本机回环地址始终使用 http |
 | `appleContainer.refreshInterval` | `5` | 视图可见时的自动刷新间隔（秒），`0` 关闭 |
 | `appleContainer.statsInterval` | `2` | 资源用量图表的采样间隔（秒） |
 | `appleContainer.execShell` | `/bin/sh` | **打开 Shell** 使用的 shell |

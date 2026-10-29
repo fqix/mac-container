@@ -189,5 +189,20 @@
   "Installing openssh-server in {0}...": "正在为 {0} 安装 openssh-server...",
   "No supported package manager was found.": "没有找到支持的包管理器。",
   "Could not install openssh-server in container {0}.": "无法在容器 {0} 中安装 openssh-server。",
-  "{0}\n\nInstall it inside the container yourself, for example:\n{1}": "{0}\n\n请在容器内手动安装，例如：\n{1}"
+  "{0}\n\nInstall it inside the container yourself, for example:\n{1}": "{0}\n\n请在容器内手动安装，例如：\n{1}",
+  "Push": "推送",
+  "Built {0}.": "已构建 {0}。",
+  "Select an image to push": "选择要推送的镜像",
+  "Push {0}": "推送 {0}",
+  "Push as (registry/repository:tag); a different name tags the image first": "推送为（仓库/名称:标签）；与当前名称不同时会先打标签",
+  "Pushed {0}.": "已推送 {0}。",
+  "Select an image to export": "选择要导出的镜像",
+  "Export Images": "导出镜像",
+  "OCI image archive": "OCI 镜像归档",
+  "Exporting {0}...": "正在导出 {0}...",
+  "Reveal in Finder": "在访达中显示",
+  "Exported to {0}.": "已导出到 {0}。",
+  "Import Images": "导入镜像",
+  "Importing {0}...": "正在导入 {0}...",
+  "Images imported.": "镜像已导入。"
 }

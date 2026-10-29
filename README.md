@@ -41,6 +41,8 @@ Containers started by [container-compose](https://github.com/mcrich23/container-
 ### Images, networks, volumes, registries
 
 - Images: pull, build from a `Dockerfile` / `Containerfile` (also from the explorer context menu), run with a name (a Docker-style random name such as `brave_hopper` is suggested), published ports and an optional command or shell script (run with `/bin/sh -c`), tag, inspect, delete, prune.
+  **Push...** pushes an image (a new name tags it first; a finished build also offers to push), **Export to tar...** saves one or more images as an OCI archive and **Import from tar...** loads archives, also from the explorer context menu of a `.tar` file.
+  Loopback registries (`localhost:5000`) are reached over http like Docker does; add other plain-http registries to `appleContainer.insecureRegistries`.
 - Networks: create with an optional subnet, inspect, delete, prune. The built-in `default` network is protected.
 - Volumes: create with an optional size, inspect, delete, prune.
 - Registries: log in (the password is passed to `container registry login --password-stdin`, never on the command line), log out.
@@ -56,6 +58,7 @@ When the CLI is missing or the service is stopped, the views explain what to do.
 |---|---|---|
 | `appleContainer.path` | `container` | Path to the `container` CLI. Looked up in `PATH`, `/opt/homebrew/bin` and `/usr/local/bin`. |
 | `appleContainer.composePath` | `container-compose` | Path to the `container-compose` CLI. |
+| `appleContainer.insecureRegistries` | `[]` | Registries (`host` or `host:port`) reached over plain http. Loopback registries always are. |
 | `appleContainer.refreshInterval` | `5` | Auto refresh interval in seconds while a view is visible; `0` disables it. |
 | `appleContainer.statsInterval` | `2` | Sampling interval of the stats charts in seconds. |
 | `appleContainer.execShell` | `/bin/sh` | Shell started by **Attach Shell**. |

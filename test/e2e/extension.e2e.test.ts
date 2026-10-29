@@ -31,6 +31,8 @@ const names = {
   editVolume: `e2e-editvol-${suffix}`,
   ssh: `e2e-ssh-${suffix}`,
   sshBare: `e2e-sshbare-${suffix}`,
+  registry: `e2e-registry-${suffix}`,
+  pushed: `localhost:15095/e2e/alpine:${suffix}`,
 };
 
 /** Containers named by the extension, removed in the after hook if a test fails half way */
@@ -183,6 +185,8 @@ describe('Apple Container e2e', function () {
     await api?.cli.run(['volume', 'delete', names.volume]).catch(ignore);
     await api?.cli.run(['network', 'delete', names.network]).catch(ignore);
     await api?.cli.run(['image', 'delete', names.tag, names.build]).catch(ignore);
+    await api?.cli.run(['image', 'delete', names.pushed]).catch(ignore);
+    await api?.cli.run(['delete', '--force', names.registry]).catch(ignore);
   });
 
   it('registers every command declared in package.json', async () => {
@@ -569,6 +573,37 @@ describe('Apple Container e2e', function () {
     assert.ok(!(await api.cli.listImages()).some((i) => i.reference.endsWith(names.tag)));
     // The source image must survive deleting the tag
     assert.ok((await api.cli.listImages()).some((i) => i.reference === IMAGE));
+  });
+
+  it('pushes to a local registry, then exports and imports the image as a tar archive', async function () {
+    this.timeout(10 * 60_000);
+    await api.cli.run(['run', '--detach', '--name', names.registry, '--publish', '127.0.0.1:15095:5000', 'docker.io/library/registry:2'], {
+      timeoutMs: 5 * 60_000,
+    });
+    await waitFor('registry to listen', () => fetch('http://127.0.0.1:15095/v2/').then((r) => (r.ok ? true : undefined), () => undefined));
+
+    // Push under a new name: the extension tags first, and uses http for the loopback registry
+    const image = (await children(api.views.images)).find((n) => n.resource.reference === IMAGE)!;
+    answerInputs(names.pushed);
+    await vscode.commands.executeCommand('appleContainer.image.push', image);
+    const tags = (await (await fetch('http://127.0.0.1:15095/v2/e2e/alpine/tags/list')).json()) as { tags: string[] };
+    assert.deepStrictEqual(tags.tags, [suffix]);
+
+    const archive = path.join(vscode.workspace.workspaceFolders![0].uri.fsPath, `${suffix}.tar`);
+    const pushedNode = (await children(api.views.images)).find((n) => n.resource.reference === names.pushed)!;
+    assert.ok(pushedNode, 'pushed tag missing locally');
+    stub('showSaveDialog', async () => vscode.Uri.file(archive));
+    await vscode.commands.executeCommand('appleContainer.image.save', pushedNode);
+    assert.ok(fs.statSync(archive).size > 0, 'archive is empty');
+
+    await api.cli.run(['image', 'delete', names.pushed]);
+    stub('showOpenDialog', async () => [vscode.Uri.file(archive)]);
+    await vscode.commands.executeCommand('appleContainer.image.load');
+    assert.ok((await children(api.views.images)).some((n) => n.resource.reference === names.pushed), 'image not imported');
+
+    await api.cli.run(['image', 'delete', names.pushed]);
+    await api.cli.run(['delete', '--force', names.registry]);
+    fs.rmSync(archive);
   });
 
   it('builds an image from the workspace Dockerfile', async function () {

@@ -71,5 +71,9 @@
   "command.mount.reveal": "在访达中显示",
   "config.composePath": "Compose 启动 / 停止使用的 `container-compose` CLI 路径。",
   "config.statsInterval": "资源用量图表的采样间隔（秒）。",
-  "command.container.edit": "编辑..."
+  "command.container.edit": "编辑...",
+  "command.image.push": "推送...",
+  "command.image.save": "导出为 tar...",
+  "command.image.load": "从 tar 导入...",
+  "config.insecureRegistries": "拉取和推送时使用 http 访问的镜像仓库，格式为 `host` 或 `host:port`。`localhost`、`127.0.0.1` 和 `[::1]` 始终使用 http。"
 }

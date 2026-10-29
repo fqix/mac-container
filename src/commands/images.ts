@@ -1,7 +1,9 @@
+import * as os from 'os';
 import * as path from 'path';
 import * as vscode from 'vscode';
 
 import { generateContainerName } from '../utils/names';
+import { archiveFileName, schemeArgs } from '../utils/registry';
 import { runCliTask } from '../ui/terminal';
 import type { ImageSummary } from '../models/types';
 import type { ImageNode } from '../views/images';
@@ -21,7 +23,14 @@ export function registerImageCommands(ctx: CommandContext): void {
     if (!reference) {
       return;
     }
-    const code = await runCliTask(cli, vscode.l10n.t('Pull {0}', reference), ['image', 'pull', '--progress', 'plain', reference]);
+    const code = await runCliTask(cli, vscode.l10n.t('Pull {0}', reference), [
+      'image',
+      'pull',
+      '--progress',
+      'plain',
+      ...schemeArgs(reference, insecureRegistries()),
+      reference,
+    ]);
     if (code === 0) {
       ctx.views.images.refresh();
     }
@@ -58,7 +67,99 @@ export function registerImageCommands(ctx: CommandContext): void {
     );
     if (code === 0) {
       ctx.views.images.refresh();
+      // Not awaited: the build is done, the offer to push stays in the notification
+      const push = vscode.l10n.t('Push');
+      void vscode.window.showInformationMessage(vscode.l10n.t('Built {0}.', tag), push).then((answer) => {
+        if (answer === push) {
+          void vscode.commands.executeCommand('appleContainer.image.push', tag);
+        }
+      });
     }
+  });
+
+  // Called from the tree with an image node, or with a reference after a build
+  register(ctx, 'appleContainer.image.push', async (target?: ImageNode | string) => {
+    const source =
+      typeof target === 'string' ? target : (target?.resource.reference ?? (await pickImage(ctx, vscode.l10n.t('Select an image to push'))));
+    if (!source) {
+      return;
+    }
+    const shown = typeof target === 'string' ? target : (target?.resource.displayName ?? source);
+    const reference = await ask({
+      title: vscode.l10n.t('Push {0}', shown),
+      prompt: vscode.l10n.t('Push as (registry/repository:tag); a different name tags the image first'),
+      value: shown,
+    });
+    if (!reference) {
+      return;
+    }
+    if (reference !== shown && reference !== source) {
+      await cli.run(['image', 'tag', source, reference]);
+      ctx.views.images.refresh();
+    }
+    const code = await runCliTask(cli, vscode.l10n.t('Push {0}', reference), [
+      'image',
+      'push',
+      '--progress',
+      'plain',
+      ...schemeArgs(reference, insecureRegistries()),
+      reference,
+    ]);
+    if (code === 0) {
+      void vscode.window.showInformationMessage(vscode.l10n.t('Pushed {0}.', reference));
+    }
+  });
+
+  register(ctx, 'appleContainer.image.save', async (node?: ImageNode, nodes?: ImageNode[]) => {
+    let references = selection(node, nodes).map((i) => i.reference);
+    if (!references.length) {
+      const picked = await pickImage(ctx, vscode.l10n.t('Select an image to export'));
+      references = picked ? [picked] : [];
+    }
+    if (!references.length) {
+      return;
+    }
+    const file = await vscode.window.showSaveDialog({
+      title: vscode.l10n.t('Export Images'),
+      defaultUri: vscode.Uri.file(path.join(os.homedir(), archiveFileName(references))),
+      filters: { [vscode.l10n.t('OCI image archive')]: ['tar'] },
+    });
+    if (!file || !isLocal(file)) {
+      return;
+    }
+    await withProgress(vscode.l10n.t('Exporting {0}...', references.join(', ')), () =>
+      cli.run(['image', 'save', '--output', file.fsPath, ...references], { timeoutMs: 60 * 60_000 }),
+    );
+    const reveal = vscode.l10n.t('Reveal in Finder');
+    void vscode.window.showInformationMessage(vscode.l10n.t('Exported to {0}.', file.fsPath), reveal).then((answer) => {
+      if (answer === reveal) {
+        void vscode.commands.executeCommand('revealFileInOS', file);
+      }
+    });
+  });
+
+  // From the view title it asks for archives; from the explorer it gets the clicked .tar file(s)
+  register(ctx, 'appleContainer.image.load', async (uri?: vscode.Uri, uris?: vscode.Uri[]) => {
+    let files = uris?.length ? uris : uri instanceof vscode.Uri ? [uri] : undefined;
+    files ??= await vscode.window.showOpenDialog({
+      title: vscode.l10n.t('Import Images'),
+      canSelectMany: true,
+      defaultUri: vscode.Uri.file(os.homedir()),
+      filters: { [vscode.l10n.t('OCI image archive')]: ['tar'] },
+    });
+    if (!files?.length || !files.every(isLocal)) {
+      return;
+    }
+    const outputs: string[] = [];
+    for (const file of files) {
+      outputs.push(
+        await withProgress(vscode.l10n.t('Importing {0}...', path.basename(file.fsPath)), () =>
+          cli.run(['image', 'load', '--input', file.fsPath], { timeoutMs: 60 * 60_000 }),
+        ),
+      );
+    }
+    showOutput(outputs.join('\n'), vscode.l10n.t('Images imported.'));
+    ctx.views.images.refresh();
   });
 
   register(ctx, 'appleContainer.image.run', async (node?: ImageNode) => {
@@ -177,11 +278,24 @@ async function pickDockerfile(): Promise<vscode.Uri | undefined> {
   return item?.uri;
 }
 
-async function pickImage(ctx: CommandContext): Promise<string | undefined> {
+async function pickImage(ctx: CommandContext, title = vscode.l10n.t('Select an image to run')): Promise<string | undefined> {
   const images: ImageSummary[] = await ctx.cli.listImages();
   const item = await vscode.window.showQuickPick(
     images.map((i) => ({ label: i.displayName, description: i.reference, reference: i.reference })),
-    { title: vscode.l10n.t('Select an image to run') },
+    { title },
   );
   return item?.reference;
+}
+
+function insecureRegistries(): string[] {
+  return vscode.workspace.getConfiguration('appleContainer').get<string[]>('insecureRegistries', []);
+}
+
+/** The CLI runs on this Mac, so archives in a remote workspace cannot be used */
+function isLocal(uri: vscode.Uri): boolean {
+  if (uri.scheme === 'file') {
+    return true;
+  }
+  void vscode.window.showErrorMessage(vscode.l10n.t('Only local files can be used. {0} is not on this Mac.', uri.toString()));
+  return false;
 }

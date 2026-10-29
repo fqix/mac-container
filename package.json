@@ -214,6 +214,24 @@
         "category": "%category%"
       },
       {
+        "command": "appleContainer.image.push",
+        "title": "%command.image.push%",
+        "category": "%category%",
+        "icon": "$(cloud-upload)"
+      },
+      {
+        "command": "appleContainer.image.save",
+        "title": "%command.image.save%",
+        "category": "%category%",
+        "icon": "$(save-as)"
+      },
+      {
+        "command": "appleContainer.image.load",
+        "title": "%command.image.load%",
+        "category": "%category%",
+        "icon": "$(package)"
+      },
+      {
         "command": "appleContainer.image.inspect",
         "title": "%command.image.inspect%",
         "category": "%category%"
@@ -523,6 +541,14 @@
         {
           "command": "appleContainer.container.edit",
           "when": "false"
+        },
+        {
+          "command": "appleContainer.image.push",
+          "when": "false"
+        },
+        {
+          "command": "appleContainer.image.save",
+          "when": "false"
         }
       ],
       "view/title": [
@@ -549,7 +575,7 @@
         {
           "command": "appleContainer.image.prune",
           "when": "view == appleContainer.images",
-          "group": "navigation@3"
+          "group": "navigation@4"
         },
         {
           "command": "appleContainer.network.create",
@@ -575,6 +601,11 @@
           "command": "appleContainer.registry.login",
           "when": "view == appleContainer.registries",
           "group": "navigation@1"
+        },
+        {
+          "command": "appleContainer.image.load",
+          "when": "view == appleContainer.images",
+          "group": "navigation@3"
         }
       ],
       "view/item/context": [
@@ -797,6 +828,16 @@
           "command": "appleContainer.container.edit",
           "when": "viewItem =~ /^container\\.(running|stopped)$/",
           "group": "1_lifecycle@9"
+        },
+        {
+          "command": "appleContainer.image.push",
+          "when": "viewItem == image",
+          "group": "4_share@1"
+        },
+        {
+          "command": "appleContainer.image.save",
+          "when": "viewItem == image",
+          "group": "4_share@2"
         }
       ],
       "explorer/context": [
@@ -814,6 +855,11 @@
           "command": "appleContainer.compose.down",
           "when": "resourceFilename =~ /^(docker-)?compose(\\..+)?\\.ya?ml$/",
           "group": "apple-container@3"
+        },
+        {
+          "command": "appleContainer.image.load",
+          "when": "resourceExtname == .tar",
+          "group": "apple-container@4"
         }
       ],
       "editor/title/context": [
@@ -866,6 +912,15 @@
           "default": "container-compose",
           "scope": "machine",
           "markdownDescription": "%config.composePath%"
+        },
+        "appleContainer.insecureRegistries": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "scope": "machine",
+          "markdownDescription": "%config.insecureRegistries%"
         },
         "appleContainer.statsInterval": {
           "type": "number",

@@ -71,5 +71,9 @@
   "command.mount.reveal": "Reveal in Finder",
   "config.composePath": "Path to the `container-compose` CLI used by Compose Up / Down.",
   "config.statsInterval": "Sampling interval (seconds) of the stats chart.",
-  "command.container.edit": "Edit..."
+  "command.container.edit": "Edit...",
+  "command.image.push": "Push...",
+  "command.image.save": "Export to tar...",
+  "command.image.load": "Import from tar...",
+  "config.insecureRegistries": "Registries reached over plain http when pulling or pushing, as `host` or `host:port`. `localhost`, `127.0.0.1` and `[::1]` always are."
 }
