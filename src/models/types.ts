@@ -39,6 +39,8 @@ export interface ContainerSummary {
   platform?: string;
   /** Process user from the image USER or --user: a name, uid or name:group */
   user?: string;
+  /** Working directory of the init process */
+  workdir?: string;
 }
 
 export interface ImageSummary {

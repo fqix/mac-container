@@ -75,5 +75,8 @@
   "command.image.push": "Push...",
   "command.image.save": "Export to tar...",
   "command.image.load": "Import from tar...",
-  "config.insecureRegistries": "Registries reached over plain http when pulling or pushing, as `host` or `host:port`. `localhost`, `127.0.0.1` and `[::1]` always are."
+  "config.insecureRegistries": "Registries reached over plain http when pulling or pushing, as `host` or `host:port`. `localhost`, `127.0.0.1` and `[::1]` always are.",
+  "command.container.upload": "Upload Files...",
+  "command.container.download": "Download...",
+  "command.file.uploadToContainer": "Upload to Container..."
 }

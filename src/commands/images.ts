@@ -7,7 +7,7 @@ import { archiveFileName, schemeArgs } from '../utils/registry';
 import { runCliTask } from '../ui/terminal';
 import type { ImageSummary } from '../models/types';
 import type { ImageNode } from '../views/images';
-import { ask, CommandContext, confirm, register, selection, showOutput, withProgress } from './common';
+import { ask, CommandContext, confirm, isLocal, register, selection, showOutput, withProgress } from './common';
 
 const DOCKERFILE_GLOB = '**/{Dockerfile,Containerfile,*.Dockerfile,*.Containerfile,Dockerfile.*,Containerfile.*}';
 
@@ -291,11 +291,3 @@ function insecureRegistries(): string[] {
   return vscode.workspace.getConfiguration('appleContainer').get<string[]>('insecureRegistries', []);
 }
 
-/** The CLI runs on this Mac, so archives in a remote workspace cannot be used */
-function isLocal(uri: vscode.Uri): boolean {
-  if (uri.scheme === 'file') {
-    return true;
-  }
-  void vscode.window.showErrorMessage(vscode.l10n.t('Only local files can be used. {0} is not on this Mac.', uri.toString()));
-  return false;
-}

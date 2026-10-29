@@ -5,6 +5,7 @@ import type { CommandContext } from './commands/common';
 import { register } from './commands/common';
 import { registerComposeCommands } from './commands/compose';
 import { registerContainerCommands } from './commands/containers';
+import { registerFileCommands } from './commands/files';
 import { registerRemoteSshCommands } from './commands/remoteSsh';
 import { registerImageCommands } from './commands/images';
 import { registerNetworkCommands } from './commands/networks';
@@ -80,6 +81,7 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi | undef
   register(ctx, 'appleContainer.refresh', refreshAll);
   registerContainerCommands(ctx);
   registerRemoteSshCommands(ctx);
+  registerFileCommands(ctx);
   registerComposeCommands(ctx);
   registerPortAndMountCommands(ctx);
   registerImageCommands(ctx);

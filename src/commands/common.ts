@@ -72,3 +72,12 @@ export function showOutput(output: string, fallback: string): void {
   const text = output.trim();
   void vscode.window.showInformationMessage(text ? text.split('\n').slice(-3).join(' ') : fallback);
 }
+
+/** The CLI runs on this Mac (extensionKind ui), so files of a remote workspace cannot be used; reports it and returns false */
+export function isLocal(uri: vscode.Uri): boolean {
+  if (uri.scheme === 'file') {
+    return true;
+  }
+  void vscode.window.showErrorMessage(vscode.l10n.t('Only local files can be used. {0} is not on this Mac.', uri.toString()));
+  return false;
+}

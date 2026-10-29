@@ -17,6 +17,7 @@ Manage [Apple `container`](https://github.com/apple/container) — native Linux 
 - **Attach Shell** (`container exec -it`), **View Logs** (`logs -f`) and **View Boot Logs** in the integrated terminal.
 - Expand a container to see its **Volumes** and **Ports** — each section is shown only when it has entries.
   Open a TCP port in the browser, copy its URL, or reveal a bind-mounted folder in Finder.
+- **Upload Files...** copies local files and folders into a running container, **Download...** copies a file or folder out of it (a name that exists locally gets a ` (1)` suffix instead of being overwritten). Container paths are picked by browsing the container, or typed as an absolute path. Files in the explorer have **Upload to Container...**.
 - **Open in Remote-SSH** opens a running container as a remote workspace in VS Code or Cursor through the Remote - SSH extension (see [below](#open-a-container-over-remote-ssh)).
 - **Show Stats** opens live charts for CPU, memory, network I/O and block I/O.
 

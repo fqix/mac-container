@@ -159,6 +159,23 @@
         "icon": "$(terminal)"
       },
       {
+        "command": "appleContainer.container.upload",
+        "title": "%command.container.upload%",
+        "category": "%category%",
+        "icon": "$(cloud-upload)"
+      },
+      {
+        "command": "appleContainer.container.download",
+        "title": "%command.container.download%",
+        "category": "%category%",
+        "icon": "$(cloud-download)"
+      },
+      {
+        "command": "appleContainer.file.uploadToContainer",
+        "title": "%command.file.uploadToContainer%",
+        "category": "%category%"
+      },
+      {
         "command": "appleContainer.container.openRemoteSsh",
         "title": "%command.container.openRemoteSsh%",
         "category": "%category%",
@@ -549,6 +566,18 @@
         {
           "command": "appleContainer.image.save",
           "when": "false"
+        },
+        {
+          "command": "appleContainer.container.upload",
+          "when": "false"
+        },
+        {
+          "command": "appleContainer.container.download",
+          "when": "false"
+        },
+        {
+          "command": "appleContainer.file.uploadToContainer",
+          "when": "false"
         }
       ],
       "view/title": [
@@ -838,6 +867,16 @@
           "command": "appleContainer.image.save",
           "when": "viewItem == image",
           "group": "4_share@2"
+        },
+        {
+          "command": "appleContainer.container.upload",
+          "when": "viewItem =~ /^container\\.running/",
+          "group": "2_files@1"
+        },
+        {
+          "command": "appleContainer.container.download",
+          "when": "viewItem =~ /^container\\.running/",
+          "group": "2_files@2"
         }
       ],
       "explorer/context": [
@@ -860,6 +899,11 @@
           "command": "appleContainer.image.load",
           "when": "resourceExtname == .tar",
           "group": "apple-container@4"
+        },
+        {
+          "command": "appleContainer.file.uploadToContainer",
+          "when": "resourceScheme == file",
+          "group": "apple-container@5"
         }
       ],
       "editor/title/context": [

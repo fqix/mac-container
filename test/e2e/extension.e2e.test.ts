@@ -32,6 +32,7 @@ const names = {
   ssh: `e2e-ssh-${suffix}`,
   sshBare: `e2e-sshbare-${suffix}`,
   registry: `e2e-registry-${suffix}`,
+  files: `e2e-files-${suffix}`,
   pushed: `localhost:15095/e2e/alpine:${suffix}`,
 };
 
@@ -75,6 +76,49 @@ function captureOpenFolder(): vscode.Uri[] {
     commands.executeCommand = original;
   });
   return opened;
+}
+
+/**
+ * Replaces createQuickPick with a scripted fake: each step waits until an item whose label contains the text shows up,
+ * then accepts it. Returns a promise that resolves once all steps ran.
+ */
+function scriptQuickPick(...steps: string[]): Promise<void> {
+  const target = vscode.window as any;
+  const original = target.createQuickPick;
+  let finished!: () => void;
+  const done = new Promise<void>((resolve) => (finished = resolve));
+  target.createQuickPick = () => {
+    const accept = new vscode.EventEmitter<void>();
+    const hide = new vscode.EventEmitter<void>();
+    const qp: any = {
+      items: [],
+      selectedItems: [],
+      value: '',
+      busy: false,
+      onDidAccept: accept.event,
+      onDidHide: hide.event,
+      show: () => undefined,
+      dispose: () => undefined,
+      hide: () => hide.fire(),
+    };
+    void (async () => {
+      for (const step of steps) {
+        const item = await waitFor(`quick pick item ${step}`, async () =>
+          qp.busy ? undefined : qp.items.find((i: vscode.QuickPickItem) => i.label.includes(step)),
+        );
+        qp.selectedItems = [item];
+        accept.fire();
+        // Let the picker start loading the next directory before looking again
+        await new Promise((r) => setTimeout(r, 50));
+      }
+      finished();
+    })();
+    return qp;
+  };
+  restores.push(() => {
+    target.createQuickPick = original;
+  });
+  return done;
 }
 
 /** Answers input boxes in order; fails the test if more are opened than expected */
@@ -175,7 +219,7 @@ describe('Apple Container e2e', function () {
     // Best-effort cleanup in case a test failed half way
     const ignore = () => undefined;
     await api?.cli
-      .run(['delete', '--force', ...generatedNames, names.ssh, names.sshBare, names.container, `${names.container}-run`, `${names.project}-web`, `${names.project}-worker`, names.edit])
+      .run(['delete', '--force', ...generatedNames, names.files, names.ssh, names.sshBare, names.container, `${names.container}-run`, `${names.project}-web`, `${names.project}-worker`, names.edit])
       .catch(ignore);
     await api?.cli.run(['volume', 'delete', names.editVolume]).catch(ignore);
     const snapshots = (await api?.cli.listImages().catch(() => [])) ?? [];
@@ -235,6 +279,45 @@ describe('Apple Container e2e', function () {
     assert.strictEqual(container.state, 'running', 'the script keeps the container running');
     assert.strictEqual((await api.cli.run(['exec', container.id, 'cat', '/tmp/out'])).trim(), 'scripted');
     await api.cli.run(['delete', '--force', container.id]);
+  });
+
+  it('uploads and downloads files and folders', async () => {
+    const workspace = vscode.workspace.workspaceFolders![0].uri.fsPath;
+    const local = fs.mkdtempSync(path.join(workspace, 'files-'));
+    fs.writeFileSync(path.join(local, 'note.txt'), 'hello');
+    fs.mkdirSync(path.join(local, 'dir', 'sub'), { recursive: true });
+    fs.writeFileSync(path.join(local, 'dir', 'sub', 'deep.txt'), 'deep');
+    await api.cli.run(['run', '--detach', '--name', names.files, '--workdir', '/srv', IMAGE, 'sleep', '3600'], { timeoutMs: 120_000 });
+    const node = await waitFor('files container', async () =>
+      (await children(api.views.containers)).find((n) => n.resource.id === names.files && n.contextValue === 'container.running'),
+    );
+    assert.strictEqual(node.resource.workdir, '/srv');
+
+    // Upload a file and a folder into a directory that does not exist yet
+    await vscode.commands.executeCommand('appleContainer.container.upload', node, {
+      sources: [vscode.Uri.file(path.join(local, 'note.txt')), vscode.Uri.file(path.join(local, 'dir'))],
+      destination: '/srv/in',
+    });
+    const exec = (...args: string[]) => api.cli.run(['exec', names.files, ...args]).then((o) => o.trim());
+    assert.strictEqual(await exec('cat', '/srv/in/note.txt'), 'hello');
+    assert.strictEqual(await exec('cat', '/srv/in/dir/sub/deep.txt'), 'deep');
+
+    // Download the folder twice: the second copy must not overwrite the first
+    const out = vscode.Uri.file(fs.mkdtempSync(path.join(workspace, 'out-')));
+    await vscode.commands.executeCommand('appleContainer.container.download', node, { source: '/srv/in/dir', targetDirectory: out });
+    await vscode.commands.executeCommand('appleContainer.container.download', node, { source: '/srv/in/dir', targetDirectory: out });
+    assert.strictEqual(fs.readFileSync(path.join(out.fsPath, 'dir', 'sub', 'deep.txt'), 'utf8'), 'deep');
+    assert.strictEqual(fs.readFileSync(path.join(out.fsPath, 'dir (1)', 'sub', 'deep.txt'), 'utf8'), 'deep');
+
+    // Browse the container: from the remembered /srv/in go up twice to /, into etc, pick the hostname file
+    const browsed = scriptQuickPick('..', '..', 'etc', 'hostname');
+    await vscode.commands.executeCommand('appleContainer.container.download', node, { targetDirectory: out });
+    await browsed;
+    assert.strictEqual(fs.readFileSync(path.join(out.fsPath, 'hostname'), 'utf8').trim(), names.files);
+
+    await api.cli.run(['delete', '--force', names.files]);
+    fs.rmSync(local, { recursive: true, force: true });
+    fs.rmSync(out.fsPath, { recursive: true, force: true });
   });
 
   it('stops, starts, inspects and deletes a container', async () => {
