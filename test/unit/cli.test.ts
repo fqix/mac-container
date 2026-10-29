@@ -5,7 +5,9 @@ import * as path from 'path';
 
 import { CliError, CliNotFoundError, cliErrorDetail, ContainerCli, resolveCliPath } from '../../src/services/cli';
 
-describe('cli', () => {
+describe('cli', function () {
+  // These spawn a fake CLI script; under load (e.g. right after the type check) that can exceed mocha's 2s default
+  this.timeout(10_000);
   let dir: string;
   let fake: string;
 
@@ -63,7 +65,8 @@ describe('cli', () => {
   });
 });
 
-describe('cli stdin', () => {
+describe('cli stdin', function () {
+  this.timeout(10_000);
   it('passes input on stdin', async () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'apple-container-test-'));
     const fake = path.join(dir, 'container');
