@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.3.0
+
+- Open folders in dev containers from `devcontainer.json`: image or Dockerfile builds, workspace mount, mounts, `containerEnv` / `remoteEnv`, users, ports, CPUs and memory, `runArgs` and all lifecycle commands; containers are reused and rebuilt when the configuration changes
+- Run and edit containers in a form with ports, mounts, environment variables (including `.env` import), networks, CPUs, memory, user and working directory
+- Upload files and folders to running containers and download them, browsing the container filesystem
+- Push images, and export or import them as OCI tar archives; loopback registries and `appleContainer.insecureRegistries` are reached over http
+- Add the managed Remote-SSH hosts to the user's SSH config automatically
+- Fix SSH sessions missing the container's environment variables (image `ENV`, `--env`)
+
 ## 0.2.0
 
 - Open running containers as Remote-SSH workspaces through `container exec`, with automatic OpenSSH server installation and the container's user or an `appleContainer.sshUser` override
