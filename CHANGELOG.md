@@ -4,6 +4,7 @@
 
 - Apply `hostRequirements.cpus` / `memory` to dev containers again; the Dev Containers CLI only checks them
 - Give dev containers 4 GB of memory by default instead of the 1 GB Apple container default, configurable with `appleContainer.devcontainer.memory`
+- Fix `Error fetching image details: No manifest found` when a dev container's base image is not stored locally: the Dev Containers CLI looked the image up for the macOS host platform and then pulled the whole image just to read its metadata; it now looks up `linux/arm64`
 
 ## 0.4.0
 

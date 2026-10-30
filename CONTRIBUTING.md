@@ -58,6 +58,8 @@ DOCKER_SHIM_LOG=/tmp/docker-shim.log node dist/devcontainer-cli/run.js up --work
 
 `DOCKER_SHIM_LOG` records every docker call and the `container` commands it became. The shim relies on the fields the CLI reads from `docker inspect`, so upgrading `@devcontainers/cli` needs the dev container e2e tests to pass again.
 
+`esbuild.mjs` also patches the copied CLI bundle so its registry lookups target `linux/arm64` instead of the host platform (`darwin`). The patch matches minified code; the build fails if it no longer matches exactly once, which is expected after an upgrade of `@devcontainers/cli`.
+
 ## README animations
 
 `npm run demo` starts VS Code with a remote debugging port, plays scripted scenes against demo containers (removed afterwards) and captures the window over the Chrome DevTools Protocol into `docs/media/*.gif`. `DEMO_SCENES=stats npm run demo` records a single scene.

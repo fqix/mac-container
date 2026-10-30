@@ -105,7 +105,8 @@ async function listContainers(): Promise<Record<string, any>[]> {
   return stdout.trim() ? JSON.parse(stdout) : [];
 }
 
-const imageArch = process.arch === 'x64' ? 'amd64' : process.arch;
+/** Apple container runs linux/arm64 unless told otherwise, also when this process runs under Rosetta */
+const imageArch = 'arm64';
 
 async function inspectOne(id: string, type: string | undefined): Promise<Record<string, any> | undefined> {
   if (type !== 'image') {
