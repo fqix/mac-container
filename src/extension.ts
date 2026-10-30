@@ -15,6 +15,7 @@ import { registerRegistryCommands } from './commands/registries';
 import { registerSystemCommands } from './commands/system';
 import { registerVolumeCommands } from './commands/volumes';
 import { DOCUMENT_SCHEME, ReadonlyDocumentProvider } from './ui/documents';
+import { BuildFormPanel } from './panels/buildFormPanel';
 import { ContainerFormPanel } from './panels/containerFormPanel';
 import { ServiceMonitor } from './services/state';
 import { StatsPanel } from './panels/statsPanel';
@@ -69,6 +70,7 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi | undef
   context.subscriptions.push(
     { dispose: () => StatsPanel.disposeAll() },
     { dispose: () => ContainerFormPanel.disposeAll() },
+    { dispose: () => BuildFormPanel.disposeAll() },
     monitor,
     documents,
     vscode.workspace.registerTextDocumentContentProvider(DOCUMENT_SCHEME, documents),

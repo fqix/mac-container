@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Build images from a form with build arguments, secrets, labels, target stage, platforms (including multi-platform images), no cache, pull and SSH agent forwarding; the options are remembered per Dockerfile
+
 ## 0.4.1
 
 - Apply `hostRequirements.cpus` / `memory` to dev containers again; the Dev Containers CLI only checks them

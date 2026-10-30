@@ -75,6 +75,7 @@
 ### Images
 
 - Pull, build from a `Dockerfile` / `Containerfile` (also from the explorer context menu), tag, inspect, delete, prune.
+- **Build Image...** opens a form for the tag, build context, target stage (picked from the `FROM ... AS` stages), platforms (`linux/amd64` is built with Rosetta; several platforms make a multi-platform image), build arguments, secrets (`id=KEY[,env=VAR|,src=/path]`, for `RUN --mount=type=secret`), labels, no cache, pull and SSH agent forwarding. The options are remembered per Dockerfile.
 - **Run...** opens the same form as **Edit...**, plus a name (a Docker-style random name such as `brave_hopper` when left empty) and an optional command or shell script (run with `/bin/sh -c`).
 - **Push...** pushes an image (a new name tags it first; a finished build also offers to push).
 - **Export to tar...** saves one or more images as an OCI archive; **Import from tar...** loads archives, also from the explorer context menu of a `.tar` file.

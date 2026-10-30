@@ -852,11 +852,26 @@ describe('Apple Container e2e', function () {
       this.skip();
     }
     this.timeout(15 * 60_000);
-    const dockerfile = vscode.Uri.joinPath(vscode.workspace.workspaceFolders![0].uri, 'Dockerfile');
-    answerInputs(names.build);
-    await vscode.commands.executeCommand('appleContainer.image.build', dockerfile);
+    const workspace = vscode.workspace.workspaceFolders![0].uri;
+    const dockerfile = vscode.Uri.joinPath(workspace, 'Dockerfile');
+    // runE2E writes the secret next to the workspace folder
+    const token = path.join(path.dirname(workspace.fsPath), 'token');
+    await vscode.commands.executeCommand('appleContainer.image.build', dockerfile, {
+      tag: names.build,
+      target: 'base',
+      buildArgs: ['GREETING=from-form'],
+      secrets: [`id=token,src=${token}`],
+      labels: ['e2e=build'],
+    });
     const built = (await api.cli.listImages()).find((i) => i.reference.endsWith(names.build));
     assert.ok(built, 'built image not found');
+    const [inspected] = JSON.parse(await api.cli.inspect('image', [names.build]));
+    assert.match(JSON.stringify(inspected), /"e2e":"build"/, 'label not set');
+    const cat = (file: string) =>
+      api.cli.run(['run', '--rm', names.build, 'sh', '-c', `cat ${file} 2>/dev/null || echo missing`], { timeoutMs: 120_000 }).then((o) => o.trim());
+    assert.strictEqual(await cat('/greeting.txt'), 'from-form');
+    assert.strictEqual(await cat('/secret.txt'), 'e2e-secret');
+    assert.strictEqual(await cat('/final.txt'), 'missing', 'built past the target stage');
   });
 
   it('shows registry logins without errors', async () => {

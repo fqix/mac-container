@@ -2,7 +2,9 @@ import * as os from 'os';
 import * as path from 'path';
 import * as vscode from 'vscode';
 
+import { BuildFormPanel, defaultOptionsFor } from '../panels/buildFormPanel';
 import { ContainerFormPanel } from '../panels/containerFormPanel';
+import { buildImageArgs, type BuildOptions } from '../services/build';
 import { buildRunArgs, EMPTY_SETTINGS, type RunForm } from '../services/containerSettings';
 import { generateContainerName } from '../utils/names';
 import { archiveFileName, schemeArgs } from '../utils/registry';
@@ -38,7 +40,8 @@ export function registerImageCommands(ctx: CommandContext): void {
     }
   });
 
-  register(ctx, 'appleContainer.image.build', async (uri?: vscode.Uri) => {
+  // Opens the build form; a second argument with options builds right away without the form (used by tests)
+  register(ctx, 'appleContainer.image.build', async (uri?: vscode.Uri, direct?: Partial<BuildOptions>) => {
     const file = uri instanceof vscode.Uri ? uri : await pickDockerfile();
     if (!file) {
       return;
@@ -50,24 +53,7 @@ export function registerImageCommands(ctx: CommandContext): void {
       );
       return;
     }
-    const folder = vscode.workspace.getWorkspaceFolder(file);
-    const defaultTag = `${path.basename(folder?.uri.fsPath ?? path.dirname(file.fsPath)).toLowerCase()}:latest`;
-    const tag = await ask({
-      title: vscode.l10n.t('Build Image'),
-      prompt: vscode.l10n.t('Image name and tag'),
-      value: defaultTag,
-    });
-    if (!tag) {
-      return;
-    }
-    const contextDir = folder?.uri.fsPath ?? path.dirname(file.fsPath);
-    const code = await runCliTask(
-      cli,
-      vscode.l10n.t('Build {0}', tag),
-      ['build', '--progress', 'plain', '--file', file.fsPath, '--tag', tag, contextDir],
-      contextDir,
-    );
-    if (code === 0) {
+    const onBuilt = (tag: string) => {
       ctx.views.images.refresh();
       // Not awaited: the build is done, the offer to push stays in the notification
       const push = vscode.l10n.t('Push');
@@ -76,6 +62,15 @@ export function registerImageCommands(ctx: CommandContext): void {
           void vscode.commands.executeCommand('appleContainer.image.push', tag);
         }
       });
+    };
+    if (!direct) {
+      BuildFormPanel.show(ctx.extension, cli, file, onBuilt);
+      return;
+    }
+    const options = { ...defaultOptionsFor(file), ...direct };
+    const code = await runCliTask(cli, vscode.l10n.t('Build {0}', options.tag), buildImageArgs(file.fsPath, options), options.context);
+    if (code === 0) {
+      onBuilt(options.tag);
     }
   });
 

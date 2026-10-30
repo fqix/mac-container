@@ -13,8 +13,19 @@ async function main(): Promise<void> {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'apple-container-e2e-'));
   const workspace = path.join(tmp, 'workspace');
   fs.mkdirSync(workspace);
-  // Minimal build context for the image build test
-  fs.writeFileSync(path.join(workspace, 'Dockerfile'), 'FROM docker.io/library/alpine:latest\nRUN echo e2e > /e2e.txt\n');
+  // Build context for the image build test: a target stage, a build argument and a secret
+  fs.writeFileSync(
+    path.join(workspace, 'Dockerfile'),
+    [
+      'FROM docker.io/library/alpine:latest AS base',
+      'ARG GREETING=default',
+      'RUN --mount=type=secret,id=token cp /run/secrets/token /secret.txt && echo "$GREETING" > /greeting.txt',
+      'FROM base AS final',
+      'RUN echo final > /final.txt',
+      '',
+    ].join('\n'),
+  );
+  fs.writeFileSync(path.join(tmp, 'token'), 'e2e-secret');
   // Compose project for the compose up / down test; the unique name keeps it apart from real projects
   fs.writeFileSync(
     path.join(workspace, 'compose.yml'),
