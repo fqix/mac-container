@@ -3,6 +3,7 @@ import * as vscode from 'vscode';
 import { ContainerCli } from './services/cli';
 import type { CommandContext } from './commands/common';
 import { register } from './commands/common';
+import { registerBuilderCommands } from './commands/builder';
 import { registerComposeCommands } from './commands/compose';
 import { registerContainerCommands } from './commands/containers';
 import { registerDevContainerCommands } from './commands/devcontainer';
@@ -22,6 +23,7 @@ import { StatsPanel } from './panels/statsPanel';
 import { ServiceStatusBar } from './ui/statusBar';
 import type { ResourceProvider } from './views/base';
 import { ContainersProvider } from './views/containers';
+import { BuilderProvider } from './views/builder';
 import { ImagesProvider } from './views/images';
 import { NetworksProvider } from './views/networks';
 import { RegistriesProvider } from './views/registries';
@@ -49,6 +51,7 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi | undef
   const views = {
     containers: new ContainersProvider(monitor, cli),
     images: new ImagesProvider(monitor, cli),
+    builder: new BuilderProvider(monitor, cli),
     networks: new NetworksProvider(monitor, cli),
     volumes: new VolumesProvider(monitor, cli),
     registries: new RegistriesProvider(monitor, cli),
@@ -89,6 +92,7 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi | undef
   registerComposeCommands(ctx);
   registerPortAndMountCommands(ctx);
   registerImageCommands(ctx);
+  registerBuilderCommands(ctx);
   registerNetworkCommands(ctx);
   registerVolumeCommands(ctx);
   registerRegistryCommands(ctx);

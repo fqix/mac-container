@@ -42,6 +42,8 @@ export interface ContainerSummary {
   /** Working directory of the init process */
   workdir?: string;
   labels: Record<string, string>;
+  /** The BuildKit builder started by `container build` / `container builder start`, shown in the Builder view */
+  builder: boolean;
 }
 
 export interface ImageSummary {

@@ -75,7 +75,7 @@ export async function openContainerOverSsh(
       const result = await prepareContainer(cli, id, user, publicKey);
 
       const saved = { ...state.get<Record<string, SshHost>>(HOSTS_KEY, {}), [id]: { id, sshd: result.sshd, user: result.user } };
-      const containers = await cli.listContainers();
+      const containers = (await cli.listContainers()).filter((c) => !c.builder);
       const known = new Set(containers.map((c) => c.id));
       for (const key of Object.keys(saved)) {
         if (!known.has(key)) {

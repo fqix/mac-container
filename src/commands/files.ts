@@ -75,7 +75,7 @@ export function registerFileCommands(ctx: CommandContext): void {
   // Explorer context menu: the clicked file(s), then a running container to upload to
   register(ctx, 'appleContainer.file.uploadToContainer', async (uri?: vscode.Uri, uris?: vscode.Uri[]) => {
     const sources = uris?.length ? uris : uri ? [uri] : undefined;
-    const running = (await cli.listContainers()).filter((c) => c.state === 'running');
+    const running = (await cli.listContainers()).filter((c) => c.state === 'running' && !c.builder);
     if (!running.length) {
       void vscode.window.showWarningMessage(vscode.l10n.t('No running containers.'));
       return;

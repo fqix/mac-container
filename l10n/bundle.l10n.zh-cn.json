@@ -290,5 +290,11 @@
   "expected id=KEY at the start, without = in KEY": "应以 id=KEY 开头，KEY 中不能有 =",
   "expected env=VAR or src=/path after the id": "id 之后应为 env=VAR 或 src=/path",
   "the environment variable {0} is not set for VS Code": "VS Code 的环境中没有设置环境变量 {0}",
-  "SSH_AUTH_SOCK is not set for VS Code, so there is no agent to forward": "VS Code 的环境中没有设置 SSH_AUTH_SOCK，没有可转发的 agent"
+  "SSH_AUTH_SOCK is not set for VS Code, so there is no agent to forward": "VS Code 的环境中没有设置 SSH_AUTH_SOCK，没有可转发的 agent",
+  "Start Builder": "启动构建器",
+  "Stopping the builder...": "正在停止构建器...",
+  "Delete the builder?": "删除构建器？",
+  "Its build cache is removed. The next build creates the builder again.": "构建缓存会被删除，下次构建时会重新创建构建器。",
+  "Deleting the builder...": "正在删除构建器...",
+  "Builds use the CPUs and memory of the build.cpus / build.memory system properties.": "构建使用系统属性 build.cpus / build.memory 指定的 CPU 和内存。"
 }

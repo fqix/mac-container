@@ -5,6 +5,7 @@ import type { ReadonlyDocumentProvider } from '../ui/documents';
 import { showError } from '../utils/i18n';
 import type { ServiceMonitor } from '../services/state';
 import type { ResourceNode } from '../views/base';
+import type { BuilderProvider } from '../views/builder';
 import type { ContainersProvider } from '../views/containers';
 import type { ImagesProvider } from '../views/images';
 import type { NetworksProvider } from '../views/networks';
@@ -19,6 +20,7 @@ export interface CommandContext {
   views: {
     containers: ContainersProvider;
     images: ImagesProvider;
+    builder: BuilderProvider;
     networks: NetworksProvider;
     volumes: VolumesProvider;
     registries: RegistriesProvider;

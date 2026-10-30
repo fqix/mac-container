@@ -81,6 +81,14 @@
 - **Export to tar...** saves one or more images as an OCI archive; **Import from tar...** loads archives, also from the explorer context menu of a `.tar` file.
 - Loopback registries such as `localhost:5000` are reached over http like Docker does; add other plain-http registries to `appleContainer.insecureRegistries`.
 
+### Builder
+
+Image builds run in a BuildKit container (`buildkit`) that `container build` starts on demand. It is shown in its own **Builder** view instead of among the containers.
+
+- **Start**, **Stop** and **Restart Builder**, **View Logs** and **Inspect**.
+- **Delete Builder...** resets a stuck builder and frees its build cache; the next build creates it again.
+- The builder gets the CPUs and memory of the `build.cpus` / `build.memory` system properties (`container system property list`). The CLI recreates it whenever other values are asked for, so they are not set here.
+
 ### Networks, volumes and registries
 
 - Networks: create with an optional subnet, inspect, delete, prune. The built-in `default` network is protected.

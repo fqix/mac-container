@@ -55,6 +55,8 @@ export function registerImageCommands(ctx: CommandContext): void {
     }
     const onBuilt = (tag: string) => {
       ctx.views.images.refresh();
+      // The build started the builder if it was not running
+      ctx.views.builder.refresh();
       // Not awaited: the build is done, the offer to push stays in the notification
       const push = vscode.l10n.t('Push');
       void vscode.window.showInformationMessage(vscode.l10n.t('Built {0}.', tag), push).then((answer) => {

@@ -37,6 +37,16 @@ describe('parse', () => {
 
     const ports = items.find((c) => c.id === 'ccdev-ports')!;
     assert.deepStrictEqual(ports.ports, ['18080->80/tcp', '127.0.0.1:18443->443/tcp']);
+    assert.ok(items.every((c) => !c.builder));
+  });
+
+  it('flags the BuildKit builder container by its role label', () => {
+    const [builder, other] = parseContainers([
+      { id: 'buildkit', configuration: { labels: { 'com.apple.container.plugin': 'builder', 'com.apple.container.resource.role': 'builder' } } },
+      { id: 'web', configuration: { labels: { 'com.apple.container.resource.role': 'builtin' } } },
+    ]);
+    assert.strictEqual(builder.builder, true);
+    assert.strictEqual(other.builder, false);
   });
 
   it('parses images', () => {

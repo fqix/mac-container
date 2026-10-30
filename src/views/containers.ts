@@ -88,7 +88,8 @@ export class ContainersProvider extends ResourceProvider<ContainerSummary> {
   }
 
   protected async fetch(): Promise<ContainerSummary[]> {
-    const items = await this.cli.listContainers();
+    // The builder has its own view
+    const items = (await this.cli.listContainers()).filter((c) => !c.builder);
     // Running containers first, then by ID
     return items.sort((a, b) => Number(b.state === 'running') - Number(a.state === 'running') || a.id.localeCompare(b.id));
   }

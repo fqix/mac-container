@@ -81,6 +81,14 @@
 - **导出为 tar...** 把一个或多个镜像保存为 OCI 归档；**从 tar 导入...** 加载归档，也可在资源管理器中右键 `.tar` 文件。
 - 和 Docker 一样，本机回环地址的仓库（如 `localhost:5000`）自动走 http；其他 http 仓库加到 `appleContainer.insecureRegistries`。
 
+### 构建器
+
+镜像构建在一个 BuildKit 容器（`buildkit`）中进行，由 `container build` 按需启动。它显示在单独的 **构建器** 视图中，不再出现在容器列表里。
+
+- **启动**、**停止**、**重启构建器**，**查看日志** 和 **查看详情**。
+- **删除构建器...** 可以重置卡住的构建器并释放构建缓存，下次构建时会重新创建。
+- 构建器使用系统属性 `build.cpus` / `build.memory` 指定的 CPU 和内存（见 `container system property list`）。传入其他值时 CLI 会重建构建器，所以这里不提供设置。
+
 ### 网络、卷和镜像仓库
 
 - 网络：创建（可指定子网）、查看详情、删除、清理；内置的 `default` 网络不可删除。

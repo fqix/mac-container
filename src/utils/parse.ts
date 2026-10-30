@@ -39,6 +39,8 @@ export function shortImageName(reference: string): string {
 
 export const COMPOSE_PROJECT_LABEL = 'com.docker.compose.project';
 export const COMPOSE_SERVICE_LABEL = 'com.docker.compose.service';
+/** Set by Apple container on resources it manages: builtin for the default network, builder for the BuildKit container */
+const RESOURCE_ROLE_LABEL = 'com.apple.container.resource.role';
 
 function parsePort(port: Json): PortMapping {
   return {
@@ -106,6 +108,7 @@ export function parseContainers(data: unknown): ContainerSummary[] {
       platform: platform ? [platform.os, platform.architecture, platform.variant].filter(Boolean).join('/') : undefined,
       user: parseUser(init.user),
       labels: { ...labels },
+      builder: labels[RESOURCE_ROLE_LABEL] === 'builder',
       workdir: typeof init.workingDirectory === 'string' && init.workingDirectory ? init.workingDirectory : undefined,
     };
   });
@@ -140,7 +143,7 @@ export function parseNetworks(data: unknown): NetworkSummary[] {
       ipv4Subnet: status.ipv4Subnet,
       ipv4Gateway: status.ipv4Gateway,
       ipv6Subnet: status.ipv6Subnet,
-      builtin: config.labels?.['com.apple.container.resource.role'] === 'builtin',
+      builtin: config.labels?.[RESOURCE_ROLE_LABEL] === 'builtin',
     };
   });
 }
