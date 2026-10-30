@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.4.1
 
 - Apply `hostRequirements.cpus` / `memory` to dev containers again; the Dev Containers CLI only checks them
 - Give dev containers 4 GB of memory by default instead of the 1 GB Apple container default, configurable with `appleContainer.devcontainer.memory`
