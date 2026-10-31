@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.5.0
 
 - Build images from a form with build arguments, secrets, labels, target stage, platforms (including multi-platform images), no cache, pull and SSH agent forwarding; the options are remembered per Dockerfile
 - Show the BuildKit builder in its own Builder view with start, stop, restart, logs and delete, instead of among the containers
