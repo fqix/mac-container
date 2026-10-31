@@ -53,6 +53,16 @@ export function hostAlias(containerId: string): string {
   return `apple-container.${containerId.toLowerCase()}`;
 }
 
+/** The container whose Remote-SSH host a window is connected to, from the authority of its workspace folder */
+export function containerOfAuthority(authority: string, containerIds: string[]): string | undefined {
+  const prefix = 'ssh-remote+';
+  if (!authority.toLowerCase().startsWith(prefix)) {
+    return undefined;
+  }
+  const host = authority.slice(prefix.length).toLowerCase();
+  return containerIds.find((id) => hostAlias(id) === host);
+}
+
 export interface SshHost {
   id: string;
   sshd: string;

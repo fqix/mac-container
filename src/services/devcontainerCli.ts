@@ -98,6 +98,32 @@ export interface ResolvedConfiguration {
   remoteUser?: string;
   containerUser?: string;
   remoteEnv: Record<string, string>;
+  /** customizations.vscode.extensions of the configuration and its features, lowercase */
+  extensions: string[];
+}
+
+/**
+ * Extension ids to install, from customizations.vscode: one object per source in the merged configuration
+ * (features first, devcontainer.json last), or a single object. A later "-publisher.name" removes an id, as in Dev Containers.
+ */
+export function vscodeExtensions(vscodeCustomizations: unknown): string[] {
+  const sources = Array.isArray(vscodeCustomizations) ? vscodeCustomizations : [vscodeCustomizations];
+  const ids = new Set<string>();
+  for (const source of sources) {
+    const extensions: unknown = (source as Record<string, unknown> | undefined)?.extensions;
+    for (const entry of Array.isArray(extensions) ? extensions : []) {
+      if (typeof entry !== 'string' || !entry.trim()) {
+        continue;
+      }
+      const id = entry.trim().toLowerCase();
+      if (id.startsWith('-')) {
+        ids.delete(id.slice(1));
+      } else {
+        ids.add(id);
+      }
+    }
+  }
+  return [...ids];
 }
 
 /** Picks what the extension needs from `devcontainer read-configuration --include-merged-configuration` */
@@ -117,6 +143,7 @@ export function parseReadConfiguration(stdout: string): ResolvedConfiguration {
     remoteUser: merged.remoteUser,
     containerUser: merged.containerUser,
     remoteEnv,
+    extensions: vscodeExtensions(merged.customizations?.vscode),
   };
 }
 

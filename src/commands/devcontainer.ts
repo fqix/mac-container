@@ -2,13 +2,23 @@
 // with Apple container (through the docker shim) and the folder is entered over Remote-SSH
 
 import { existsSync } from 'fs';
-import { readFile } from 'fs/promises';
+import { mkdir, readFile, writeFile } from 'fs/promises';
 import * as path from 'path';
 
 import * as vscode from 'vscode';
 
 import type { ContainerSummary } from '../models/types';
-import { findConfigFiles, hash, LABEL_CONFIG_FILE, LABEL_LOCAL_FOLDER, localFolderOf, parseConfig } from '../services/devcontainer';
+import {
+  type ContainerExtensions,
+  extensionsToInstall,
+  findConfigFiles,
+  hash,
+  LABEL_CONFIG_FILE,
+  LABEL_LOCAL_FOLDER,
+  localFolderOf,
+  parseConfig,
+  wantExtensions,
+} from '../services/devcontainer';
 import {
   cliEnv,
   type DevContainerCliPaths,
@@ -18,7 +28,9 @@ import {
   runDefaults,
   upArgs,
 } from '../services/devcontainerCli';
+import { containerOfAuthority } from '../services/remoteSsh';
 import { parseEnvOutput, resolveContainerEnv } from '../utils/env';
+import { describeError } from '../utils/i18n';
 import { runTask } from '../ui/terminal';
 import { CommandContext, isLocal, register } from './common';
 import { openContainerOverSsh } from './remoteSsh';
@@ -27,6 +39,11 @@ import { openContainerOverSsh } from './remoteSsh';
 const PROMPT_DISMISSED_KEY = 'devcontainer.promptDismissed';
 /** globalState key: configuration hash per container id, recorded when the container was created or opened */
 const CONFIG_HASHES_KEY = 'devcontainer.configHashes';
+/**
+ * File in the global storage folder with the extensions to install per container id. A file rather than globalState:
+ * it is written by this window and read by the Remote-SSH window that opens right after.
+ */
+const EXTENSIONS_FILE = 'devcontainer-extensions.json';
 
 export interface DevContainerOptions {
   /** Delete the existing container (and rebuild its image) first */
@@ -49,6 +66,62 @@ export function registerDevContainerCommands(ctx: CommandContext): void {
   });
 
   void offerToOpen(ctx);
+  void installExtensions(ctx);
+}
+
+async function readExtensionsFile(ctx: CommandContext): Promise<Record<string, ContainerExtensions>> {
+  try {
+    return JSON.parse(await readFile(path.join(ctx.extension.globalStorageUri.fsPath, EXTENSIONS_FILE), 'utf8'));
+  } catch {
+    return {};
+  }
+}
+
+async function writeExtensionsFile(ctx: CommandContext, data: Record<string, ContainerExtensions>): Promise<void> {
+  const dir = ctx.extension.globalStorageUri.fsPath;
+  await mkdir(dir, { recursive: true });
+  await writeFile(path.join(dir, EXTENSIONS_FILE), JSON.stringify(data, null, 2));
+}
+
+/**
+ * In the Remote-SSH window of a dev container: installs the customizations.vscode.extensions recorded when it was opened.
+ * The extension runs on the UI side, so it is active in that window too. installExtension picks the server from the
+ * extension kind, so workspace extensions go into the container. VS Code and Cursor install from their own marketplace.
+ */
+async function installExtensions(ctx: CommandContext): Promise<void> {
+  const authority = vscode.workspace.workspaceFolders?.[0]?.uri.authority;
+  if (vscode.env.remoteName !== 'ssh-remote' || !authority) {
+    return;
+  }
+  const data = await readExtensionsFile(ctx);
+  const id = containerOfAuthority(authority, Object.keys(data));
+  const missing = extensionsToInstall(id ? data[id] : undefined).filter((ext) => !vscode.extensions.getExtension(ext));
+  if (!id || !missing.length) {
+    return;
+  }
+  // Recorded before installing so a second window on the same container does not install them again
+  await writeExtensionsFile(ctx, { ...data, [id]: { ...data[id], installed: [...data[id].installed, ...missing] } });
+
+  const failed: string[] = [];
+  // In the status bar: installExtension shows a notification for each extension itself
+  await vscode.window.withProgress(
+    { location: vscode.ProgressLocation.Window, title: vscode.l10n.t('Installing dev container extensions') },
+    async (progress) => {
+      for (const [index, ext] of missing.entries()) {
+        progress.report({ message: `${ext} (${index + 1}/${missing.length})` });
+        try {
+          await vscode.commands.executeCommand('workbench.extensions.installExtension', ext, { donotSync: true });
+        } catch (error) {
+          failed.push(`${ext}: ${describeError(error)}`);
+        }
+      }
+    },
+  );
+  if (failed.length) {
+    void vscode.window.showWarningMessage(
+      vscode.l10n.t('Some extensions from devcontainer.json could not be installed: {0}', failed.join('; ')),
+    );
+  }
 }
 
 /** Once per workspace: offer to open a local folder that has a devcontainer.json */
@@ -178,6 +251,10 @@ export async function openDevContainer(ctx: CommandContext, configFile: string, 
   await ctx.extension.globalState.update(CONFIG_HASHES_KEY, { ...hashes, [container.id]: configHash });
 
   const resolved = await readConfiguration(paths, target);
+  // Entries of deleted containers are dropped
+  const existingIds = new Set((await ctx.cli.listContainers()).map((c) => c.id));
+  const extensions = Object.fromEntries(Object.entries(await readExtensionsFile(ctx)).filter(([id]) => existingIds.has(id)));
+  await writeExtensionsFile(ctx, { ...extensions, [container.id]: wantExtensions(extensions[container.id], container.createdAt, resolved.extensions) });
   // remoteEnv may refer to the container's variables and can change without a rebuild, so it is resolved on every open
   const remoteEnv = resolveContainerEnv(resolved.remoteEnv, parseEnvOutput(await ctx.cli.run(['exec', container.id, 'env'])));
   return openContainerOverSsh(

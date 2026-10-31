@@ -2,6 +2,7 @@ import * as assert from 'assert';
 
 import {
   commandSteps,
+  extensionsToInstall,
   findConfigFiles,
   memorySpec,
   mountSpec,
@@ -10,6 +11,7 @@ import {
   execArgs,
   localFolderOf,
   substitute,
+  wantExtensions,
 } from '../../src/services/devcontainer';
 
 const folder = '/Users/dev/projects/My App';
@@ -212,5 +214,18 @@ describe('devcontainer.json', () => {
       'exec', '--workdir', '/workspaces/x', '--user', 'node', '--env', 'CI=1', 'devc-x', '/bin/sh', '-c', 'npm ci',
     ]);
     assert.deepStrictEqual(execArgs({ ...p, remoteUser: undefined }, { argv: ['make'] }), ['exec', '--workdir', '/workspaces/x', 'devc-x', 'make']);
+  });
+
+  it('installs each extension once per container, again after a rebuild', () => {
+    const first = wantExtensions(undefined, '2026-10-30T10:00:00Z', ['golang.go', 'esbenp.prettier-vscode']);
+    assert.deepStrictEqual(extensionsToInstall(first), ['golang.go', 'esbenp.prettier-vscode']);
+    const done = { ...first, installed: ['golang.go', 'esbenp.prettier-vscode'] };
+    // Reopened with one more extension: only that one is new
+    const reopened = wantExtensions(done, '2026-10-30T10:00:00Z', ['golang.go', 'esbenp.prettier-vscode', 'ms-python.python']);
+    assert.deepStrictEqual(extensionsToInstall(reopened), ['ms-python.python']);
+    // Rebuilt: same name, new creation date
+    const rebuilt = wantExtensions(done, '2026-10-31T09:00:00Z', ['golang.go']);
+    assert.deepStrictEqual(extensionsToInstall(rebuilt), ['golang.go']);
+    assert.deepStrictEqual(extensionsToInstall(undefined), []);
   });
 });

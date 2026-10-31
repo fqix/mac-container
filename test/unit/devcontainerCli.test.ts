@@ -4,7 +4,7 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 
-import { cliEnv, dockerWrapper, parseReadConfiguration, prepareDockerWrapper, runDefaults, upArgs } from '../../src/services/devcontainerCli';
+import { cliEnv, dockerWrapper, parseReadConfiguration, prepareDockerWrapper, runDefaults, upArgs, vscodeExtensions } from '../../src/services/devcontainerCli';
 
 const paths = {
   node: '/Applications/Visual Studio Code.app/Contents/Frameworks/Code Helper (Plugin).app/Contents/MacOS/Code Helper (Plugin)',
@@ -71,6 +71,25 @@ describe('devcontainers/cli integration', () => {
       remoteUser: 'dev',
       containerUser: 'root',
       remoteEnv: { A: '${containerEnv:PATH}:/x' },
+      extensions: [],
     });
+  });
+
+  it('collects extensions from the merged customizations, features first', () => {
+    const merged = {
+      mergedConfiguration: {
+        customizations: {
+          vscode: [
+            { extensions: ['golang.Go', 'ms-azuretools.vscode-docker'] },
+            { settings: { 'go.useLanguageServer': true } },
+            { extensions: ['-ms-azuretools.vscode-docker', 'esbenp.prettier-vscode', 'golang.go', ' ', 42] },
+          ],
+        },
+      },
+    };
+    assert.deepStrictEqual(parseReadConfiguration(JSON.stringify(merged)).extensions, ['golang.go', 'esbenp.prettier-vscode']);
+    // An unmerged configuration has a single object
+    assert.deepStrictEqual(vscodeExtensions({ extensions: ['ms-python.python'] }), ['ms-python.python']);
+    assert.deepStrictEqual(vscodeExtensions(undefined), []);
   });
 });

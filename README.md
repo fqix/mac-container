@@ -143,7 +143,7 @@ The container is named `devc-<folder>-<hash>` and labelled with `devcontainer.lo
 | `privileged` | ⚠️ becomes `--cap-add ALL` |
 | `securityOpt` | ❌ ignored with a warning |
 | `dockerComposeFile` | ❌ not supported |
-| `customizations.vscode.extensions` | ❌ not installed; install extensions in the remote window |
+| `customizations.vscode.extensions` | ✅ installed once per container when its window connects, features' extensions included; VS Code and Cursor install from their own marketplace |
 
 ## Limitations
 

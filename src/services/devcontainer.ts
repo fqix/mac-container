@@ -395,3 +395,23 @@ export function execArgs(
   }
   return [...args, plan.containerName, ...step.argv];
 }
+
+/** Extensions from customizations.vscode for one dev container, kept until its Remote-SSH window installs them */
+export interface ContainerExtensions {
+  /** Creation date of the container; a rebuilt container with the same name installs everything again */
+  createdAt?: string;
+  wanted: string[];
+  /** Installed or attempted, so a failing id is not retried on every open */
+  installed: string[];
+}
+
+/** Records the extensions wanted on open, keeping what was installed into this same container */
+export function wantExtensions(previous: ContainerExtensions | undefined, createdAt: string | undefined, wanted: string[]): ContainerExtensions {
+  const installed = previous && previous.createdAt === createdAt ? previous.installed : [];
+  return { createdAt, wanted, installed };
+}
+
+export function extensionsToInstall(state: ContainerExtensions | undefined): string[] {
+  const installed = new Set(state?.installed ?? []);
+  return (state?.wanted ?? []).filter((id) => !installed.has(id));
+}

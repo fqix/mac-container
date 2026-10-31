@@ -296,5 +296,7 @@
   "Delete the builder?": "删除构建器？",
   "Its build cache is removed. The next build creates the builder again.": "构建缓存会被删除，下次构建时会重新创建构建器。",
   "Deleting the builder...": "正在删除构建器...",
-  "Builds use the CPUs and memory of the build.cpus / build.memory system properties.": "构建使用系统属性 build.cpus / build.memory 指定的 CPU 和内存。"
+  "Builds use the CPUs and memory of the build.cpus / build.memory system properties.": "构建使用系统属性 build.cpus / build.memory 指定的 CPU 和内存。",
+  "Installing dev container extensions": "正在安装开发容器扩展",
+  "Some extensions from devcontainer.json could not be installed: {0}": "devcontainer.json 中的部分扩展未能安装：{0}"
 }

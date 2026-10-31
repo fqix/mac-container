@@ -4,7 +4,7 @@ import * as os from 'os';
 import * as path from 'path';
 
 import { parseContainers } from '../../src/utils/parse';
-import { ensureUserConfigIncluded, hostAlias, isIncluded, parsePrepareOutput, renderConfig } from '../../src/services/remoteSsh';
+import { containerOfAuthority, ensureUserConfigIncluded, hostAlias, isIncluded, parsePrepareOutput, renderConfig } from '../../src/services/remoteSsh';
 
 describe('remote ssh', () => {
   const home = '/Users/dev';
@@ -12,6 +12,14 @@ describe('remote ssh', () => {
 
   it('builds lowercase host aliases', () => {
     assert.strictEqual(hostAlias('My-App'), 'apple-container.my-app');
+  });
+
+  it('finds the container of a Remote-SSH window authority', () => {
+    const ids = ['devc-app-1a2b', 'My-App'];
+    assert.strictEqual(containerOfAuthority('ssh-remote+apple-container.devc-app-1a2b', ids), 'devc-app-1a2b');
+    assert.strictEqual(containerOfAuthority('ssh-remote+apple-container.my-app', ids), 'My-App');
+    assert.strictEqual(containerOfAuthority('ssh-remote+devbox', ids), undefined);
+    assert.strictEqual(containerOfAuthority('dev-container+apple-container.my-app', ids), undefined);
   });
 
   it('renders one host block per container with a ProxyCommand through the CLI', () => {

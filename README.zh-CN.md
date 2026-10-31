@@ -143,7 +143,7 @@ VS Code / Cursor Server 会在容器内下载，需要容器能访问外网；�
 | `privileged` | ⚠️ 转为 `--cap-add ALL` |
 | `securityOpt` | ❌ 忽略并给出警告 |
 | `dockerComposeFile` | ❌ 不支持 |
-| `customizations.vscode.extensions` | ❌ 不会安装；请在远程窗口中安装扩展 |
+| `customizations.vscode.extensions` | ✅ 远程窗口连上后安装，每个容器只装一次，包括 features 声明的扩展；VS Code 和 Cursor 各自从自己的扩展市场安装 |
 
 ## 已知限制
 

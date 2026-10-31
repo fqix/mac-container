@@ -4,6 +4,7 @@
 
 - Build images from a form with build arguments, secrets, labels, target stage, platforms (including multi-platform images), no cache, pull and SSH agent forwarding; the options are remembered per Dockerfile
 - Show the BuildKit builder in its own Builder view with start, stop, restart, logs and delete, instead of among the containers
+- Install the `customizations.vscode.extensions` of a dev container, including those of its features, when its Remote-SSH window connects, once per container; works in VS Code and Cursor
 
 ## 0.4.1
 
