@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.6.0
 
 - Remote windows, such as a dev container over Remote-SSH, no longer show the Apple Container views, commands and menus; the extension only installs the dev container's extensions there. It now activates in every window to do so reliably, and local windows show the status bar item and poll the service only once the extension is used
 - Fix `Downloading VS Code Server failed - please install either curl or wget on the remote` when reconnecting to a container whose VS Code server is still running: containers without a working wget or curl (including BusyBox-only images such as Alpine) get GNU wget installed when they are opened over Remote-SSH
