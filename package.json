@@ -1205,7 +1205,9 @@
     "typecheck": "tsc --noEmit && npm --prefix webview-ui run typecheck",
     "compile-tests": "tsc -p tsconfig.test.json",
     "test:unit": "npm run compile-tests && mocha \"out/test/unit/**/*.test.js\"",
-    "test": "npm run typecheck && npm run check:l10n && npm run test:unit",
+    "test": "npm run typecheck && npm run format:check && npm run check:l10n && npm run test:unit",
+    "format": "prettier --write \"{src,test,scripts,webview-ui/src}/**/*.{ts,tsx,mjs,css}\" \"*.{js,mjs}\" webview-ui/vite.config.ts",
+    "format:check": "prettier --check \"{src,test,scripts,webview-ui/src}/**/*.{ts,tsx,mjs,css}\" \"*.{js,mjs}\" webview-ui/vite.config.ts",
     "package": "vsce package --no-dependencies --target darwin-arm64",
     "publish": "vsce publish --no-dependencies --target darwin-arm64",
     "check:l10n": "node scripts/check-l10n.mjs",
@@ -1225,6 +1227,7 @@
     "gifenc": "1.0.3",
     "mocha": "^12.0.3",
     "pngjs": "7.0.0",
+    "prettier": "3.9.10",
     "typescript": "^7.0.2"
   },
   "l10n": "./l10n",

@@ -17,7 +17,8 @@ You need a Mac with Apple silicon, Node.js (the version in `.nvmrc`), the `conta
 ```bash
 npm install
 npm run build        # bundle the extension and webviews into dist/
-npm test             # type check, l10n check and unit tests
+npm run format       # format with Prettier (the config follows facebook/react)
+npm test             # type check, format check, l10n check and unit tests
 npm run test:e2e     # end-to-end tests in VS Code against the real container service
 npm run package      # build apple-container-tools-darwin-arm64-<version>.vsix
 ```
