@@ -1,6 +1,10 @@
 import * as assert from 'assert';
 
-import { archiveFileName, registryHost, schemeArgs } from '../../src/utils/registry';
+import {
+  archiveFileName,
+  registryHost,
+  schemeArgs,
+} from '../../src/utils/registry';
 
 describe('registry references', () => {
   it('finds the registry host the way Docker does', () => {
@@ -19,8 +23,14 @@ describe('registry references', () => {
     assert.deepStrictEqual(schemeArgs('ghcr.io/org/app'), []);
     assert.deepStrictEqual(schemeArgs('alpine'), []);
     assert.deepStrictEqual(schemeArgs('nas.lan:5000/app', ['nas.lan']), http);
-    assert.deepStrictEqual(schemeArgs('nas.lan:5000/app', ['nas.lan:5000']), http);
-    assert.deepStrictEqual(schemeArgs('nas.lan:5001/app', ['nas.lan:5000']), []);
+    assert.deepStrictEqual(
+      schemeArgs('nas.lan:5000/app', ['nas.lan:5000']),
+      http,
+    );
+    assert.deepStrictEqual(
+      schemeArgs('nas.lan:5001/app', ['nas.lan:5000']),
+      [],
+    );
   });
 
   it('names image archives after the image', () => {

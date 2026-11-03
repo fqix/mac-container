@@ -4,12 +4,13 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 
-import { runTests } from '@vscode/test-electron';
+import {runTests} from '@vscode/test-electron';
 
 async function main(): Promise<void> {
   const root = path.resolve(__dirname, '../..');
   const vscodeExecutablePath =
-    process.env.VSCODE_EXECUTABLE ?? '/Applications/Visual Studio Code.app/Contents/MacOS/Code';
+    process.env.VSCODE_EXECUTABLE ??
+    '/Applications/Visual Studio Code.app/Contents/MacOS/Code';
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'apple-container-e2e-'));
   const workspace = path.join(tmp, 'workspace');
   fs.mkdirSync(workspace);
@@ -35,10 +36,10 @@ async function main(): Promise<void> {
   // Remote-SSH: keep the generated key and host config out of the real ~/.ssh, and point Remote-SSH at a scratch user config
   const sshDir = path.join(tmp, 'ssh');
   const userSshConfig = path.join(tmp, 'ssh_config');
-  fs.mkdirSync(path.join(tmp, 'user-data', 'User'), { recursive: true });
+  fs.mkdirSync(path.join(tmp, 'user-data', 'User'), {recursive: true});
   fs.writeFileSync(
     path.join(tmp, 'user-data', 'User', 'settings.json'),
-    JSON.stringify({ 'remote.SSH.configFile': userSshConfig }),
+    JSON.stringify({'remote.SSH.configFile': userSshConfig}),
   );
 
   try {
@@ -46,7 +47,10 @@ async function main(): Promise<void> {
       vscodeExecutablePath,
       extensionDevelopmentPath: root,
       extensionTestsPath: path.join(__dirname, 'e2e', 'index.js'),
-      extensionTestsEnv: { APPLE_CONTAINER_SSH_DIR: sshDir, E2E_USER_SSH_CONFIG: userSshConfig },
+      extensionTestsEnv: {
+        APPLE_CONTAINER_SSH_DIR: sshDir,
+        E2E_USER_SSH_CONFIG: userSshConfig,
+      },
       launchArgs: [
         workspace,
         '--disable-extensions',
@@ -60,7 +64,7 @@ async function main(): Promise<void> {
       vscodeExecutablePath,
       extensionDevelopmentPath: root,
       extensionTestsPath: path.join(__dirname, 'e2e', 'index.js'),
-      extensionTestsEnv: { E2E_SUITE: 'emptyWindow' },
+      extensionTestsEnv: {E2E_SUITE: 'emptyWindow'},
       launchArgs: [
         '--disable-extensions',
         // Keep it short: VS Code puts its IPC socket here and macOS limits socket paths to 104 bytes
@@ -69,11 +73,11 @@ async function main(): Promise<void> {
       ],
     });
   } finally {
-    fs.rmSync(tmp, { recursive: true, force: true });
+    fs.rmSync(tmp, {recursive: true, force: true});
   }
 }
 
-main().catch((error) => {
+main().catch(error => {
   console.error(error);
   process.exit(1);
 });

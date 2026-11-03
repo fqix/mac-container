@@ -2,16 +2,20 @@
 
 import * as vscode from 'vscode';
 
-import type { ServiceMonitor, ServiceState } from '../services/state';
+import type {ServiceMonitor, ServiceState} from '../services/state';
 
 export class ServiceStatusBar implements vscode.Disposable {
-  private readonly item = vscode.window.createStatusBarItem('appleContainer.status', vscode.StatusBarAlignment.Left, 50);
+  private readonly item = vscode.window.createStatusBarItem(
+    'appleContainer.status',
+    vscode.StatusBarAlignment.Left,
+    50,
+  );
   private readonly subscription: vscode.Disposable;
 
   constructor(monitor: ServiceMonitor) {
     this.item.name = 'Apple Container';
     this.item.command = 'appleContainer.system.menu';
-    this.subscription = monitor.onDidUpdate((state) => this.render(state));
+    this.subscription = monitor.onDidUpdate(state => this.render(state));
     this.render(monitor.state);
     this.item.show();
   }
@@ -20,7 +24,11 @@ export class ServiceStatusBar implements vscode.Disposable {
     this.item.backgroundColor = undefined;
     switch (state.kind) {
       case 'running': {
-        const { containersRunning = 0, containersTotal = 0, serverVersion } = state.status;
+        const {
+          containersRunning = 0,
+          containersTotal = 0,
+          serverVersion,
+        } = state.status;
         this.item.text = `$(vm-running) ${containersRunning}/${containersTotal}`;
         this.item.tooltip = vscode.l10n.t(
           'container service running (v{0})\n{1} of {2} containers running',
@@ -32,18 +40,26 @@ export class ServiceStatusBar implements vscode.Disposable {
       }
       case 'stopped':
         this.item.text = '$(vm-outline) container';
-        this.item.tooltip = vscode.l10n.t('container service is stopped. Click to start it.');
-        this.item.backgroundColor = new vscode.ThemeColor('statusBarItem.warningBackground');
+        this.item.tooltip = vscode.l10n.t(
+          'container service is stopped. Click to start it.',
+        );
+        this.item.backgroundColor = new vscode.ThemeColor(
+          'statusBarItem.warningBackground',
+        );
         break;
       case 'cliMissing':
         this.item.text = '$(warning) container';
         this.item.tooltip = vscode.l10n.t('container CLI not found');
-        this.item.backgroundColor = new vscode.ThemeColor('statusBarItem.errorBackground');
+        this.item.backgroundColor = new vscode.ThemeColor(
+          'statusBarItem.errorBackground',
+        );
         break;
       case 'error':
         this.item.text = '$(error) container';
         this.item.tooltip = state.message;
-        this.item.backgroundColor = new vscode.ThemeColor('statusBarItem.errorBackground');
+        this.item.backgroundColor = new vscode.ThemeColor(
+          'statusBarItem.errorBackground',
+        );
         break;
       default:
         this.item.text = '$(loading~spin) container';

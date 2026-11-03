@@ -3,11 +3,11 @@
 // Follows https://containers.dev/implementors/json_reference/ ; the default workspace mount and the
 // devcontainer.* labels follow the reference implementation (devcontainers/cli) so other tools recognize the container.
 
-import { createHash } from 'crypto';
-import { existsSync, readdirSync } from 'fs';
+import {createHash} from 'crypto';
+import {existsSync, readdirSync} from 'fs';
 import * as path from 'path';
 
-import { parse, printParseErrorCode, type ParseError } from 'jsonc-parser';
+import {parse, printParseErrorCode, type ParseError} from 'jsonc-parser';
 
 type Json = Record<string, any>;
 
@@ -20,7 +20,7 @@ export const LABEL_CONFIG_HASH = 'apple-container.devcontainer.hash';
 export function findConfigFiles(
   folder: string,
   exists: (file: string) => boolean = existsSync,
-  list: (dir: string) => string[] = (dir) => readdirSync(dir),
+  list: (dir: string) => string[] = dir => readdirSync(dir),
 ): string[] {
   const found: string[] = [];
   const main = path.join(folder, '.devcontainer', 'devcontainer.json');
@@ -66,9 +66,12 @@ export function localFolderOf(configFile: string): string {
 /** devcontainer.json is JSON with comments and trailing commas */
 export function parseConfig(text: string, file: string): Json {
   const errors: ParseError[] = [];
-  const value = parse(text, errors, { allowTrailingComma: true, disallowComments: false });
+  const value = parse(text, errors, {
+    allowTrailingComma: true,
+    disallowComments: false,
+  });
   if (errors.length) {
-    const { error, offset } = errors[0];
+    const {error, offset} = errors[0];
     const line = text.slice(0, offset).split('\n').length;
     throw new Error(`${file}:${line}: ${printParseErrorCode(error)}`);
   }
@@ -92,31 +95,36 @@ export interface Variables {
  */
 export function substitute<T>(value: T, vars: Variables): T {
   if (typeof value === 'string') {
-    return value.replace(/\$\{([^}:]+)(?::([^}:]*))?(?::([^}]*))?\}/g, (match, name: string, arg?: string, fallback?: string) => {
-      switch (name) {
-        case 'localWorkspaceFolder':
-          return vars.localWorkspaceFolder;
-        case 'localWorkspaceFolderBasename':
-          return path.basename(vars.localWorkspaceFolder);
-        case 'containerWorkspaceFolder':
-          return vars.containerWorkspaceFolder;
-        case 'containerWorkspaceFolderBasename':
-          return path.posix.basename(vars.containerWorkspaceFolder);
-        case 'devcontainerId':
-          return vars.devcontainerId;
-        case 'localEnv':
-        case 'env':
-          return arg ? (vars.localEnv[arg] ?? fallback ?? '') : match;
-        default:
-          return match;
-      }
-    }) as T;
+    return value.replace(
+      /\$\{([^}:]+)(?::([^}:]*))?(?::([^}]*))?\}/g,
+      (match, name: string, arg?: string, fallback?: string) => {
+        switch (name) {
+          case 'localWorkspaceFolder':
+            return vars.localWorkspaceFolder;
+          case 'localWorkspaceFolderBasename':
+            return path.basename(vars.localWorkspaceFolder);
+          case 'containerWorkspaceFolder':
+            return vars.containerWorkspaceFolder;
+          case 'containerWorkspaceFolderBasename':
+            return path.posix.basename(vars.containerWorkspaceFolder);
+          case 'devcontainerId':
+            return vars.devcontainerId;
+          case 'localEnv':
+          case 'env':
+            return arg ? (vars.localEnv[arg] ?? fallback ?? '') : match;
+          default:
+            return match;
+        }
+      },
+    ) as T;
   }
   if (Array.isArray(value)) {
-    return value.map((v) => substitute(v, vars)) as T;
+    return value.map(v => substitute(v, vars)) as T;
   }
   if (value && typeof value === 'object') {
-    return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, substitute(v, vars)])) as T;
+    return Object.fromEntries(
+      Object.entries(value).map(([k, v]) => [k, substitute(v, vars)]),
+    ) as T;
   }
   return value;
 }
@@ -130,7 +138,9 @@ export function mountSpec(mount: string | Json): string {
   if (typeof mount === 'string') {
     for (const part of mount.split(',')) {
       const [key, ...rest] = part.split('=');
-      fields[key.trim().toLowerCase()] = rest.length ? rest.join('=').trim() : true;
+      fields[key.trim().toLowerCase()] = rest.length
+        ? rest.join('=').trim()
+        : true;
     }
   } else {
     Object.assign(fields, mount);
@@ -138,7 +148,11 @@ export function mountSpec(mount: string | Json): string {
   const type = String(fields.type ?? 'volume');
   const source = fields.source ?? fields.src;
   const target = fields.target ?? fields.destination ?? fields.dst;
-  const readonly = fields.readonly === true || fields.readonly === 'true' || fields.ro === true || fields.ro === 'true';
+  const readonly =
+    fields.readonly === true ||
+    fields.readonly === 'true' ||
+    fields.ro === true ||
+    fields.ro === 'true';
   const parts = [`type=${type}`];
   if (typeof source === 'string' && source) {
     parts.push(`source=${source}`);
@@ -167,9 +181,17 @@ export function memorySpec(value: string): string | undefined {
   return `${Math.round(amount)}${'KMGT'[unit]}`;
 }
 
-export type LifecycleCommand = string | string[] | Record<string, string | string[]>;
+export type LifecycleCommand =
+  string | string[] | Record<string, string | string[]>;
 
-export const LIFECYCLE = ['initializeCommand', 'onCreateCommand', 'updateContentCommand', 'postCreateCommand', 'postStartCommand', 'postAttachCommand'] as const;
+export const LIFECYCLE = [
+  'initializeCommand',
+  'onCreateCommand',
+  'updateContentCommand',
+  'postCreateCommand',
+  'postStartCommand',
+  'postAttachCommand',
+] as const;
 export type LifecycleName = (typeof LIFECYCLE)[number];
 
 export interface CommandStep {
@@ -182,21 +204,26 @@ export interface CommandStep {
  * A string runs through /bin/sh, an array runs as is, and each entry of an object runs in parallel.
  * Returns the steps that run in parallel; empty when the command is not set.
  */
-export function commandSteps(command: LifecycleCommand | undefined): CommandStep[] {
+export function commandSteps(
+  command: LifecycleCommand | undefined,
+): CommandStep[] {
   if (command === undefined || command === null || command === '') {
     return [];
   }
   if (typeof command === 'string') {
-    return [{ argv: ['/bin/sh', '-c', command] }];
+    return [{argv: ['/bin/sh', '-c', command]}];
   }
   if (Array.isArray(command)) {
-    return command.length ? [{ argv: command.map(String) }] : [];
+    return command.length ? [{argv: command.map(String)}] : [];
   }
-  return Object.entries(command).flatMap(([label, value]) => commandSteps(value).map((step) => ({ ...step, label })));
+  return Object.entries(command).flatMap(([label, value]) =>
+    commandSteps(value).map(step => ({...step, label})),
+  );
 }
 
 /** Keeps the container alive instead of the image command, as overrideCommand does in Docker-based tools */
-const KEEP_ALIVE = 'echo Container started; trap "exit 0" TERM; while sleep 1000 & wait $!; do :; done';
+const KEEP_ALIVE =
+  'echo Container started; trap "exit 0" TERM; while sleep 1000 & wait $!; do :; done';
 
 export interface DevContainerPlan {
   /** Display name: the config's name or the folder name */
@@ -205,7 +232,7 @@ export interface DevContainerPlan {
   containerName: string;
   /** Image to run: the configured image or the tag of the build */
   image: string;
-  build?: { args: string[]; context: string };
+  build?: {args: string[]; context: string};
   runArgs: string[];
   workspaceFolder: string;
   /** User for SSH and lifecycle commands; undefined means the container's own user */
@@ -228,11 +255,19 @@ export interface PlanInput {
 }
 
 function slug(text: string): string {
-  return text.toLowerCase().replace(/[^a-z0-9_.-]+/g, '-').replace(/^[-_.]+|[-_.]+$/g, '') || 'devcontainer';
+  return (
+    text
+      .toLowerCase()
+      .replace(/[^a-z0-9_.-]+/g, '-')
+      .replace(/^[-_.]+|[-_.]+$/g, '') || 'devcontainer'
+  );
 }
 
 /** Readable, stable container name for a dev container: devc-<folder>-<hash of folder and config file> */
-export function devContainerName(localWorkspaceFolder: string, configFile: string): string {
+export function devContainerName(
+  localWorkspaceFolder: string,
+  configFile: string,
+): string {
   return `devc-${slug(path.basename(localWorkspaceFolder))}-${hash(localWorkspaceFolder, configFile).slice(0, 8)}`;
 }
 
@@ -246,16 +281,30 @@ export function hash(...parts: string[]): string {
 
 /** Throws when the configuration cannot start a container at all */
 export function planDevContainer(input: PlanInput): DevContainerPlan {
-  const { configFile, localWorkspaceFolder } = input;
+  const {configFile, localWorkspaceFolder} = input;
   const basename = path.basename(localWorkspaceFolder);
   const idHash = hash(localWorkspaceFolder, configFile).slice(0, 12);
   const devcontainerId = idHash;
 
   // workspaceFolder may refer to other variables, so resolve it first with a provisional container folder
   const defaultFolder = `/workspaces/${basename}`;
-  const preliminary = substitute(input.config, { localWorkspaceFolder, containerWorkspaceFolder: defaultFolder, devcontainerId, localEnv: input.localEnv });
-  const workspaceFolder: string = typeof preliminary.workspaceFolder === 'string' && preliminary.workspaceFolder ? preliminary.workspaceFolder : defaultFolder;
-  const config: Json = substitute(input.config, { localWorkspaceFolder, containerWorkspaceFolder: workspaceFolder, devcontainerId, localEnv: input.localEnv });
+  const preliminary = substitute(input.config, {
+    localWorkspaceFolder,
+    containerWorkspaceFolder: defaultFolder,
+    devcontainerId,
+    localEnv: input.localEnv,
+  });
+  const workspaceFolder: string =
+    typeof preliminary.workspaceFolder === 'string' &&
+    preliminary.workspaceFolder
+      ? preliminary.workspaceFolder
+      : defaultFolder;
+  const config: Json = substitute(input.config, {
+    localWorkspaceFolder,
+    containerWorkspaceFolder: workspaceFolder,
+    devcontainerId,
+    localEnv: input.localEnv,
+  });
 
   const unsupported: string[] = [];
   if (config.features && Object.keys(config.features).length) {
@@ -278,58 +327,98 @@ export function planDevContainer(input: PlanInput): DevContainerPlan {
   }
 
   const configDir = path.dirname(configFile);
-  const name = typeof config.name === 'string' && config.name ? config.name : basename;
+  const name =
+    typeof config.name === 'string' && config.name ? config.name : basename;
   const containerName = devContainerName(localWorkspaceFolder, configFile);
 
   let image: string;
   let build: DevContainerPlan['build'];
-  const dockerfile: string | undefined = config.build?.dockerfile ?? config.dockerFile;
+  const dockerfile: string | undefined =
+    config.build?.dockerfile ?? config.dockerFile;
   if (dockerfile) {
     const context = path.resolve(configDir, config.build?.context ?? '.');
     image = `vsc-${slug(basename)}-${idHash.slice(0, 8)}:latest`;
-    const args = ['build', '--progress', 'plain', '--file', path.resolve(configDir, dockerfile), '--tag', image];
-    for (const [key, value] of Object.entries<string>(config.build?.args ?? {})) {
+    const args = [
+      'build',
+      '--progress',
+      'plain',
+      '--file',
+      path.resolve(configDir, dockerfile),
+      '--tag',
+      image,
+    ];
+    for (const [key, value] of Object.entries<string>(
+      config.build?.args ?? {},
+    )) {
       args.push('--build-arg', `${key}=${value}`);
     }
     if (config.build?.target) {
       args.push('--target', config.build.target);
     }
     args.push(...(config.build?.options ?? []).map(String), context);
-    build = { args, context };
+    build = {args, context};
   } else if (typeof config.image === 'string' && config.image) {
     image = config.image;
   } else if (config.dockerComposeFile) {
-    throw new Error('dockerComposeFile is not supported; add an image or build to the configuration');
+    throw new Error(
+      'dockerComposeFile is not supported; add an image or build to the configuration',
+    );
   } else {
-    throw new Error('the configuration needs an image or a build with a dockerfile');
+    throw new Error(
+      'the configuration needs an image or a build with a dockerfile',
+    );
   }
 
-  const configHash = hash(input.configText, input.dockerfileText ?? '').slice(0, 16);
+  const configHash = hash(input.configText, input.dockerfileText ?? '').slice(
+    0,
+    16,
+  );
   const run: string[] = ['run', '--detach', '--name', containerName];
   run.push(
-    '--label', `${LABEL_LOCAL_FOLDER}=${localWorkspaceFolder}`,
-    '--label', `${LABEL_CONFIG_FILE}=${configFile}`,
-    '--label', `${LABEL_CONFIG_HASH}=${configHash}`,
+    '--label',
+    `${LABEL_LOCAL_FOLDER}=${localWorkspaceFolder}`,
+    '--label',
+    `${LABEL_CONFIG_FILE}=${configFile}`,
+    '--label',
+    `${LABEL_CONFIG_HASH}=${configHash}`,
   );
-  run.push('--mount', typeof config.workspaceMount === 'string' && config.workspaceMount
-    ? mountSpec(config.workspaceMount)
-    : `type=bind,source=${localWorkspaceFolder},target=${workspaceFolder}`);
+  run.push(
+    '--mount',
+    typeof config.workspaceMount === 'string' && config.workspaceMount
+      ? mountSpec(config.workspaceMount)
+      : `type=bind,source=${localWorkspaceFolder},target=${workspaceFolder}`,
+  );
   for (const mount of Array.isArray(config.mounts) ? config.mounts : []) {
     run.push('--mount', mountSpec(mount));
   }
-  for (const [key, value] of Object.entries<string>(config.containerEnv ?? {})) {
+  for (const [key, value] of Object.entries<string>(
+    config.containerEnv ?? {},
+  )) {
     run.push('--env', `${key}=${value}`);
   }
   // forwardPorts become loopback-only published ports; appPort is published as written
-  for (const port of Array.isArray(config.forwardPorts) ? config.forwardPorts : []) {
-    const n = typeof port === 'number' ? port : /^(?:localhost:)?(\d+)$/.exec(String(port))?.[1];
+  for (const port of Array.isArray(config.forwardPorts)
+    ? config.forwardPorts
+    : []) {
+    const n =
+      typeof port === 'number'
+        ? port
+        : /^(?:localhost:)?(\d+)$/.exec(String(port))?.[1];
     if (n) {
       run.push('--publish', `127.0.0.1:${n}:${n}`);
     }
   }
-  const appPorts = config.appPort === undefined ? [] : Array.isArray(config.appPort) ? config.appPort : [config.appPort];
+  const appPorts =
+    config.appPort === undefined
+      ? []
+      : Array.isArray(config.appPort)
+        ? config.appPort
+        : [config.appPort];
   for (const port of appPorts) {
-    run.push('--publish', typeof port === 'number' ? `${port}:${port}` : String(port));
+    run.push(
+      '--publish',
+      typeof port === 'number' ? `${port}:${port}` : String(port),
+    );
   }
   if (config.containerUser) {
     run.push('--user', String(config.containerUser));
@@ -337,7 +426,10 @@ export function planDevContainer(input: PlanInput): DevContainerPlan {
   if (Number.isInteger(config.hostRequirements?.cpus)) {
     run.push('--cpus', String(config.hostRequirements.cpus));
   }
-  const memory = typeof config.hostRequirements?.memory === 'string' ? memorySpec(config.hostRequirements.memory) : undefined;
+  const memory =
+    typeof config.hostRequirements?.memory === 'string'
+      ? memorySpec(config.hostRequirements.memory)
+      : undefined;
   if (memory) {
     run.push('--memory', memory);
   }
@@ -347,7 +439,9 @@ export function planDevContainer(input: PlanInput): DevContainerPlan {
   if (config.init) {
     run.push('--init');
   }
-  run.push(...(Array.isArray(config.runArgs) ? config.runArgs.map(String) : []));
+  run.push(
+    ...(Array.isArray(config.runArgs) ? config.runArgs.map(String) : []),
+  );
   if (config.overrideCommand === false) {
     run.push(image);
   } else {
@@ -370,7 +464,11 @@ export function planDevContainer(input: PlanInput): DevContainerPlan {
     runArgs: run,
     workspaceFolder,
     remoteUser: config.remoteUser ?? config.containerUser ?? undefined,
-    remoteEnv: Object.fromEntries(Object.entries<string>(config.remoteEnv ?? {}).filter(([, v]) => v !== null && v !== undefined)),
+    remoteEnv: Object.fromEntries(
+      Object.entries<string>(config.remoteEnv ?? {}).filter(
+        ([, v]) => v !== null && v !== undefined,
+      ),
+    ),
     lifecycle,
     unsupported,
     configHash,
@@ -382,7 +480,10 @@ export function planDevContainer(input: PlanInput): DevContainerPlan {
  * with remoteEnv (already resolved against the container environment) applied like the tool's own processes
  */
 export function execArgs(
-  plan: Pick<DevContainerPlan, 'containerName' | 'workspaceFolder' | 'remoteUser'>,
+  plan: Pick<
+    DevContainerPlan,
+    'containerName' | 'workspaceFolder' | 'remoteUser'
+  >,
   step: CommandStep,
   remoteEnv: Record<string, string> = {},
 ): string[] {
@@ -406,12 +507,19 @@ export interface ContainerExtensions {
 }
 
 /** Records the extensions wanted on open, keeping what was installed into this same container */
-export function wantExtensions(previous: ContainerExtensions | undefined, createdAt: string | undefined, wanted: string[]): ContainerExtensions {
-  const installed = previous && previous.createdAt === createdAt ? previous.installed : [];
-  return { createdAt, wanted, installed };
+export function wantExtensions(
+  previous: ContainerExtensions | undefined,
+  createdAt: string | undefined,
+  wanted: string[],
+): ContainerExtensions {
+  const installed =
+    previous && previous.createdAt === createdAt ? previous.installed : [];
+  return {createdAt, wanted, installed};
 }
 
-export function extensionsToInstall(state: ContainerExtensions | undefined): string[] {
+export function extensionsToInstall(
+  state: ContainerExtensions | undefined,
+): string[] {
   const installed = new Set(state?.installed ?? []);
-  return (state?.wanted ?? []).filter((id) => !installed.has(id));
+  return (state?.wanted ?? []).filter(id => !installed.has(id));
 }

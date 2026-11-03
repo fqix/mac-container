@@ -1,34 +1,37 @@
 import * as vscode from 'vscode';
 
-import { ContainerCli } from './services/cli';
-import type { CommandContext } from './commands/common';
-import { register } from './commands/common';
-import { registerBuilderCommands } from './commands/builder';
-import { registerComposeCommands } from './commands/compose';
-import { registerContainerCommands } from './commands/containers';
-import { installDevContainerExtensions, registerDevContainerCommands } from './commands/devcontainer';
-import { registerFileCommands } from './commands/files';
-import { registerRemoteSshCommands } from './commands/remoteSsh';
-import { registerImageCommands } from './commands/images';
-import { registerNetworkCommands } from './commands/networks';
-import { registerPortAndMountCommands } from './commands/ports';
-import { registerRegistryCommands } from './commands/registries';
-import { registerSystemCommands } from './commands/system';
-import { registerVolumeCommands } from './commands/volumes';
-import { DOCUMENT_SCHEME, ReadonlyDocumentProvider } from './ui/documents';
-import { BuildFormPanel } from './panels/buildFormPanel';
-import { ContainerFormPanel } from './panels/containerFormPanel';
-import { findConfigFiles } from './services/devcontainer';
-import { ServiceMonitor } from './services/state';
-import { StatsPanel } from './panels/statsPanel';
-import { ServiceStatusBar } from './ui/statusBar';
-import type { ResourceProvider } from './views/base';
-import { ContainersProvider } from './views/containers';
-import { BuilderProvider } from './views/builder';
-import { ImagesProvider } from './views/images';
-import { NetworksProvider } from './views/networks';
-import { RegistriesProvider } from './views/registries';
-import { VolumesProvider } from './views/volumes';
+import {ContainerCli} from './services/cli';
+import type {CommandContext} from './commands/common';
+import {register} from './commands/common';
+import {registerBuilderCommands} from './commands/builder';
+import {registerComposeCommands} from './commands/compose';
+import {registerContainerCommands} from './commands/containers';
+import {
+  installDevContainerExtensions,
+  registerDevContainerCommands,
+} from './commands/devcontainer';
+import {registerFileCommands} from './commands/files';
+import {registerRemoteSshCommands} from './commands/remoteSsh';
+import {registerImageCommands} from './commands/images';
+import {registerNetworkCommands} from './commands/networks';
+import {registerPortAndMountCommands} from './commands/ports';
+import {registerRegistryCommands} from './commands/registries';
+import {registerSystemCommands} from './commands/system';
+import {registerVolumeCommands} from './commands/volumes';
+import {DOCUMENT_SCHEME, ReadonlyDocumentProvider} from './ui/documents';
+import {BuildFormPanel} from './panels/buildFormPanel';
+import {ContainerFormPanel} from './panels/containerFormPanel';
+import {findConfigFiles} from './services/devcontainer';
+import {ServiceMonitor} from './services/state';
+import {StatsPanel} from './panels/statsPanel';
+import {ServiceStatusBar} from './ui/statusBar';
+import type {ResourceProvider} from './views/base';
+import {ContainersProvider} from './views/containers';
+import {BuilderProvider} from './views/builder';
+import {ImagesProvider} from './views/images';
+import {NetworksProvider} from './views/networks';
+import {RegistriesProvider} from './views/registries';
+import {VolumesProvider} from './views/volumes';
 
 /** Returned from activate() so e2e tests can reach the providers and the CLI */
 export interface ExtensionApi {
@@ -37,7 +40,9 @@ export interface ExtensionApi {
   views: CommandContext['views'];
 }
 
-export function activate(context: vscode.ExtensionContext): ExtensionApi | undefined {
+export function activate(
+  context: vscode.ExtensionContext,
+): ExtensionApi | undefined {
   // A remote window (e.g. a dev container over Remote-SSH) runs this UI extension too. package.json hides its views
   // and commands there (!remoteName); the only work left is installing the extensions of a dev container.
   if (vscode.env.remoteName) {
@@ -47,7 +52,9 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi | undef
 
   // Apple container only runs on Apple silicon Macs
   if (process.platform !== 'darwin' || process.arch !== 'arm64') {
-    void vscode.window.showWarningMessage(vscode.l10n.t('Apple Container requires a Mac with Apple silicon.'));
+    void vscode.window.showWarningMessage(
+      vscode.l10n.t('Apple Container requires a Mac with Apple silicon.'),
+    );
     return undefined;
   }
 
@@ -64,12 +71,20 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi | undef
     volumes: new VolumesProvider(monitor, cli),
     registries: new RegistriesProvider(monitor, cli),
   };
-  const treeViews: [vscode.TreeView<unknown>, ResourceProvider<unknown>][] = Object.entries(views).map(([key, provider]) => {
-    const p = provider as ResourceProvider<unknown>;
-    // Containers nest compose groups, containers and their Volumes / Ports sections
-    const showCollapseAll = key === 'containers';
-    return [vscode.window.createTreeView(`appleContainer.${key}`, { treeDataProvider: p, canSelectMany: true, showCollapseAll }), p];
-  });
+  const treeViews: [vscode.TreeView<unknown>, ResourceProvider<unknown>][] =
+    Object.entries(views).map(([key, provider]) => {
+      const p = provider as ResourceProvider<unknown>;
+      // Containers nest compose groups, containers and their Volumes / Ports sections
+      const showCollapseAll = key === 'containers';
+      return [
+        vscode.window.createTreeView(`appleContainer.${key}`, {
+          treeDataProvider: p,
+          canSelectMany: true,
+          showCollapseAll,
+        }),
+        p,
+      ];
+    });
 
   const refreshAll = async () => {
     await monitor.check();
@@ -79,12 +94,15 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi | undef
   };
 
   context.subscriptions.push(
-    { dispose: () => StatsPanel.disposeAll() },
-    { dispose: () => ContainerFormPanel.disposeAll() },
-    { dispose: () => BuildFormPanel.disposeAll() },
+    {dispose: () => StatsPanel.disposeAll()},
+    {dispose: () => ContainerFormPanel.disposeAll()},
+    {dispose: () => BuildFormPanel.disposeAll()},
     monitor,
     documents,
-    vscode.workspace.registerTextDocumentContentProvider(DOCUMENT_SCHEME, documents),
+    vscode.workspace.registerTextDocumentContentProvider(
+      DOCUMENT_SCHEME,
+      documents,
+    ),
     ...treeViews.flatMap(([view, provider]) => [view, provider]),
     // Service started or stopped: every view switches between its content and the welcome message
     monitor.onDidChangeKind(() => treeViews.forEach(([, p]) => p.refresh())),
@@ -103,7 +121,15 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi | undef
     void monitor.check();
   };
 
-  const ctx: CommandContext = { extension: context, cli, monitor, documents, views, refreshAll, start };
+  const ctx: CommandContext = {
+    extension: context,
+    cli,
+    monitor,
+    documents,
+    views,
+    refreshAll,
+    start,
+  };
   register(ctx, 'appleContainer.refresh', refreshAll);
   registerContainerCommands(ctx);
   registerRemoteSshCommands(ctx);
@@ -143,8 +169,8 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi | undef
     }, seconds * 1000);
   };
   context.subscriptions.push(
-    { dispose: () => timer && clearInterval(timer) },
-    vscode.workspace.onDidChangeConfiguration((e) => {
+    {dispose: () => timer && clearInterval(timer)},
+    vscode.workspace.onDidChangeConfiguration(e => {
       if (!started) {
         return;
       }
@@ -156,14 +182,21 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi | undef
         startPolling();
       }
     }),
-    ...treeViews.map(([view]) => view.onDidChangeVisibility((e) => e.visible && start())),
+    ...treeViews.map(([view]) =>
+      view.onDidChangeVisibility(e => e.visible && start()),
+    ),
   );
 
-  const folders = (vscode.workspace.workspaceFolders ?? []).filter((f) => f.uri.scheme === 'file');
-  if (treeViews.some(([view]) => view.visible) || folders.some((f) => findConfigFiles(f.uri.fsPath).length)) {
+  const folders = (vscode.workspace.workspaceFolders ?? []).filter(
+    f => f.uri.scheme === 'file',
+  );
+  if (
+    treeViews.some(([view]) => view.visible) ||
+    folders.some(f => findConfigFiles(f.uri.fsPath).length)
+  ) {
     start();
   }
-  return { cli, monitor, views };
+  return {cli, monitor, views};
 }
 
 export function deactivate(): void {}

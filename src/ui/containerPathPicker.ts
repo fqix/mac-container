@@ -2,8 +2,13 @@
 
 import * as vscode from 'vscode';
 
-import type { ContainerCli } from '../services/cli';
-import { joinContainerPath, parentContainerPath, parseListing, type ContainerEntry } from '../utils/files';
+import type {ContainerCli} from '../services/cli';
+import {
+  joinContainerPath,
+  parentContainerPath,
+  parseListing,
+  type ContainerEntry,
+} from '../utils/files';
 
 type Mode = 'directory' | 'any';
 
@@ -12,9 +17,16 @@ interface PickItem extends vscode.QuickPickItem {
   path: string;
 }
 
-async function list(cli: ContainerCli, id: string, dir: string): Promise<ContainerEntry[]> {
+async function list(
+  cli: ContainerCli,
+  id: string,
+  dir: string,
+): Promise<ContainerEntry[]> {
   // $1 keeps the path out of the script, so spaces and quotes need no escaping
-  const out = await cli.run(['exec', id, 'sh', '-c', 'cd -- "$1" && ls -1Ap', 'sh', dir], { timeoutMs: 15_000 });
+  const out = await cli.run(
+    ['exec', id, 'sh', '-c', 'cd -- "$1" && ls -1Ap', 'sh', dir],
+    {timeoutMs: 15_000},
+  );
   return parseListing(out);
 }
 
@@ -26,7 +38,7 @@ async function list(cli: ContainerCli, id: string, dir: string): Promise<Contain
 export async function pickContainerPath(
   cli: ContainerCli,
   id: string,
-  options: { title: string; start: string; mode: Mode; selectLabel: string },
+  options: {title: string; start: string; mode: Mode; selectLabel: string},
 ): Promise<string | undefined> {
   try {
     await list(cli, id, options.start);
@@ -43,7 +55,9 @@ export async function pickContainerPath(
   const qp = vscode.window.createQuickPick<PickItem>();
   qp.ignoreFocusOut = true;
   qp.matchOnDescription = true;
-  qp.placeholder = vscode.l10n.t('Filter, or type an absolute path and press Enter');
+  qp.placeholder = vscode.l10n.t(
+    'Filter, or type an absolute path and press Enter',
+  );
 
   /** Resolves false when dir cannot be listed, e.g. because it is a file */
   const show = async (dir: string): Promise<boolean> => {
@@ -52,29 +66,56 @@ export async function pickContainerPath(
     qp.value = '';
     try {
       const entries = await list(cli, id, dir);
-      const items: PickItem[] = [{ label: `$(check) ${options.selectLabel}`, description: dir, action: 'select', path: dir, alwaysShow: true }];
+      const items: PickItem[] = [
+        {
+          label: `$(check) ${options.selectLabel}`,
+          description: dir,
+          action: 'select',
+          path: dir,
+          alwaysShow: true,
+        },
+      ];
       if (dir !== '/') {
-        items.push({ label: '$(arrow-up) ..', action: 'up', path: parentContainerPath(dir), alwaysShow: true });
+        items.push({
+          label: '$(arrow-up) ..',
+          action: 'up',
+          path: parentContainerPath(dir),
+          alwaysShow: true,
+        });
       }
       for (const entry of entries) {
         const full = joinContainerPath(dir, entry.name);
         if (entry.directory) {
-          items.push({ label: `$(folder) ${entry.name}`, action: 'open', path: full });
+          items.push({
+            label: `$(folder) ${entry.name}`,
+            action: 'open',
+            path: full,
+          });
         } else if (options.mode === 'any') {
-          items.push({ label: `$(file) ${entry.name}`, action: 'pick', path: full });
+          items.push({
+            label: `$(file) ${entry.name}`,
+            action: 'pick',
+            path: full,
+          });
         }
       }
       qp.items = items;
       return true;
     } catch {
-      qp.items = [{ label: `$(error) ${vscode.l10n.t('Cannot list {0}', dir)}`, action: 'up', path: parentContainerPath(dir) }];
+      qp.items = [
+        {
+          label: `$(error) ${vscode.l10n.t('Cannot list {0}', dir)}`,
+          action: 'up',
+          path: parentContainerPath(dir),
+        },
+      ];
       return false;
     } finally {
       qp.busy = false;
     }
   };
 
-  return new Promise<string | undefined>((resolve) => {
+  return new Promise<string | undefined>(resolve => {
     let done = false;
     const finish = (value: string | undefined) => {
       if (!done) {
@@ -88,7 +129,7 @@ export async function pickContainerPath(
       if (typed.startsWith('/')) {
         const target = typed.replace(/(.)\/+$/, '$1');
         // A typed path that is not a directory is taken as a file where files are allowed
-        void show(target).then((listed) => {
+        void show(target).then(listed => {
           if (!listed && options.mode === 'any') {
             finish(target);
           }

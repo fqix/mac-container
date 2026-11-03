@@ -10,7 +10,9 @@ export function registryHost(reference: string): string | undefined {
   }
   const first = reference.slice(0, slash);
   // Same rule as Docker: the first component is a host only if it looks like one
-  return first.includes('.') || first.includes(':') || first === 'localhost' ? first : undefined;
+  return first.includes('.') || first.includes(':') || first === 'localhost'
+    ? first
+    : undefined;
 }
 
 function hostWithoutPort(host: string): string {
@@ -25,14 +27,19 @@ function hostWithoutPort(host: string): string {
  * The CLI talks https unless told otherwise. Loopback registries are treated as insecure like Docker does,
  * others only when listed (host or host:port) in appleContainer.insecureRegistries.
  */
-export function schemeArgs(reference: string, insecureRegistries: readonly string[] = []): string[] {
+export function schemeArgs(
+  reference: string,
+  insecureRegistries: readonly string[] = [],
+): string[] {
   const host = registryHost(reference);
   if (!host) {
     return [];
   }
   const insecure =
     LOOPBACK_HOSTS.has(hostWithoutPort(host)) ||
-    insecureRegistries.some((entry) => entry === host || entry === hostWithoutPort(host));
+    insecureRegistries.some(
+      entry => entry === host || entry === hostWithoutPort(host),
+    );
   return insecure ? ['--scheme', 'http'] : [];
 }
 

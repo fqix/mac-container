@@ -13,7 +13,9 @@ export function postMessage<T>(message: T): void {
 }
 
 /** Localized strings passed by the extension host in <body data-labels> */
-export const labels: Record<string, string> = JSON.parse(document.body.dataset.labels ?? '{}');
+export const labels: Record<string, string> = JSON.parse(
+  document.body.dataset.labels ?? '{}',
+);
 
 export const locale = document.body.dataset.locale || 'en';
 

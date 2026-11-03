@@ -3,10 +3,15 @@
 
 import * as path from 'path';
 
-import type { ContainerSummary } from '../models/types';
+import type {ContainerSummary} from '../models/types';
 
 /** File names container-compose looks for, in order, when no --file is given */
-export const COMPOSE_FILE_NAMES = ['compose.yml', 'compose.yaml', 'docker-compose.yml', 'docker-compose.yaml'];
+export const COMPOSE_FILE_NAMES = [
+  'compose.yml',
+  'compose.yaml',
+  'docker-compose.yml',
+  'docker-compose.yaml',
+];
 
 export interface ComposeProject {
   name: string;
@@ -18,7 +23,9 @@ export interface GroupedContainers {
   standalone: ContainerSummary[];
 }
 
-export function groupByComposeProject(containers: ContainerSummary[]): GroupedContainers {
+export function groupByComposeProject(
+  containers: ContainerSummary[],
+): GroupedContainers {
   const projects = new Map<string, ContainerSummary[]>();
   const standalone: ContainerSummary[] = [];
   for (const c of containers) {
@@ -35,7 +42,9 @@ export function groupByComposeProject(containers: ContainerSummary[]): GroupedCo
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([name, list]) => ({
         name,
-        containers: list.sort((a, b) => (a.composeService ?? a.id).localeCompare(b.composeService ?? b.id)),
+        containers: list.sort((a, b) =>
+          (a.composeService ?? a.id).localeCompare(b.composeService ?? b.id),
+        ),
       })),
     standalone,
   };
@@ -47,7 +56,9 @@ export function groupByComposeProject(containers: ContainerSummary[]): GroupedCo
  */
 export function composeProjectName(fileText: string, filePath: string): string {
   // Only a top-level key (no indentation) counts; values may be quoted
-  const match = /^name:[ \t]*(['"]?)([^'"#\r\n]+?)\1[ \t]*(?:#.*)?$/m.exec(fileText);
+  const match = /^name:[ \t]*(['"]?)([^'"#\r\n]+?)\1[ \t]*(?:#.*)?$/m.exec(
+    fileText,
+  );
   if (match) {
     return match[2].trim();
   }
@@ -55,5 +66,8 @@ export function composeProjectName(fileText: string, filePath: string): string {
 }
 
 export function isComposeFileName(fileName: string): boolean {
-  return COMPOSE_FILE_NAMES.includes(fileName) || /^(docker-)?compose\..+\.ya?ml$/.test(fileName);
+  return (
+    COMPOSE_FILE_NAMES.includes(fileName) ||
+    /^(docker-)?compose\..+\.ya?ml$/.test(fileName)
+  );
 }

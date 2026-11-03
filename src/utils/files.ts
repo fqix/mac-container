@@ -11,9 +11,17 @@ export interface ContainerEntry {
 export function parseListing(output: string): ContainerEntry[] {
   return output
     .split('\n')
-    .filter((line) => line && line !== './' && line !== '../')
-    .map((line) => (line.endsWith('/') ? { name: line.slice(0, -1), directory: true } : { name: line, directory: false }))
-    .sort((a, b) => Number(b.directory) - Number(a.directory) || a.name.localeCompare(b.name));
+    .filter(line => line && line !== './' && line !== '../')
+    .map(line =>
+      line.endsWith('/')
+        ? {name: line.slice(0, -1), directory: true}
+        : {name: line, directory: false},
+    )
+    .sort(
+      (a, b) =>
+        Number(b.directory) - Number(a.directory) ||
+        a.name.localeCompare(b.name),
+    );
 }
 
 /** Container paths are always POSIX, whatever the host */
@@ -26,7 +34,11 @@ export function parentContainerPath(dir: string): string {
 }
 
 /** Picks name, "name (1)", "name (2)"... so downloads never overwrite local files */
-export function uniqueLocalPath(dir: string, name: string, exists: (file: string) => boolean): string {
+export function uniqueLocalPath(
+  dir: string,
+  name: string,
+  exists: (file: string) => boolean,
+): string {
   const ext = path.extname(name);
   // extname is empty for dotfiles such as .bashrc, so they get "(1)" appended
   const stem = ext ? name.slice(0, -ext.length) : name;

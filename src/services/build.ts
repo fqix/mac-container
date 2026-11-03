@@ -26,12 +26,37 @@ export interface BuildOptions {
 /** Platforms offered in the form; amd64 is built with Rosetta, or QEMU when the build.rosetta property is off */
 export const BUILD_PLATFORMS = ['linux/arm64', 'linux/amd64'];
 
-export function defaultBuildOptions(tag: string, context: string): BuildOptions {
-  return { tag, context, target: '', platforms: [], buildArgs: [], secrets: [], labels: [], noCache: false, pull: false, ssh: false };
+export function defaultBuildOptions(
+  tag: string,
+  context: string,
+): BuildOptions {
+  return {
+    tag,
+    context,
+    target: '',
+    platforms: [],
+    buildArgs: [],
+    secrets: [],
+    labels: [],
+    noCache: false,
+    pull: false,
+    ssh: false,
+  };
 }
 
-export function buildImageArgs(dockerfile: string, options: BuildOptions): string[] {
-  const args = ['build', '--progress', 'plain', '--file', dockerfile, '--tag', options.tag];
+export function buildImageArgs(
+  dockerfile: string,
+  options: BuildOptions,
+): string[] {
+  const args = [
+    'build',
+    '--progress',
+    'plain',
+    '--file',
+    dockerfile,
+    '--tag',
+    options.tag,
+  ];
   if (options.target) {
     args.push('--target', options.target);
   }
@@ -72,10 +97,19 @@ export function parseStages(dockerfile: string): string[] {
   return stages;
 }
 
-export type BuildProblemReason = 'tag' | 'context' | 'target' | 'keyValue' | 'secretId' | 'secretValue' | 'secretEnv' | 'sshAgent';
+export type BuildProblemReason =
+  | 'tag'
+  | 'context'
+  | 'target'
+  | 'keyValue'
+  | 'secretId'
+  | 'secretValue'
+  | 'secretEnv'
+  | 'sshAgent';
 
 export interface BuildProblem {
-  section: 'tag' | 'context' | 'target' | 'buildArgs' | 'secrets' | 'labels' | 'ssh';
+  section:
+    'tag' | 'context' | 'target' | 'buildArgs' | 'secrets' | 'labels' | 'ssh';
   /** Zero-based row index within the section */
   index: number;
   reason: BuildProblemReason;
@@ -87,22 +121,26 @@ export interface BuildProblem {
  * Returns the problems found; empty when the options can be built.
  * @param env the environment the CLI runs with: env secrets and --ssh are read from it
  */
-export function validateBuildOptions(options: BuildOptions, env: Record<string, string | undefined>): BuildProblem[] {
+export function validateBuildOptions(
+  options: BuildOptions,
+  env: Record<string, string | undefined>,
+): BuildProblem[] {
   const problems: BuildProblem[] = [];
   if (!options.tag || /\s/.test(options.tag)) {
-    problems.push({ section: 'tag', index: 0, reason: 'tag' });
+    problems.push({section: 'tag', index: 0, reason: 'tag'});
   }
   if (!options.context.startsWith('/')) {
-    problems.push({ section: 'context', index: 0, reason: 'context' });
+    problems.push({section: 'context', index: 0, reason: 'context'});
   }
   if (/\s/.test(options.target)) {
-    problems.push({ section: 'target', index: 0, reason: 'target' });
+    problems.push({section: 'target', index: 0, reason: 'target'});
   }
-  const keyValue = (section: 'buildArgs' | 'labels') => (entry: string, index: number) => {
-    if (!/^[^=\s]+=/.test(entry)) {
-      problems.push({ section, index, reason: 'keyValue' });
-    }
-  };
+  const keyValue =
+    (section: 'buildArgs' | 'labels') => (entry: string, index: number) => {
+      if (!/^[^=\s]+=/.test(entry)) {
+        problems.push({section, index, reason: 'keyValue'});
+      }
+    };
   options.buildArgs.forEach(keyValue('buildArgs'));
   options.labels.forEach(keyValue('labels'));
   options.secrets.forEach((entry, index) => {
@@ -110,27 +148,32 @@ export function validateBuildOptions(options: BuildOptions, env: Record<string, 
     const [first, rest] = splitOnce(entry, ',');
     const id = first.startsWith('id=') ? first.slice(3) : '';
     if (!id || id.includes('=')) {
-      problems.push({ section: 'secrets', index, reason: 'secretId' });
+      problems.push({section: 'secrets', index, reason: 'secretId'});
       return;
     }
     if (rest === undefined || rest.startsWith('env=')) {
       const name = rest === undefined ? id : rest.slice(4);
       if (env[name] === undefined) {
-        problems.push({ section: 'secrets', index, reason: 'secretEnv', name });
+        problems.push({section: 'secrets', index, reason: 'secretEnv', name});
       }
     } else if (!rest.startsWith('src=') || rest.length === 4) {
-      problems.push({ section: 'secrets', index, reason: 'secretValue' });
+      problems.push({section: 'secrets', index, reason: 'secretValue'});
     }
   });
   if (options.ssh && !env.SSH_AUTH_SOCK) {
-    problems.push({ section: 'ssh', index: 0, reason: 'sshAgent' });
+    problems.push({section: 'ssh', index: 0, reason: 'sshAgent'});
   }
   return problems;
 }
 
-function splitOnce(value: string, separator: string): [string, string | undefined] {
+function splitOnce(
+  value: string,
+  separator: string,
+): [string, string | undefined] {
   const at = value.indexOf(separator);
-  return at < 0 ? [value, undefined] : [value.slice(0, at), value.slice(at + 1)];
+  return at < 0
+    ? [value, undefined]
+    : [value.slice(0, at), value.slice(at + 1)];
 }
 
 /** Messages exchanged with the build form webview (webview-ui/src/views/BuildForm.tsx) */
@@ -143,12 +186,12 @@ export type BuildToWebview =
       platforms: string[];
       options: BuildOptions;
     }
-  | { type: 'contextPicked'; path: string }
-  | { type: 'problems'; messages: string[] }
-  | { type: 'busy'; busy: boolean };
+  | {type: 'contextPicked'; path: string}
+  | {type: 'problems'; messages: string[]}
+  | {type: 'busy'; busy: boolean};
 
 export type BuildFromWebview =
-  | { type: 'ready' }
-  | { type: 'pickContext'; current: string }
-  | { type: 'build'; options: BuildOptions }
-  | { type: 'cancel' };
+  | {type: 'ready'}
+  | {type: 'pickContext'; current: string}
+  | {type: 'build'; options: BuildOptions}
+  | {type: 'cancel'};

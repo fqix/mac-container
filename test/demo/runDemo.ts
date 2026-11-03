@@ -8,19 +8,23 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 
-import { runTests } from '@vscode/test-electron';
+import {runTests} from '@vscode/test-electron';
 
-import { CdpSession, listTargets } from './cdp';
-import { DemoEvent, EVENTS_ENV } from './events';
-import { Frame, writeGif } from './gif';
+import {CdpSession, listTargets} from './cdp';
+import {DemoEvent, EVENTS_ENV} from './events';
+import {Frame, writeGif} from './gif';
 
 const PORT = 9339;
 const WIDTH = 1280;
 const HEIGHT = 800;
 
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
 
-async function waitFor<T>(what: string, probe: () => Promise<T | undefined>, timeoutMs = 60_000): Promise<T> {
+async function waitFor<T>(
+  what: string,
+  probe: () => Promise<T | undefined>,
+  timeoutMs = 60_000,
+): Promise<T> {
   const deadline = Date.now() + timeoutMs;
   for (;;) {
     try {
@@ -48,12 +52,19 @@ class Recorder {
 
   async start(): Promise<void> {
     const target = await waitFor('VS Code workbench', async () =>
-      (await listTargets(PORT)).find((t) => t.type === 'page' && t.url.includes('workbench')),
+      (await listTargets(PORT)).find(
+        t => t.type === 'page' && t.url.includes('workbench'),
+      ),
     );
     this.page = await CdpSession.connect(target.webSocketDebuggerUrl);
     await this.page.send('Page.enable');
     // Fixed viewport so every recording has the same dimensions (Electron has no Browser.setWindowBounds)
-    await this.page.send('Emulation.setDeviceMetricsOverride', { width: WIDTH, height: HEIGHT, deviceScaleFactor: 1, mobile: false });
+    await this.page.send('Emulation.setDeviceMetricsOverride', {
+      width: WIDTH,
+      height: HEIGHT,
+      deviceScaleFactor: 1,
+      mobile: false,
+    });
     void this.captureLoop();
     void this.actionLoop();
   }
@@ -70,13 +81,16 @@ class Recorder {
     while (!this.stopped) {
       const started = Date.now();
       try {
-        const { data } = await this.page.send('Page.captureScreenshot', { format: 'png', optimizeForSpeed: true });
+        const {data} = await this.page.send('Page.captureScreenshot', {
+          format: 'png',
+          optimizeForSpeed: true,
+        });
         const png = Buffer.from(data, 'base64');
         const last = this.frames[this.frames.length - 1];
         // Identical frames only extend the previous one
         if (!last || !last.png.equals(png)) {
           // Capture start time lines up with the scene markers written by the demo script
-          this.frames.push({ time: started / 1000, png });
+          this.frames.push({time: started / 1000, png});
         }
       } catch {
         // window closing
@@ -98,9 +112,18 @@ class Recorder {
             // Keep what was on screen to debug the failed step
             const last = this.frames[this.frames.length - 1];
             if (last && process.env.DEMO_DEBUG_DIR) {
-              fs.writeFileSync(path.join(process.env.DEMO_DEBUG_DIR, `failed-${event.name}.png`), last.png);
+              fs.writeFileSync(
+                path.join(
+                  process.env.DEMO_DEBUG_DIR,
+                  `failed-${event.name}.png`,
+                ),
+                last.png,
+              );
             }
-            fs.writeFileSync(`${this.eventsFile}.ack-${event.id}`, `error: ${String(error)}`);
+            fs.writeFileSync(
+              `${this.eventsFile}.ack-${event.id}`,
+              `error: ${String(error)}`,
+            );
           }
         }
       }
@@ -108,33 +131,51 @@ class Recorder {
     }
   }
 
-  private async perform(name: string, payload: Record<string, any>): Promise<void> {
+  private async perform(
+    name: string,
+    payload: Record<string, any>,
+  ): Promise<void> {
     switch (name) {
       case 'webview':
         return this.inWebview(payload.marker, payload.steps);
       case 'drag': {
         // e.g. the sidebar sash, which has no command to set its width
-        const { from, to } = payload as { from: [number, number]; to: [number, number] };
+        const {from, to} = payload as {
+          from: [number, number];
+          to: [number, number];
+        };
         const mouse = (type: string, [x, y]: [number, number]) =>
-          this.page.send('Input.dispatchMouseEvent', { type, x, y, button: 'left', buttons: type === 'mouseReleased' ? 0 : 1, clickCount: 1 });
+          this.page.send('Input.dispatchMouseEvent', {
+            type,
+            x,
+            y,
+            button: 'left',
+            buttons: type === 'mouseReleased' ? 0 : 1,
+            clickCount: 1,
+          });
         await mouse('mouseMoved', from);
         await mouse('mousePressed', from);
         for (let i = 1; i <= 10; i++) {
-          await mouse('mouseMoved', [from[0] + ((to[0] - from[0]) * i) / 10, from[1] + ((to[1] - from[1]) * i) / 10]);
+          await mouse('mouseMoved', [
+            from[0] + ((to[0] - from[0]) * i) / 10,
+            from[1] + ((to[1] - from[1]) * i) / 10,
+          ]);
           await sleep(20);
         }
         await mouse('mouseReleased', to);
         return;
       }
       case 'click-dialog':
-        await waitFor('dialog', () =>
-          this.page.evaluate<boolean | undefined>(`(() => {
+        await waitFor(
+          'dialog',
+          () =>
+            this.page.evaluate<boolean | undefined>(`(() => {
             const button = [...document.querySelectorAll('.monaco-dialog-box .monaco-button')].find((b) => b.textContent.trim() === ${JSON.stringify(payload.label)});
             if (!button) return undefined;
             button.click();
             return true;
           })()`),
-        10_000,
+          10_000,
         );
         return;
       default:
@@ -152,7 +193,9 @@ class Recorder {
             continue;
           }
           const s = await CdpSession.connect(target.webSocketDebuggerUrl);
-          const found = await s.evaluate<boolean>(`!!(document.querySelector('#active-frame')?.contentDocument ?? document).querySelector(${JSON.stringify(marker)})`);
+          const found = await s.evaluate<boolean>(
+            `!!(document.querySelector('#active-frame')?.contentDocument ?? document).querySelector(${JSON.stringify(marker)})`,
+          );
           if (found) {
             return s;
           }
@@ -175,8 +218,8 @@ class Recorder {
 
 /** A scripted interaction inside a webview; selectors are evaluated in the React app's document */
 export type WebviewStep =
-  | { click: string; text?: string; pause?: number }
-  | { type: string; into: string; index?: number; pause?: number };
+  | {click: string; text?: string; pause?: number}
+  | {type: string; into: string; index?: number; pause?: number};
 
 function webviewStepScript(step: WebviewStep): string {
   const prelude = `
@@ -216,23 +259,33 @@ function readEvents(file: string): DemoEvent[] {
     .readFileSync(file, 'utf8')
     .split('\n')
     .filter(Boolean)
-    .map((line) => JSON.parse(line) as DemoEvent);
+    .map(line => JSON.parse(line) as DemoEvent);
 }
 
-function writeScenes(frames: Frame[], events: DemoEvent[], outDir: string): string[] {
+function writeScenes(
+  frames: Frame[],
+  events: DemoEvent[],
+  outDir: string,
+): string[] {
   const written: string[] = [];
   for (const start of events) {
     if (start.type !== 'scene-start') {
       continue;
     }
-    const end = events.find((e): e is Extract<DemoEvent, { t: number }> => e.type === 'scene-end' && e.name === start.name);
+    const end = events.find(
+      (e): e is Extract<DemoEvent, {t: number}> =>
+        e.type === 'scene-end' && e.name === start.name,
+    );
     if (!end) {
       continue;
     }
     // The frame on screen when the scene starts, then every frame until it ends
-    const before = [...frames].reverse().find((f) => f.time <= start.t);
-    const inside = frames.filter((f) => f.time > start.t && f.time <= end.t);
-    const sceneFrames = [...(before ? [{ time: start.t, png: before.png }] : []), ...inside];
+    const before = [...frames].reverse().find(f => f.time <= start.t);
+    const inside = frames.filter(f => f.time > start.t && f.time <= end.t);
+    const sceneFrames = [
+      ...(before ? [{time: start.t, png: before.png}] : []),
+      ...inside,
+    ];
     if (!sceneFrames.length) {
       continue;
     }
@@ -241,14 +294,22 @@ function writeScenes(frames: Frame[], events: DemoEvent[], outDir: string): stri
       let next = start.t;
       for (const frame of sceneFrames) {
         if (frame.time >= next) {
-          fs.writeFileSync(path.join(process.env.DEMO_DEBUG_DIR, `${start.name}-${(frame.time - start.t).toFixed(1).padStart(5, '0')}s.png`), frame.png);
+          fs.writeFileSync(
+            path.join(
+              process.env.DEMO_DEBUG_DIR,
+              `${start.name}-${(frame.time - start.t).toFixed(1).padStart(5, '0')}s.png`,
+            ),
+            frame.png,
+          );
           next = frame.time + 1;
         }
       }
     }
     const file = path.join(outDir, `${start.name}.gif`);
     writeGif(file, sceneFrames, end.t);
-    written.push(`${file} (${sceneFrames.length} frames, ${(fs.statSync(file).size / 1024 / 1024).toFixed(1)} MB)`);
+    written.push(
+      `${file} (${sceneFrames.length} frames, ${(fs.statSync(file).size / 1024 / 1024).toFixed(1)} MB)`,
+    );
   }
   return written;
 }
@@ -259,7 +320,7 @@ async function main(): Promise<void> {
   const workspace = path.join(tmp, 'shop');
   fs.mkdirSync(workspace);
   const userDir = path.join(tmp, 'user-data', 'User');
-  fs.mkdirSync(userDir, { recursive: true });
+  fs.mkdirSync(userDir, {recursive: true});
   // A clean, distraction-free window
   fs.writeFileSync(
     path.join(userDir, 'settings.json'),
@@ -286,15 +347,20 @@ async function main(): Promise<void> {
   );
   const eventsFile = path.join(tmp, 'events.jsonl');
   const outDir = path.join(root, 'docs', 'media');
-  fs.mkdirSync(outDir, { recursive: true });
+  fs.mkdirSync(outDir, {recursive: true});
 
   const recorder = new Recorder(eventsFile);
-  const vscodeExecutablePath = process.env.VSCODE_EXECUTABLE ?? '/Applications/Visual Studio Code.app/Contents/MacOS/Code';
+  const vscodeExecutablePath =
+    process.env.VSCODE_EXECUTABLE ??
+    '/Applications/Visual Studio Code.app/Contents/MacOS/Code';
   const run = runTests({
     vscodeExecutablePath,
     extensionDevelopmentPath: root,
     extensionTestsPath: path.join(__dirname, 'index.js'),
-    extensionTestsEnv: { [EVENTS_ENV]: eventsFile, DEMO_SCENES: process.env.DEMO_SCENES ?? '' },
+    extensionTestsEnv: {
+      [EVENTS_ENV]: eventsFile,
+      DEMO_SCENES: process.env.DEMO_SCENES ?? '',
+    },
     launchArgs: [
       workspace,
       '--disable-extensions',
@@ -309,14 +375,18 @@ async function main(): Promise<void> {
   } finally {
     recorder.stop();
     // Scenes that completed are written even when a later one failed
-    for (const line of writeScenes(recorder.frames, readEvents(eventsFile), outDir)) {
+    for (const line of writeScenes(
+      recorder.frames,
+      readEvents(eventsFile),
+      outDir,
+    )) {
       console.log(`wrote ${line}`);
     }
-    fs.rmSync(tmp, { recursive: true, force: true });
+    fs.rmSync(tmp, {recursive: true, force: true});
   }
 }
 
-main().catch((error) => {
+main().catch(error => {
   console.error(error);
   process.exit(1);
 });

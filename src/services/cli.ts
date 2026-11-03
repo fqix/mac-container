@@ -1,8 +1,8 @@
 // container CLI wrapper: always invoked via execFile (no shell); handles path resolution, timeouts, errors and JSON parsing
 
-import { execFile } from 'child_process';
-import { constants as fsConstants } from 'fs';
-import { access } from 'fs/promises';
+import {execFile} from 'child_process';
+import {constants as fsConstants} from 'fs';
+import {access} from 'fs/promises';
 import * as path from 'path';
 
 import {
@@ -43,15 +43,21 @@ export class CliError extends Error {
     readonly args: string[],
     readonly exitCode: number | string | undefined,
     readonly stderr: string,
-    options?: { cause?: unknown },
+    options?: {cause?: unknown},
   ) {
-    super(`container ${args.join(' ')} failed: ${cliErrorDetail(stderr, exitCode)}`, options);
+    super(
+      `container ${args.join(' ')} failed: ${cliErrorDetail(stderr, exitCode)}`,
+      options,
+    );
     this.name = 'CliError';
   }
 }
 
 /** Error reason: the first error line printed by the CLI, or the exit code if there is none */
-export function cliErrorDetail(stderr: string, exitCode: number | string | undefined): string {
+export function cliErrorDetail(
+  stderr: string,
+  exitCode: number | string | undefined,
+): string {
   return firstLine(stderr) || `exit ${exitCode}`;
 }
 
@@ -60,8 +66,8 @@ function firstLine(text: string): string {
   return (
     text
       .split('\n')
-      .map((l) => l.trim())
-      .find((l) => l.length > 0)
+      .map(l => l.trim())
+      .find(l => l.length > 0)
       ?.replace(/^Error:\s*/, '') ?? ''
   );
 }
@@ -76,12 +82,18 @@ async function isExecutable(file: string): Promise<boolean> {
 }
 
 /** Resolves the absolute path of the CLI executable; a configured value containing a path separator is used as is */
-export async function resolveCliPath(configured: string, envPath = process.env.PATH ?? ''): Promise<string | undefined> {
+export async function resolveCliPath(
+  configured: string,
+  envPath = process.env.PATH ?? '',
+): Promise<string | undefined> {
   const value = configured.trim() || 'container';
   if (value.includes('/')) {
     return (await isExecutable(value)) ? value : undefined;
   }
-  const dirs = [...envPath.split(path.delimiter).filter(Boolean), ...EXTRA_SEARCH_DIRS];
+  const dirs = [
+    ...envPath.split(path.delimiter).filter(Boolean),
+    ...EXTRA_SEARCH_DIRS,
+  ];
   for (const dir of dirs) {
     const candidate = path.join(dir, value);
     if (await isExecutable(candidate)) {
@@ -123,7 +135,11 @@ export class ContainerCli {
       const child = execFile(
         file,
         args,
-        { timeout: options.timeoutMs ?? DEFAULT_TIMEOUT_MS, maxBuffer: MAX_BUFFER, env: { ...process.env, NO_COLOR: '1' } },
+        {
+          timeout: options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
+          maxBuffer: MAX_BUFFER,
+          env: {...process.env, NO_COLOR: '1'},
+        },
         (error, stdout, stderr) => {
           if (error) {
             const code = (error as NodeJS.ErrnoException).code;
@@ -132,7 +148,14 @@ export class ContainerCli {
               reject(new CliNotFoundError(file));
               return;
             }
-            reject(new CliError(args, (error as { code?: number | string }).code, stderr || stdout, { cause: error }));
+            reject(
+              new CliError(
+                args,
+                (error as {code?: number | string}).code,
+                stderr || stdout,
+                {cause: error},
+              ),
+            );
             return;
           }
           resolve(stdout);
@@ -149,7 +172,10 @@ export class ContainerCli {
     try {
       return parseJson(out);
     } catch (error) {
-      throw new Error(`Failed to parse JSON output of container ${args.join(' ')}`, { cause: error });
+      throw new Error(
+        `Failed to parse JSON output of container ${args.join(' ')}`,
+        {cause: error},
+      );
     }
   }
 
@@ -157,11 +183,13 @@ export class ContainerCli {
 
   async systemStatus(): Promise<SystemStatus> {
     try {
-      return parseSystemStatus(await this.json(['system', 'status'], { timeoutMs: 10_000 }));
+      return parseSystemStatus(
+        await this.json(['system', 'status'], {timeoutMs: 10_000}),
+      );
     } catch (error) {
       // system status exits non-zero when the service is not started; treat that as stopped
       if (error instanceof CliError) {
-        return { running: false };
+        return {running: false};
       }
       throw error;
     }
@@ -188,8 +216,15 @@ export class ContainerCli {
   }
 
   /** The password goes through stdin so it never shows up in the process list */
-  async registryLogin(server: string, username: string, password: string): Promise<void> {
-    await this.run(['registry', 'login', '--username', username, '--password-stdin', server], { input: password });
+  async registryLogin(
+    server: string,
+    username: string,
+    password: string,
+  ): Promise<void> {
+    await this.run(
+      ['registry', 'login', '--username', username, '--password-stdin', server],
+      {input: password},
+    );
   }
 
   async stats(ids: string[]): Promise<ContainerStats[]> {

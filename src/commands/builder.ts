@@ -3,11 +3,11 @@
 
 import * as vscode from 'vscode';
 
-import { runCliTask } from '../ui/terminal';
-import { CommandContext, confirm, register, withProgress } from './common';
+import {runCliTask} from '../ui/terminal';
+import {CommandContext, confirm, register, withProgress} from './common';
 
 export function registerBuilderCommands(ctx: CommandContext): void {
-  const { cli } = ctx;
+  const {cli} = ctx;
 
   // No --cpus / --memory: builds pass none either, and the CLI recreates the builder whenever they differ
   const start = async () => {
@@ -15,7 +15,10 @@ export function registerBuilderCommands(ctx: CommandContext): void {
     await runCliTask(cli, vscode.l10n.t('Start Builder'), ['builder', 'start']);
     ctx.views.builder.refresh();
   };
-  const stop = () => withProgress(vscode.l10n.t('Stopping the builder...'), () => cli.run(['builder', 'stop'], { timeoutMs: 120_000 }));
+  const stop = () =>
+    withProgress(vscode.l10n.t('Stopping the builder...'), () =>
+      cli.run(['builder', 'stop'], {timeoutMs: 120_000}),
+    );
 
   register(ctx, 'appleContainer.builder.start', start);
 
@@ -33,12 +36,16 @@ export function registerBuilderCommands(ctx: CommandContext): void {
     const ok = await confirm(
       vscode.l10n.t('Delete the builder?'),
       vscode.l10n.t('Delete'),
-      vscode.l10n.t('Its build cache is removed. The next build creates the builder again.'),
+      vscode.l10n.t(
+        'Its build cache is removed. The next build creates the builder again.',
+      ),
     );
     if (!ok) {
       return;
     }
-    await withProgress(vscode.l10n.t('Deleting the builder...'), () => cli.run(['builder', 'delete', '--force'], { timeoutMs: 120_000 }));
+    await withProgress(vscode.l10n.t('Deleting the builder...'), () =>
+      cli.run(['builder', 'delete', '--force'], {timeoutMs: 120_000}),
+    );
     ctx.views.builder.refresh();
   });
 }

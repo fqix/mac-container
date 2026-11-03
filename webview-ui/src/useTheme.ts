@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import {useEffect, useState} from 'react';
 
 export interface ThemeColors {
   foreground: string;
@@ -13,7 +13,8 @@ export interface ThemeColors {
 
 function read(): ThemeColors {
   const style = getComputedStyle(document.body);
-  const v = (name: string, fallback: string) => style.getPropertyValue(name).trim() || fallback;
+  const v = (name: string, fallback: string) =>
+    style.getPropertyValue(name).trim() || fallback;
   return {
     foreground: v('--vscode-foreground', '#cccccc'),
     muted: v('--vscode-descriptionForeground', '#999999'),
@@ -31,7 +32,10 @@ export function useTheme(): ThemeColors {
   const [colors, setColors] = useState(read);
   useEffect(() => {
     const observer = new MutationObserver(() => setColors(read()));
-    observer.observe(document.body, { attributes: true, attributeFilter: ['class'] });
+    observer.observe(document.body, {
+      attributes: true,
+      attributeFilter: ['class'],
+    });
     return () => observer.disconnect();
   }, []);
   return colors;

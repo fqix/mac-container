@@ -2,7 +2,10 @@
 import fs from 'fs';
 import path from 'path';
 
-const root = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
+const root = path.resolve(
+  path.dirname(new URL(import.meta.url).pathname),
+  '..',
+);
 const errors = [];
 
 function walk(dir, out = []) {
@@ -20,21 +23,27 @@ function walk(dir, out = []) {
 const runtimeKeys = new Set();
 for (const file of walk(path.join(root, 'src'))) {
   const source = fs.readFileSync(file, 'utf8');
-  for (const m of source.matchAll(/l10n\.t\(\s*(['"`])((?:\\.|(?!\1).)*)\1/gs)) {
+  for (const m of source.matchAll(
+    /l10n\.t\(\s*(['"`])((?:\\.|(?!\1).)*)\1/gs,
+  )) {
     runtimeKeys.add(m[2].replace(/\\n/g, '\n').replace(/\\'/g, "'"));
   }
 }
 
 const pkgText = fs.readFileSync(path.join(root, 'package.json'), 'utf8');
-const nlsKeys = new Set([...pkgText.matchAll(/"%([^%"]+)%"/g)].map((m) => m[1]));
-const nlsDefault = JSON.parse(fs.readFileSync(path.join(root, 'package.nls.json'), 'utf8'));
+const nlsKeys = new Set([...pkgText.matchAll(/"%([^%"]+)%"/g)].map(m => m[1]));
+const nlsDefault = JSON.parse(
+  fs.readFileSync(path.join(root, 'package.nls.json'), 'utf8'),
+);
 for (const key of nlsKeys) {
   if (!(key in nlsDefault)) {
     errors.push(`package.nls.json: missing "${key}"`);
   }
 }
 
-for (const file of fs.readdirSync(root).filter((f) => /^package\.nls\..+\.json$/.test(f))) {
+for (const file of fs
+  .readdirSync(root)
+  .filter(f => /^package\.nls\..+\.json$/.test(f))) {
   const bundle = JSON.parse(fs.readFileSync(path.join(root, file), 'utf8'));
   for (const key of nlsKeys) {
     if (!(key in bundle)) {
@@ -44,7 +53,7 @@ for (const file of fs.readdirSync(root).filter((f) => /^package\.nls\..+\.json$/
 }
 
 const l10nDir = path.join(root, 'l10n');
-for (const file of fs.readdirSync(l10nDir).filter((f) => f.endsWith('.json'))) {
+for (const file of fs.readdirSync(l10nDir).filter(f => f.endsWith('.json'))) {
   const bundle = JSON.parse(fs.readFileSync(path.join(l10nDir, file), 'utf8'));
   for (const key of runtimeKeys) {
     if (!(key in bundle)) {
@@ -62,4 +71,6 @@ if (errors.length) {
   console.error(errors.join('\n'));
   process.exit(1);
 }
-console.log(`l10n OK: ${runtimeKeys.size} runtime strings, ${nlsKeys.size} manifest strings`);
+console.log(
+  `l10n OK: ${runtimeKeys.size} runtime strings, ${nlsKeys.size} manifest strings`,
+);

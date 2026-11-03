@@ -1,12 +1,12 @@
 // Runs the bundled devcontainers/cli against Apple container through the docker shim (dist/docker-shim.js).
 // Both run on the editor's own Node (Electron with ELECTRON_RUN_AS_NODE), so users need no Node or Docker install.
 
-import { execFile } from 'child_process';
-import { chmod, mkdir, readFile, writeFile } from 'fs/promises';
+import {execFile} from 'child_process';
+import {chmod, mkdir, readFile, writeFile} from 'fs/promises';
 import * as path from 'path';
 
-import { RUN_DEFAULTS_ENV } from '../dockerShim/translate';
-import { memorySpec } from './devcontainer';
+import {RUN_DEFAULTS_ENV} from '../dockerShim/translate';
+import {memorySpec} from './devcontainer';
 
 export interface DevContainerCliPaths {
   /** Electron (or Node) binary that runs the scripts */
@@ -31,13 +31,17 @@ export function dockerWrapper(node: string, shim: string): string {
 }
 
 /** Writes the wrapper into the extension's storage, rewriting it only when the editor or extension moved */
-export async function prepareDockerWrapper(storageDir: string, node: string, shim: string): Promise<string> {
+export async function prepareDockerWrapper(
+  storageDir: string,
+  node: string,
+  shim: string,
+): Promise<string> {
   const file = path.join(storageDir, 'bin', 'docker');
   const content = dockerWrapper(node, shim);
   const current = await readFile(file, 'utf8').catch(() => undefined);
   if (current !== content) {
-    await mkdir(path.dirname(file), { recursive: true });
-    await writeFile(file, content, { mode: 0o755 });
+    await mkdir(path.dirname(file), {recursive: true});
+    await writeFile(file, content, {mode: 0o755});
     await chmod(file, 0o755);
   }
   return file;
@@ -47,14 +51,23 @@ export async function prepareDockerWrapper(storageDir: string, node: string, shi
  * Environment for the CLI process, passed on to the shim; ELECTRON_RUN_AS_NODE is removed again by run.js
  * before user commands run. runDefaults are `container run` options for resources (see runDefaults()).
  */
-export function cliEnv(paths: DevContainerCliPaths, runDefaults: string[] = []): Record<string, string> {
-  return { ELECTRON_RUN_AS_NODE: '1', APPLE_CONTAINER_CLI: paths.containerCli, [RUN_DEFAULTS_ENV]: JSON.stringify(runDefaults) };
+export function cliEnv(
+  paths: DevContainerCliPaths,
+  runDefaults: string[] = [],
+): Record<string, string> {
+  return {
+    ELECTRON_RUN_AS_NODE: '1',
+    APPLE_CONTAINER_CLI: paths.containerCli,
+    [RUN_DEFAULTS_ENV]: JSON.stringify(runDefaults),
+  };
 }
 
 /** "4G" / "512M" (container CLI sizes) in bytes */
 function sizeBytes(size: string): number | undefined {
   const m = /^(\d+)([KMGT])?$/i.exec(size.trim());
-  return m ? Number(m[1]) * 1024 ** ('KMGT'.indexOf((m[2] ?? 'M').toUpperCase()) + 1) : undefined;
+  return m
+    ? Number(m[1]) * 1024 ** ('KMGT'.indexOf((m[2] ?? 'M').toUpperCase()) + 1)
+    : undefined;
 }
 
 /**
@@ -62,14 +75,22 @@ function sizeBytes(size: string): number | undefined {
  * not limited by default, but an Apple container VM gets 1 GB unless told otherwise. So the memory is the larger of
  * hostRequirements.memory and the configured default, and hostRequirements.cpus is passed on as is.
  */
-export function runDefaults(hostRequirements: Record<string, unknown> | undefined, defaultMemory: string): string[] {
+export function runDefaults(
+  hostRequirements: Record<string, unknown> | undefined,
+  defaultMemory: string,
+): string[] {
   const args: string[] = [];
   const cpus = Number(hostRequirements?.cpus);
   if (Number.isInteger(cpus) && cpus > 0) {
     args.push('--cpus', String(cpus));
   }
-  const required = typeof hostRequirements?.memory === 'string' ? memorySpec(hostRequirements.memory) : undefined;
-  const candidates = [required, defaultMemory.trim() || undefined].filter((s): s is string => !!s && sizeBytes(s) !== undefined);
+  const required =
+    typeof hostRequirements?.memory === 'string'
+      ? memorySpec(hostRequirements.memory)
+      : undefined;
+  const candidates = [required, defaultMemory.trim() || undefined].filter(
+    (s): s is string => !!s && sizeBytes(s) !== undefined,
+  );
   const memory = candidates.sort((a, b) => sizeBytes(b)! - sizeBytes(a)!)[0];
   if (memory) {
     args.push('--memory', memory);
@@ -77,17 +98,32 @@ export function runDefaults(hostRequirements: Record<string, unknown> | undefine
   return args;
 }
 
-function targetArgs(paths: DevContainerCliPaths, target: DevContainerTarget): string[] {
-  return ['--workspace-folder', target.workspaceFolder, '--config', target.configFile, '--docker-path', paths.dockerPath];
+function targetArgs(
+  paths: DevContainerCliPaths,
+  target: DevContainerTarget,
+): string[] {
+  return [
+    '--workspace-folder',
+    target.workspaceFolder,
+    '--config',
+    target.configFile,
+    '--docker-path',
+    paths.dockerPath,
+  ];
 }
 
 /** Arguments (after the node binary) for `devcontainer up` */
-export function upArgs(paths: DevContainerCliPaths, target: DevContainerTarget, options: { removeExisting?: boolean } = {}): string[] {
+export function upArgs(
+  paths: DevContainerCliPaths,
+  target: DevContainerTarget,
+  options: {removeExisting?: boolean} = {},
+): string[] {
   return [
     paths.script,
     'up',
     ...targetArgs(paths, target),
-    '--log-format', 'text',
+    '--log-format',
+    'text',
     ...(options.removeExisting ? ['--remove-existing-container'] : []),
   ];
 }
@@ -107,10 +143,13 @@ export interface ResolvedConfiguration {
  * (features first, devcontainer.json last), or a single object. A later "-publisher.name" removes an id, as in Dev Containers.
  */
 export function vscodeExtensions(vscodeCustomizations: unknown): string[] {
-  const sources = Array.isArray(vscodeCustomizations) ? vscodeCustomizations : [vscodeCustomizations];
+  const sources = Array.isArray(vscodeCustomizations)
+    ? vscodeCustomizations
+    : [vscodeCustomizations];
   const ids = new Set<string>();
   for (const source of sources) {
-    const extensions: unknown = (source as Record<string, unknown> | undefined)?.extensions;
+    const extensions: unknown = (source as Record<string, unknown> | undefined)
+      ?.extensions;
     for (const entry of Array.isArray(extensions) ? extensions : []) {
       if (typeof entry !== 'string' || !entry.trim()) {
         continue;
@@ -129,7 +168,11 @@ export function vscodeExtensions(vscodeCustomizations: unknown): string[] {
 /** Picks what the extension needs from `devcontainer read-configuration --include-merged-configuration` */
 export function parseReadConfiguration(stdout: string): ResolvedConfiguration {
   // The JSON result is the last line; earlier lines may be log output
-  const line = stdout.trim().split('\n').reverse().find((l) => l.trim().startsWith('{'));
+  const line = stdout
+    .trim()
+    .split('\n')
+    .reverse()
+    .find(l => l.trim().startsWith('{'));
   const result = line ? JSON.parse(line) : {};
   const merged = result.mergedConfiguration ?? result.configuration ?? {};
   const remoteEnv: Record<string, string> = {};
@@ -147,22 +190,44 @@ export function parseReadConfiguration(stdout: string): ResolvedConfiguration {
   };
 }
 
-export function readConfiguration(paths: DevContainerCliPaths, target: DevContainerTarget): Promise<ResolvedConfiguration> {
-  const args = [paths.script, 'read-configuration', ...targetArgs(paths, target), '--include-merged-configuration', '--log-format', 'json'];
+export function readConfiguration(
+  paths: DevContainerCliPaths,
+  target: DevContainerTarget,
+): Promise<ResolvedConfiguration> {
+  const args = [
+    paths.script,
+    'read-configuration',
+    ...targetArgs(paths, target),
+    '--include-merged-configuration',
+    '--log-format',
+    'json',
+  ];
   return new Promise((resolve, reject) => {
     execFile(
       paths.node,
       args,
-      { env: { ...process.env, ...cliEnv(paths) }, maxBuffer: 16 * 1024 * 1024, timeout: 120_000 },
+      {
+        env: {...process.env, ...cliEnv(paths)},
+        maxBuffer: 16 * 1024 * 1024,
+        timeout: 120_000,
+      },
       (error, stdout, stderr) => {
         if (error) {
-          reject(new Error(`devcontainer read-configuration failed: ${stderr.trim() || error.message}`));
+          reject(
+            new Error(
+              `devcontainer read-configuration failed: ${stderr.trim() || error.message}`,
+            ),
+          );
           return;
         }
         try {
           resolve(parseReadConfiguration(stdout));
         } catch (err) {
-          reject(new Error(`devcontainer read-configuration returned invalid output: ${(err as Error).message}`));
+          reject(
+            new Error(
+              `devcontainer read-configuration returned invalid output: ${(err as Error).message}`,
+            ),
+          );
         }
       },
     );

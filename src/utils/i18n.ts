@@ -2,15 +2,19 @@
 
 import * as vscode from 'vscode';
 
-import { CliError, CliNotFoundError, cliErrorDetail } from '../services/cli';
-import { formatRelativeTime } from './parse';
+import {CliError, CliNotFoundError, cliErrorDetail} from '../services/cli';
+import {formatRelativeTime} from './parse';
 
 export function describeError(error: unknown): string {
   if (error instanceof CliNotFoundError) {
     return vscode.l10n.t('container CLI not found: {0}', error.configuredPath);
   }
   if (error instanceof CliError) {
-    return vscode.l10n.t('`container {0}` failed: {1}', error.args.join(' '), cliErrorDetail(error.stderr, error.exitCode));
+    return vscode.l10n.t(
+      '`container {0}` failed: {1}',
+      error.args.join(' '),
+      cliErrorDetail(error.stderr, error.exitCode),
+    );
   }
   return error instanceof Error ? error.message : String(error);
 }

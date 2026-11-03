@@ -2,8 +2,8 @@
 
 import * as fs from 'fs';
 
-import { applyPalette, GIFEncoder, quantize } from 'gifenc';
-import { PNG } from 'pngjs';
+import {applyPalette, GIFEncoder, quantize} from 'gifenc';
+import {PNG} from 'pngjs';
 
 export interface Frame {
   /** Seconds, from the screencast metadata */
@@ -15,7 +15,12 @@ export interface Frame {
  * @param frames frames in time order; each is shown until the next one
  * @param endTime when the last frame stops being shown
  */
-export function writeGif(file: string, frames: Frame[], endTime: number, maxFps = 12): void {
+export function writeGif(
+  file: string,
+  frames: Frame[],
+  endTime: number,
+  maxFps = 12,
+): void {
   const encoder = GIFEncoder();
   // Drop frames closer than 1/maxFps to the previous kept one; the kept frame then lasts longer
   const kept: Frame[] = [];
@@ -23,7 +28,10 @@ export function writeGif(file: string, frames: Frame[], endTime: number, maxFps 
     if (!kept.length || frame.time - kept[kept.length - 1].time >= 1 / maxFps) {
       kept.push(frame);
     } else {
-      kept[kept.length - 1] = { time: kept[kept.length - 1].time, png: frame.png };
+      kept[kept.length - 1] = {
+        time: kept[kept.length - 1].time,
+        png: frame.png,
+      };
     }
   }
   kept.forEach((frame, i) => {

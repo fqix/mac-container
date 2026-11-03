@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import {useEffect} from 'react';
 
 /** Subscribes to messages posted by the extension host */
 export function useMessages<T>(handler: (message: T) => void): void {

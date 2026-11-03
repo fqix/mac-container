@@ -1,9 +1,9 @@
 import react from '@vitejs/plugin-react';
-import { defineConfig } from 'vite';
+import {defineConfig} from 'vite';
 
 // Builds a single script + stylesheet into the extension's dist/webview.
 // File names are fixed because the extension host references them directly (src/panels/webviewHtml.ts).
-export default defineConfig(({ mode }) => ({
+export default defineConfig(({mode}) => ({
   plugins: [react()],
   base: './',
   build: {

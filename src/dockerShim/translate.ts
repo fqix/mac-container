@@ -1,8 +1,13 @@
 // Translates the docker CLI calls made by devcontainers/cli into Apple container CLI calls.
 // Pure functions only, so they can be unit tested; the process handling lives in main.ts.
 
-import { devContainerName, LABEL_CONFIG_FILE, LABEL_LOCAL_FOLDER, mountSpec } from '../services/devcontainer';
-import { parseContainers } from '../utils/parse';
+import {
+  devContainerName,
+  LABEL_CONFIG_FILE,
+  LABEL_LOCAL_FOLDER,
+  mountSpec,
+} from '../services/devcontainer';
+import {parseContainers} from '../utils/parse';
 
 type Json = Record<string, any>;
 
@@ -11,10 +16,41 @@ export const SHIM_VERSION = '27.0.0';
 
 /** docker flags that take no value; any other flag without `=` consumes the next argument */
 const DOCKER_BOOLEAN_FLAGS = new Set([
-  '-d', '--detach', '-i', '--interactive', '-t', '--tty', '--rm', '--init', '--privileged', '--read-only',
-  '-P', '--publish-all', '--sig-proxy', '--oom-kill-disable', '--no-healthcheck', '--disable-content-trust',
-  '-q', '--quiet', '-a', '--all', '-f', '--force', '--no-cache', '--pull', '--load', '--push', '--force-rm',
-  '--squash', '--compress', '--no-trunc', '-s', '--size', '-l', '--latest', '-n',
+  '-d',
+  '--detach',
+  '-i',
+  '--interactive',
+  '-t',
+  '--tty',
+  '--rm',
+  '--init',
+  '--privileged',
+  '--read-only',
+  '-P',
+  '--publish-all',
+  '--sig-proxy',
+  '--oom-kill-disable',
+  '--no-healthcheck',
+  '--disable-content-trust',
+  '-q',
+  '--quiet',
+  '-a',
+  '--all',
+  '-f',
+  '--force',
+  '--no-cache',
+  '--pull',
+  '--load',
+  '--push',
+  '--force-rm',
+  '--squash',
+  '--compress',
+  '--no-trunc',
+  '-s',
+  '--size',
+  '-l',
+  '--latest',
+  '-n',
 ]);
 
 /** Flags whose meaning depends on the command: `-a` is a boolean for ps but takes a value for run */
@@ -45,7 +81,8 @@ export interface SplitArgs {
 /** Splits docker style arguments into options and positionals, stopping at the first positional */
 export function splitOptions(command: string, args: string[]): SplitArgs {
   const valueFlags = new Set(VALUE_FLAGS_BY_COMMAND[command] ?? []);
-  const takesValue = (name: string) => valueFlags.has(name) || !DOCKER_BOOLEAN_FLAGS.has(name);
+  const takesValue = (name: string) =>
+    valueFlags.has(name) || !DOCKER_BOOLEAN_FLAGS.has(name);
   const options: DockerOption[] = [];
   let i = 0;
   for (; i < args.length; i++) {
@@ -59,34 +96,40 @@ export function splitOptions(command: string, args: string[]): SplitArgs {
     }
     const eq = arg.indexOf('=');
     if (arg.startsWith('--') && eq > 0) {
-      options.push({ name: arg.slice(0, eq), value: arg.slice(eq + 1) });
+      options.push({name: arg.slice(0, eq), value: arg.slice(eq + 1)});
       continue;
     }
     // Combined short booleans such as -it
     if (!arg.startsWith('--') && arg.length > 2) {
-      const flags = arg.slice(1).split('').map((c) => `-${c}`);
-      if (flags.every((f) => !takesValue(f))) {
-        options.push(...flags.map((name) => ({ name })));
+      const flags = arg
+        .slice(1)
+        .split('')
+        .map(c => `-${c}`);
+      if (flags.every(f => !takesValue(f))) {
+        options.push(...flags.map(name => ({name})));
         continue;
       }
       // -uroot style: short flag with an attached value
-      options.push({ name: arg.slice(0, 2), value: arg.slice(2) });
+      options.push({name: arg.slice(0, 2), value: arg.slice(2)});
       continue;
     }
     if (takesValue(arg) && i + 1 < args.length) {
-      options.push({ name: arg, value: args[++i] });
+      options.push({name: arg, value: args[++i]});
     } else {
-      options.push({ name: arg });
+      options.push({name: arg});
     }
   }
-  return { options, rest: args.slice(i) };
+  return {options, rest: args.slice(i)};
 }
 
 /** Option name → whether it takes a value, parsed from `container <command> --help` */
 export function parseHelpOptions(help: string): Map<string, boolean> {
   const result = new Map<string, boolean>();
   for (const line of help.split('\n')) {
-    const m = /^\s{1,4}(-{1,2}[A-Za-z0-9][\w-]*(?:,\s*-{1,2}[A-Za-z0-9][\w-]*)*)(\s+<[^>]+>)?/.exec(line);
+    const m =
+      /^\s{1,4}(-{1,2}[A-Za-z0-9][\w-]*(?:,\s*-{1,2}[A-Za-z0-9][\w-]*)*)(\s+<[^>]+>)?/.exec(
+        line,
+      );
     if (!m) {
       continue;
     }
@@ -113,12 +156,15 @@ export function translateRunOptions(
   const args: string[] = [];
   const warnings: string[] = [];
   const drop = (option: DockerOption, why: string) =>
-    warnings.push(`ignoring ${option.value === undefined ? option.name : `${option.name} ${option.value}`}: ${why}`);
+    warnings.push(
+      `ignoring ${option.value === undefined ? option.name : `${option.name} ${option.value}`}: ${why}`,
+    );
   const unusableSource = (source: string) =>
-    source.startsWith('/') && (HOST_ONLY_PATH.test(source) || !pathExists(source));
+    source.startsWith('/') &&
+    (HOST_ONLY_PATH.test(source) || !pathExists(source));
 
   for (const option of options) {
-    const { name, value } = option;
+    const {name, value} = option;
     switch (name) {
       // Attach and signal proxy options only matter for the docker client; the shim always detaches
       case '--sig-proxy':
@@ -128,14 +174,19 @@ export function translateRunOptions(
       case '--detach':
         continue;
       case '--privileged':
-        warnings.push('--privileged is not supported by Apple container; adding all capabilities with --cap-add ALL instead');
+        warnings.push(
+          '--privileged is not supported by Apple container; adding all capabilities with --cap-add ALL instead',
+        );
         args.push('--cap-add', 'ALL');
         continue;
       case '-v':
       case '--volume': {
         const source = (value ?? '').split(':')[0];
         if (unusableSource(source)) {
-          drop(option, `${source} is not available to Apple container containers`);
+          drop(
+            option,
+            `${source} is not available to Apple container containers`,
+          );
           continue;
         }
         args.push('--volume', value ?? '');
@@ -145,7 +196,10 @@ export function translateRunOptions(
         const spec = mountSpec(value ?? '');
         const source = /(?:^|,)source=([^,]*)/.exec(spec)?.[1] ?? '';
         if (spec.startsWith('type=bind') && unusableSource(source)) {
-          drop(option, `${source} is not available to Apple container containers`);
+          drop(
+            option,
+            `${source} is not available to Apple container containers`,
+          );
           continue;
         }
         args.push('--mount', spec);
@@ -153,7 +207,11 @@ export function translateRunOptions(
       }
       case '--network':
       case '--net':
-        if (value === 'host' || value === 'none' || value?.startsWith('container:')) {
+        if (
+          value === 'host' ||
+          value === 'none' ||
+          value?.startsWith('container:')
+        ) {
           drop(option, 'Apple container has no host or shared network mode');
           continue;
         }
@@ -170,17 +228,25 @@ export function translateRunOptions(
     }
   }
   // docker would pick a random name and Apple container a UUID; dev containers get a readable, stable one
-  const named = options.some((o) => o.name === '--name');
+  const named = options.some(o => o.name === '--name');
   const labels = Object.fromEntries(
-    options.filter((o) => (o.name === '-l' || o.name === '--label') && o.value?.includes('=')).map((o) => {
-      const eq = o.value!.indexOf('=');
-      return [o.value!.slice(0, eq), o.value!.slice(eq + 1)];
-    }),
+    options
+      .filter(
+        o =>
+          (o.name === '-l' || o.name === '--label') && o.value?.includes('='),
+      )
+      .map(o => {
+        const eq = o.value!.indexOf('=');
+        return [o.value!.slice(0, eq), o.value!.slice(eq + 1)];
+      }),
   );
   if (!named && labels[LABEL_LOCAL_FOLDER] && labels[LABEL_CONFIG_FILE]) {
-    args.push('--name', devContainerName(labels[LABEL_LOCAL_FOLDER], labels[LABEL_CONFIG_FILE]));
+    args.push(
+      '--name',
+      devContainerName(labels[LABEL_LOCAL_FOLDER], labels[LABEL_CONFIG_FILE]),
+    );
   }
-  return { args, warnings };
+  return {args, warnings};
 }
 
 /** Environment variable with a JSON array of `container run` options added when the run does not set them itself */
@@ -200,7 +266,7 @@ export function applyRunDefaults(args: string[], defaults: string[]): string[] {
   const result = [...args];
   for (let i = 0; i + 1 < defaults.length; i += 2) {
     const names = ALIASES[defaults[i]] ?? [defaults[i]];
-    if (!args.some((arg) => names.includes(arg))) {
+    if (!args.some(arg => names.includes(arg))) {
       result.push(defaults[i], defaults[i + 1]);
     }
   }
@@ -211,19 +277,26 @@ export function applyRunDefaults(args: string[], defaults: string[]): string[] {
 export function parseRunDefaults(value: string | undefined): string[] {
   try {
     const parsed: unknown = value ? JSON.parse(value) : [];
-    return Array.isArray(parsed) && parsed.every((v) => typeof v === 'string') ? parsed : [];
+    return Array.isArray(parsed) && parsed.every(v => typeof v === 'string')
+      ? parsed
+      : [];
   } catch {
     return [];
   }
 }
 
 /** Options passed through when Apple container knows them; others are dropped with a warning */
-export function passKnownOptions(options: DockerOption[], apple: Map<string, boolean>): Translated {
+export function passKnownOptions(
+  options: DockerOption[],
+  apple: Map<string, boolean>,
+): Translated {
   const args: string[] = [];
   const warnings: string[] = [];
-  for (const { name, value } of options) {
+  for (const {name, value} of options) {
     if (!apple.has(name)) {
-      warnings.push(`ignoring ${value === undefined ? name : `${name} ${value}`}: not supported by Apple container`);
+      warnings.push(
+        `ignoring ${value === undefined ? name : `${name} ${value}`}: not supported by Apple container`,
+      );
       continue;
     }
     args.push(name);
@@ -231,12 +304,18 @@ export function passKnownOptions(options: DockerOption[], apple: Map<string, boo
       args.push(value);
     }
   }
-  return { args, warnings };
+  return {args, warnings};
 }
 
 /** Docker build options turned into Apple container build options; --load is what Apple container does anyway */
-export function translateBuildOptions(options: DockerOption[], apple: Map<string, boolean>): Translated {
-  return passKnownOptions(options.filter((o) => o.name !== '--load'), apple);
+export function translateBuildOptions(
+  options: DockerOption[],
+  apple: Map<string, boolean>,
+): Translated {
+  return passKnownOptions(
+    options.filter(o => o.name !== '--load'),
+    apple,
+  );
 }
 
 export interface Filters {
@@ -246,7 +325,7 @@ export interface Filters {
 /** --filter key=value options grouped by key */
 export function parseFilters(options: DockerOption[]): Filters {
   const filters: Filters = {};
-  for (const { name, value } of options) {
+  for (const {name, value} of options) {
     if ((name === '--filter' || name === '-f') && value) {
       const eq = value.indexOf('=');
       const key = eq < 0 ? value : value.slice(0, eq);
@@ -258,21 +337,30 @@ export function parseFilters(options: DockerOption[]): Filters {
 
 function labelMatches(labels: Record<string, string>, filter: string): boolean {
   const eq = filter.indexOf('=');
-  return eq < 0 ? filter in labels : labels[filter.slice(0, eq)] === filter.slice(eq + 1);
+  return eq < 0
+    ? filter in labels
+    : labels[filter.slice(0, eq)] === filter.slice(eq + 1);
 }
 
 /** Containers (Apple JSON) matching docker ps style filters */
-export function filterContainers(items: Json[], filters: Filters, all: boolean): Json[] {
-  return items.filter((item) => {
+export function filterContainers(
+  items: Json[],
+  filters: Filters,
+  all: boolean,
+): Json[] {
+  return items.filter(item => {
     const summary = parseContainers([item])[0];
     if (!all && summary.state !== 'running') {
       return false;
     }
-    if (!(filters.label ?? []).every((f) => labelMatches(summary.labels, f))) {
+    if (!(filters.label ?? []).every(f => labelMatches(summary.labels, f))) {
       return false;
     }
     const ids = [...(filters.id ?? []), ...(filters.name ?? [])];
-    return !ids.length || ids.some((id) => summary.id === id || summary.id.startsWith(id));
+    return (
+      !ids.length ||
+      ids.some(id => summary.id === id || summary.id.startsWith(id))
+    );
   });
 }
 
@@ -285,10 +373,14 @@ export function toDockerContainer(item: Json): Json {
   const running = summary.state === 'running';
   // No --user gives {id: {uid: 0, gid: 0}}, which docker reports as an empty user
   const uid = init.user?.id;
-  const user = uid && uid.uid === 0 && uid.gid === 0 ? '' : (summary.user ?? '');
-  const ports: Record<string, { HostIp: string; HostPort: string }[]> = {};
+  const user =
+    uid && uid.uid === 0 && uid.gid === 0 ? '' : (summary.user ?? '');
+  const ports: Record<string, {HostIp: string; HostPort: string}[]> = {};
   for (const port of summary.publishedPorts) {
-    (ports[`${port.containerPort}/${port.proto}`] ??= []).push({ HostIp: port.hostAddress, HostPort: String(port.hostPort) });
+    (ports[`${port.containerPort}/${port.proto}`] ??= []).push({
+      HostIp: port.hostAddress,
+      HostPort: String(port.hostPort),
+    });
   }
   return {
     Id: summary.id,
@@ -296,7 +388,11 @@ export function toDockerContainer(item: Json): Json {
     Created: summary.createdAt ?? ZERO_TIME,
     Image: summary.image,
     State: {
-      Status: running ? 'running' : summary.state === 'stopped' ? 'exited' : summary.state,
+      Status: running
+        ? 'running'
+        : summary.state === 'stopped'
+          ? 'exited'
+          : summary.state,
       Running: running,
       StartedAt: summary.startedAt ?? ZERO_TIME,
       FinishedAt: ZERO_TIME,
@@ -310,9 +406,9 @@ export function toDockerContainer(item: Json): Json {
       Entrypoint: init.executable ? [init.executable] : null,
       Cmd: Array.isArray(init.arguments) ? init.arguments : null,
     },
-    Mounts: summary.mounts.map((m) => ({
+    Mounts: summary.mounts.map(m => ({
       Type: m.kind,
-      ...(m.kind === 'volume' ? { Name: m.source } : {}),
+      ...(m.kind === 'volume' ? {Name: m.source} : {}),
       Source: m.source,
       Destination: m.destination,
       RW: !m.readOnly,
@@ -327,8 +423,12 @@ export function toDockerContainer(item: Json): Json {
 /** Apple image inspect output in the shape devcontainers/cli reads from `docker inspect --type image` */
 export function toDockerImage(item: Json, arch: string): Json {
   const variants: Json[] = Array.isArray(item.variants) ? item.variants : [];
-  const linux = variants.filter((v) => v.platform?.os === 'linux');
-  const variant = linux.find((v) => v.platform?.architecture === arch) ?? linux[0] ?? variants[0] ?? {};
+  const linux = variants.filter(v => v.platform?.os === 'linux');
+  const variant =
+    linux.find(v => v.platform?.architecture === arch) ??
+    linux[0] ??
+    variants[0] ??
+    {};
   const config: Json = variant.config?.config ?? {};
   const id = String(item.id ?? '');
   return {
@@ -358,7 +458,10 @@ export interface ContainerState {
 /** Container states keyed by id, from `container ls --all --format json` */
 export function snapshot(items: Json[]): Map<string, ContainerState> {
   return new Map(
-    parseContainers(items).map((c) => [c.id, { state: c.state, labels: c.labels, startedAt: c.startedAt }]),
+    parseContainers(items).map(c => [
+      c.id,
+      {state: c.state, labels: c.labels, startedAt: c.startedAt},
+    ]),
   );
 }
 
@@ -379,13 +482,16 @@ export function diffEvents(
       Action: action,
       id,
       Type: 'container',
-      Actor: { ID: id, Attributes: { ...labels, name: id } },
+      Actor: {ID: id, Attributes: {...labels, name: id}},
       time: Math.floor(Date.now() / 1000),
     });
   for (const [id, now] of current) {
     const before = previous?.get(id);
     if (now.state === 'running') {
-      const startedSince = !previous && now.startedAt !== undefined && Date.parse(now.startedAt) >= since;
+      const startedSince =
+        !previous &&
+        now.startedAt !== undefined &&
+        Date.parse(now.startedAt) >= since;
       if (previous ? before?.state !== 'running' : startedSince) {
         emit('start', id, now.labels);
       }
@@ -399,13 +505,13 @@ export function diffEvents(
       emit('destroy', id, before.labels);
     }
   }
-  return events.filter((event) => {
+  return events.filter(event => {
     const labels = event.Actor.Attributes;
     return (
       (!filters.event?.length || filters.event.includes(event.Action)) &&
       (!filters.type?.length || filters.type.includes('container')) &&
       (!filters.container?.length || filters.container.includes(event.id)) &&
-      (filters.label ?? []).every((f) => labelMatches(labels, f))
+      (filters.label ?? []).every(f => labelMatches(labels, f))
     );
   });
 }

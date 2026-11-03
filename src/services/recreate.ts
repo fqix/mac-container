@@ -3,7 +3,7 @@
 // means deleting the container and creating it again. No vscode dependency.
 // Field layout follows ContainerConfiguration / ProcessConfiguration of apple/container 1.6.1.
 
-import { type ContainerSettings, settingsArgs } from './containerSettings';
+import {type ContainerSettings, settingsArgs} from './containerSettings';
 
 type Json = Record<string, any>;
 
@@ -23,14 +23,21 @@ function ulimitName(limit: string): string {
  * The form settings (ports, mounts, env, networks, resources, user, workdir) come from `settings`;
  * everything the form does not show is carried over from the configuration unchanged.
  */
-export function buildRecreateArgs(config: Json, settings: ContainerSettings, options: RecreateOptions): string[] {
+export function buildRecreateArgs(
+  config: Json,
+  settings: ContainerSettings,
+  options: RecreateOptions,
+): string[] {
   const args: string[] = options.start ? ['run', '--detach'] : ['create'];
   args.push('--name', config.id);
   args.push(...settingsArgs(settings));
 
   const init: Json = config.initProcess ?? {};
   for (const limit of init.rlimits ?? []) {
-    args.push('--ulimit', `${ulimitName(limit.limit)}=${limit.soft}:${limit.hard}`);
+    args.push(
+      '--ulimit',
+      `${ulimitName(limit.limit)}=${limit.soft}:${limit.hard}`,
+    );
   }
   if (init.terminal) {
     args.push('--tty', '--interactive');
@@ -75,7 +82,12 @@ export function buildRecreateArgs(config: Json, settings: ContainerSettings, opt
   }
   const platform: Json | undefined = config.platform;
   if (platform?.os && platform.architecture) {
-    args.push('--platform', [platform.os, platform.architecture, platform.variant].filter(Boolean).join('/'));
+    args.push(
+      '--platform',
+      [platform.os, platform.architecture, platform.variant]
+        .filter(Boolean)
+        .join('/'),
+    );
   }
   for (const socket of config.publishedSockets ?? []) {
     const host = socket.hostPath?.path ?? socket.hostPath;

@@ -3,7 +3,7 @@
 
 import * as vscode from 'vscode';
 
-import type { ContainerCli } from '../services/cli';
+import type {ContainerCli} from '../services/cli';
 import {
   buildRunArgs,
   type ContainerSettings,
@@ -16,35 +16,62 @@ import {
   settingsFromConfig,
   validateSettings,
 } from '../services/containerSettings';
-import { buildRecreateArgs } from '../services/recreate';
-import { describeError } from '../utils/i18n';
-import { generateContainerName } from '../utils/names';
-import { parseContainers, parseJson, shortImageName } from '../utils/parse';
-import { webviewHtml, webviewRoot } from './webviewHtml';
+import {buildRecreateArgs} from '../services/recreate';
+import {describeError} from '../utils/i18n';
+import {generateContainerName} from '../utils/names';
+import {parseContainers, parseJson, shortImageName} from '../utils/parse';
+import {webviewHtml, webviewRoot} from './webviewHtml';
 
 type Json = Record<string, any>;
 
-type Target = { mode: 'edit'; containerId: string } | { mode: 'run'; image: string };
+type Target =
+  {mode: 'edit'; containerId: string} | {mode: 'run'; image: string};
 
 export class ContainerFormPanel implements vscode.Disposable {
   private static readonly panels = new Map<string, ContainerFormPanel>();
 
-  static showEdit(extensionUri: vscode.Uri, cli: ContainerCli, containerId: string, onChanged: () => Promise<void>): void {
-    ContainerFormPanel.show(extensionUri, cli, { mode: 'edit', containerId }, onChanged);
+  static showEdit(
+    extensionUri: vscode.Uri,
+    cli: ContainerCli,
+    containerId: string,
+    onChanged: () => Promise<void>,
+  ): void {
+    ContainerFormPanel.show(
+      extensionUri,
+      cli,
+      {mode: 'edit', containerId},
+      onChanged,
+    );
   }
 
-  static showRun(extensionUri: vscode.Uri, cli: ContainerCli, image: string, onChanged: () => Promise<void>): void {
-    ContainerFormPanel.show(extensionUri, cli, { mode: 'run', image }, onChanged);
+  static showRun(
+    extensionUri: vscode.Uri,
+    cli: ContainerCli,
+    image: string,
+    onChanged: () => Promise<void>,
+  ): void {
+    ContainerFormPanel.show(extensionUri, cli, {mode: 'run', image}, onChanged);
   }
 
-  private static show(extensionUri: vscode.Uri, cli: ContainerCli, target: Target, onChanged: () => Promise<void>): void {
-    const key = target.mode === 'edit' ? `edit:${target.containerId}` : `run:${target.image}`;
+  private static show(
+    extensionUri: vscode.Uri,
+    cli: ContainerCli,
+    target: Target,
+    onChanged: () => Promise<void>,
+  ): void {
+    const key =
+      target.mode === 'edit'
+        ? `edit:${target.containerId}`
+        : `run:${target.image}`;
     const existing = ContainerFormPanel.panels.get(key);
     if (existing) {
       existing.panel.reveal();
       return;
     }
-    ContainerFormPanel.panels.set(key, new ContainerFormPanel(extensionUri, cli, target, key, onChanged));
+    ContainerFormPanel.panels.set(
+      key,
+      new ContainerFormPanel(extensionUri, cli, target, key, onChanged),
+    );
   }
 
   static disposeAll(): void {
@@ -66,17 +93,29 @@ export class ContainerFormPanel implements vscode.Disposable {
     private readonly onChanged: () => Promise<void>,
   ) {
     const title =
-      target.mode === 'edit' ? vscode.l10n.t('Edit: {0}', target.containerId) : vscode.l10n.t('Run: {0}', shortImageName(target.image));
+      target.mode === 'edit'
+        ? vscode.l10n.t('Edit: {0}', target.containerId)
+        : vscode.l10n.t('Run: {0}', shortImageName(target.image));
     this.panel = vscode.window.createWebviewPanel(
       target.mode === 'edit' ? 'appleContainer.edit' : 'appleContainer.run',
       title,
       vscode.ViewColumn.Active,
-      { enableScripts: true, localResourceRoots: [webviewRoot(extensionUri)], retainContextWhenHidden: true },
+      {
+        enableScripts: true,
+        localResourceRoots: [webviewRoot(extensionUri)],
+        retainContextWhenHidden: true,
+      },
     );
-    this.panel.iconPath = vscode.Uri.joinPath(extensionUri, 'resources', 'container.svg');
+    this.panel.iconPath = vscode.Uri.joinPath(
+      extensionUri,
+      'resources',
+      'container.svg',
+    );
     this.panel.webview.html = this.html(extensionUri, title);
     this.panel.onDidDispose(() => this.dispose());
-    this.panel.webview.onDidReceiveMessage((message: FormFromWebview) => void this.handle(message));
+    this.panel.webview.onDidReceiveMessage(
+      (message: FormFromWebview) => void this.handle(message),
+    );
   }
 
   private async handle(message: FormFromWebview): Promise<void> {
@@ -93,22 +132,35 @@ export class ContainerFormPanel implements vscode.Disposable {
             title: vscode.l10n.t('Select a host path to mount'),
           });
           if (picked?.[0]) {
-            this.post({ type: 'browsed', index: message.index, path: picked[0].fsPath });
+            this.post({
+              type: 'browsed',
+              index: message.index,
+              path: picked[0].fsPath,
+            });
           }
           break;
         }
         case 'importEnv': {
           const picked = await vscode.window.showOpenDialog({
             canSelectMany: true,
-            title: vscode.l10n.t('Import environment variables from .env files'),
+            title: vscode.l10n.t(
+              'Import environment variables from .env files',
+            ),
             openLabel: vscode.l10n.t('Import'),
           });
           if (picked?.length) {
             let env = message.env;
             for (const uri of picked) {
-              env = mergeEnv(env, parseDotEnv(new TextDecoder().decode(await vscode.workspace.fs.readFile(uri))));
+              env = mergeEnv(
+                env,
+                parseDotEnv(
+                  new TextDecoder().decode(
+                    await vscode.workspace.fs.readFile(uri),
+                  ),
+                ),
+              );
             }
-            this.post({ type: 'envImported', env });
+            this.post({type: 'envImported', env});
           }
           break;
         }
@@ -116,7 +168,12 @@ export class ContainerFormPanel implements vscode.Disposable {
           if (this.target.mode === 'edit') {
             await this.saveEdit(this.target.containerId, message.settings);
           } else {
-            await this.run(this.target.image, message.name, message.command, message.settings);
+            await this.run(
+              this.target.image,
+              message.name,
+              message.command,
+              message.settings,
+            );
           }
           break;
         case 'cancel':
@@ -124,21 +181,31 @@ export class ContainerFormPanel implements vscode.Disposable {
           break;
       }
     } catch (error) {
-      this.post({ type: 'problems', messages: [describeError(error)] });
+      this.post({type: 'problems', messages: [describeError(error)]});
     }
   }
 
   private async inspect(containerId: string): Promise<Json> {
-    const [item] = parseJson(await this.cli.inspect('container', [containerId])) as Json[];
+    const [item] = parseJson(
+      await this.cli.inspect('container', [containerId]),
+    ) as Json[];
     if (!item?.configuration) {
-      throw new Error(vscode.l10n.t('Container {0} no longer exists.', containerId));
+      throw new Error(
+        vscode.l10n.t('Container {0} no longer exists.', containerId),
+      );
     }
     return item;
   }
 
   private async sendInit(): Promise<void> {
-    const [volumes, networks] = await Promise.all([this.cli.listVolumes(), this.cli.listNetworks()]);
-    const common = { volumes: volumes.map((v) => v.name), networks: networks.map((n) => n.id) };
+    const [volumes, networks] = await Promise.all([
+      this.cli.listVolumes(),
+      this.cli.listNetworks(),
+    ]);
+    const common = {
+      volumes: volumes.map(v => v.name),
+      networks: networks.map(n => n.id),
+    };
     if (this.target.mode === 'edit') {
       const item = await this.inspect(this.target.containerId);
       const [summary] = parseContainers([item]);
@@ -149,42 +216,73 @@ export class ContainerFormPanel implements vscode.Disposable {
         image: summary.image,
         running: summary.state === 'running',
         // tmpfs and bind/volume mounts are editable; anything else is kept as it is by the form
-        settings: settingsFromConfig(item.configuration, summary.publishedPorts, summary.mounts),
+        settings: settingsFromConfig(
+          item.configuration,
+          summary.publishedPorts,
+          summary.mounts,
+        ),
         ...common,
       });
     } else {
-      this.suggestedName = generateContainerName(new Set((await this.cli.listContainers()).map((c) => c.id)));
-      this.post({ type: 'init', mode: 'run', name: this.suggestedName, image: this.target.image, running: false, settings: EMPTY_SETTINGS, ...common });
+      this.suggestedName = generateContainerName(
+        new Set((await this.cli.listContainers()).map(c => c.id)),
+      );
+      this.post({
+        type: 'init',
+        mode: 'run',
+        name: this.suggestedName,
+        image: this.target.image,
+        running: false,
+        settings: EMPTY_SETTINGS,
+        ...common,
+      });
     }
   }
 
-  private async run(image: string, name: string, command: string, settings: ContainerSettings): Promise<void> {
+  private async run(
+    image: string,
+    name: string,
+    command: string,
+    settings: ContainerSettings,
+  ): Promise<void> {
     const problems = validateSettings(settings, name);
     if (problems.length) {
-      this.post({ type: 'problems', messages: problems.map(problemMessage) });
+      this.post({type: 'problems', messages: problems.map(problemMessage)});
       return;
     }
     const finalName = name || this.suggestedName;
-    this.post({ type: 'busy', busy: true });
+    this.post({type: 'busy', busy: true});
     try {
       await vscode.window.withProgress(
-        { location: vscode.ProgressLocation.Notification, title: vscode.l10n.t('Starting container from {0}...', image) },
-        () => this.cli.run(buildRunArgs({ image, name: finalName, command, settings }), { timeoutMs: 10 * 60_000 }),
+        {
+          location: vscode.ProgressLocation.Notification,
+          title: vscode.l10n.t('Starting container from {0}...', image),
+        },
+        () =>
+          this.cli.run(
+            buildRunArgs({image, name: finalName, command, settings}),
+            {timeoutMs: 10 * 60_000},
+          ),
       );
-      void vscode.window.showInformationMessage(vscode.l10n.t('Container {0} started.', finalName));
+      void vscode.window.showInformationMessage(
+        vscode.l10n.t('Container {0} started.', finalName),
+      );
       await this.onChanged();
       this.dispose();
     } catch (error) {
       await this.onChanged();
-      this.post({ type: 'busy', busy: false });
-      this.post({ type: 'problems', messages: [describeError(error)] });
+      this.post({type: 'busy', busy: false});
+      this.post({type: 'problems', messages: [describeError(error)]});
     }
   }
 
-  private async saveEdit(containerId: string, settings: ContainerSettings): Promise<void> {
+  private async saveEdit(
+    containerId: string,
+    settings: ContainerSettings,
+  ): Promise<void> {
     const problems = validateSettings(settings);
     if (problems.length) {
-      this.post({ type: 'problems', messages: problems.map(problemMessage) });
+      this.post({type: 'problems', messages: problems.map(problemMessage)});
       return;
     }
     const item = await this.inspect(containerId);
@@ -192,7 +290,10 @@ export class ContainerFormPanel implements vscode.Disposable {
     const recreate = vscode.l10n.t('Recreate');
     const keep = vscode.l10n.t('Keep Changes and Recreate');
     const answer = await vscode.window.showWarningMessage(
-      vscode.l10n.t('Recreate container {0} with the new settings?', containerId),
+      vscode.l10n.t(
+        'Recreate container {0} with the new settings?',
+        containerId,
+      ),
       {
         modal: true,
         detail: vscode.l10n.t(
@@ -206,19 +307,31 @@ export class ContainerFormPanel implements vscode.Disposable {
       return;
     }
 
-    this.post({ type: 'busy', busy: true });
+    this.post({type: 'busy', busy: true});
     try {
       await vscode.window.withProgress(
-        { location: vscode.ProgressLocation.Notification, title: vscode.l10n.t('Recreating {0}...', containerId) },
-        (progress) => recreateContainer(this.cli, item, settings, answer === keep, (message) => progress.report({ message })),
+        {
+          location: vscode.ProgressLocation.Notification,
+          title: vscode.l10n.t('Recreating {0}...', containerId),
+        },
+        progress =>
+          recreateContainer(
+            this.cli,
+            item,
+            settings,
+            answer === keep,
+            message => progress.report({message}),
+          ),
       );
-      void vscode.window.showInformationMessage(vscode.l10n.t('Container {0} was recreated.', containerId));
+      void vscode.window.showInformationMessage(
+        vscode.l10n.t('Container {0} was recreated.', containerId),
+      );
       await this.onChanged();
       this.dispose();
     } catch (error) {
       await this.onChanged();
-      this.post({ type: 'busy', busy: false });
-      this.post({ type: 'problems', messages: [describeError(error)] });
+      this.post({type: 'busy', busy: false});
+      this.post({type: 'problems', messages: [describeError(error)]});
     }
   }
 
@@ -237,14 +350,20 @@ export class ContainerFormPanel implements vscode.Disposable {
       namePlaceholder: vscode.l10n.t('random name'),
       command: vscode.l10n.t('Command or shell script'),
       commandPlaceholder: vscode.l10n.t('Empty runs the image default command'),
-      commandHint: vscode.l10n.t('Run with /bin/sh -c, e.g. apk add curl && exec sleep infinity'),
+      commandHint: vscode.l10n.t(
+        'Run with /bin/sh -c, e.g. apk add curl && exec sleep infinity',
+      ),
       ports: vscode.l10n.t('Port Forwarding'),
       mounts: vscode.l10n.t('Mounts'),
       env: vscode.l10n.t('Environment Variables'),
-      envHint: vscode.l10n.t('One KEY=VALUE per line. A bare KEY takes the value from this Mac.'),
+      envHint: vscode.l10n.t(
+        'One KEY=VALUE per line. A bare KEY takes the value from this Mac.',
+      ),
       importEnv: vscode.l10n.t('Import .env...'),
       networks: vscode.l10n.t('Networks'),
-      networksHint: vscode.l10n.t('None selected attaches the default network.'),
+      networksHint: vscode.l10n.t(
+        'None selected attaches the default network.',
+      ),
       resources: vscode.l10n.t('Resources'),
       cpus: vscode.l10n.t('CPUs'),
       memory: vscode.l10n.t('Memory'),
@@ -276,11 +395,19 @@ export class ContainerFormPanel implements vscode.Disposable {
       noMounts: vscode.l10n.t('No mounts.'),
       running: vscode.l10n.t('Running'),
       stopped: vscode.l10n.t('Stopped'),
-      hint: vscode.l10n.t('Saving deletes the container and creates it again with the same image and command, using the settings below.'),
+      hint: vscode.l10n.t(
+        'Saving deletes the container and creates it again with the same image and command, using the settings below.',
+      ),
       volumePlaceholder: vscode.l10n.t('volume name'),
       bindPlaceholder: vscode.l10n.t('/absolute/host/path'),
     };
-    return webviewHtml(this.panel.webview, extensionUri, 'containerForm', title, { labels: JSON.stringify(labels) });
+    return webviewHtml(
+      this.panel.webview,
+      extensionUri,
+      'containerForm',
+      title,
+      {labels: JSON.stringify(labels)},
+    );
   }
 
   dispose(): void {
@@ -312,21 +439,25 @@ export async function recreateContainer(
   if (keepChanges) {
     image = snapshotReference(original.id);
     report(vscode.l10n.t('Committing snapshot {0}', image));
-    await cli.run(['commit', original.id, image], { timeoutMs: 10 * 60_000 });
+    await cli.run(['commit', original.id, image], {timeoutMs: 10 * 60_000});
   }
-  const restoreArgs = buildRecreateArgs(config, settingsFromConfig(config, original.publishedPorts, original.mounts), { start: running });
-  const nextArgs = buildRecreateArgs(config, settings, { start: running, image });
+  const restoreArgs = buildRecreateArgs(
+    config,
+    settingsFromConfig(config, original.publishedPorts, original.mounts),
+    {start: running},
+  );
+  const nextArgs = buildRecreateArgs(config, settings, {start: running, image});
 
   report(vscode.l10n.t('Removing the old container'));
-  await cli.run(['delete', '--force', original.id], { timeoutMs: 120_000 });
+  await cli.run(['delete', '--force', original.id], {timeoutMs: 120_000});
   report(vscode.l10n.t('Creating the new container'));
   try {
-    await cli.run(nextArgs, { timeoutMs: 10 * 60_000 });
+    await cli.run(nextArgs, {timeoutMs: 10 * 60_000});
   } catch (error) {
     // Put the original container back so a bad edit never loses it
     await cli.run(['delete', '--force', original.id]).catch(() => undefined);
     try {
-      await cli.run(restoreArgs, { timeoutMs: 10 * 60_000 });
+      await cli.run(restoreArgs, {timeoutMs: 10 * 60_000});
     } catch (restoreError) {
       throw new Error(
         vscode.l10n.t(
@@ -336,14 +467,23 @@ export async function recreateContainer(
         ),
       );
     }
-    throw new Error(vscode.l10n.t('Recreating failed, the original container was restored: {0}', describeError(error)));
+    throw new Error(
+      vscode.l10n.t(
+        'Recreating failed, the original container was restored: {0}',
+        describeError(error),
+      ),
+    );
   }
   return image;
 }
 
 /** Lowercase image reference such as web-snapshot:20261028-163000 */
 function snapshotReference(containerId: string): string {
-  const stamp = new Date().toISOString().replace(/[-:]/g, '').replace('T', '-').slice(0, 15);
+  const stamp = new Date()
+    .toISOString()
+    .replace(/[-:]/g, '')
+    .replace('T', '-')
+    .slice(0, 15);
   return `${containerId.toLowerCase().replace(/[^a-z0-9_.-]/g, '-')}-snapshot:${stamp}`;
 }
 
@@ -364,12 +504,18 @@ export function problemMessage(problem: SettingsProblem): string {
     relativeTarget: vscode.l10n.t('the container path must be absolute'),
     relativeSource: vscode.l10n.t('the host path must be absolute'),
     volumeName: vscode.l10n.t('invalid volume name'),
-    duplicateTarget: vscode.l10n.t('the container path is mounted more than once'),
+    duplicateTarget: vscode.l10n.t(
+      'the container path is mounted more than once',
+    ),
     envName: vscode.l10n.t('expected KEY=VALUE with a valid name'),
     cpus: vscode.l10n.t('CPUs must be a whole number of at least 1'),
-    memory: vscode.l10n.t('memory must be a number with an optional K, M, G, T or P suffix'),
+    memory: vscode.l10n.t(
+      'memory must be a number with an optional K, M, G, T or P suffix',
+    ),
     workdir: vscode.l10n.t('the working directory must be absolute'),
-    name: vscode.l10n.t('use letters, digits, _ . and -, starting with a letter or digit'),
+    name: vscode.l10n.t(
+      'use letters, digits, _ . and -, starting with a letter or digit',
+    ),
   };
   return `${where[problem.section]}: ${reasons[problem.reason]}`;
 }

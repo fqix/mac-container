@@ -19,10 +19,10 @@ import {
   writeConfig,
   writeSessionEnvironment,
 } from '../services/remoteSsh';
-import { describeError } from '../utils/i18n';
-import type { ContainerSummary } from '../models/types';
-import type { ContainerNode } from '../views/containers';
-import { CommandContext, ask, register, withProgress } from './common';
+import {describeError} from '../utils/i18n';
+import type {ContainerSummary} from '../models/types';
+import type {ContainerNode} from '../views/containers';
+import {CommandContext, ask, register, withProgress} from './common';
 
 /** globalState keys: sshd path and login user per container, last opened folder per user@container */
 const HOSTS_KEY = 'remoteSsh.hosts';
@@ -35,11 +35,15 @@ const INSTALL_HINT = [
 ].join('\n');
 
 export function registerRemoteSshCommands(ctx: CommandContext): void {
-  register(ctx, 'appleContainer.container.openRemoteSsh', async (node?: ContainerNode) => {
-    if (node) {
-      await openContainerOverSsh(ctx, node.resource);
-    }
-  });
+  register(
+    ctx,
+    'appleContainer.container.openRemoteSsh',
+    async (node?: ContainerNode) => {
+      if (node) {
+        await openContainerOverSsh(ctx, node.resource);
+      }
+    },
+  );
 }
 
 export interface SshOpenOptions {
@@ -60,35 +64,51 @@ export async function openContainerOverSsh(
   container: Pick<ContainerSummary, 'id' | 'user'>,
   options: SshOpenOptions = {},
 ): Promise<boolean> {
-  const { cli } = ctx;
+  const {cli} = ctx;
   const state = ctx.extension.globalState;
   const id = container.id;
   if (!(await ensureRemoteSshExtension())) {
     return false;
   }
   // An explicit setting wins; otherwise log in as the container's own process user (image USER or --user)
-  const configured = vscode.workspace.getConfiguration('appleContainer').get<string>('sshUser', '').trim();
+  const configured = vscode.workspace
+    .getConfiguration('appleContainer')
+    .get<string>('sshUser', '')
+    .trim();
   const user = options.user || configured || container.user || 'root';
 
   const prepare = () =>
-    withProgress(vscode.l10n.t('Preparing SSH access to {0}...', id), async () => {
-      const publicKey = await ensureClientKey();
-      const result = await prepareContainer(cli, id, user, publicKey);
+    withProgress(
+      vscode.l10n.t('Preparing SSH access to {0}...', id),
+      async () => {
+        const publicKey = await ensureClientKey();
+        const result = await prepareContainer(cli, id, user, publicKey);
 
-      const saved = { ...state.get<Record<string, SshHost>>(HOSTS_KEY, {}), [id]: { id, sshd: result.sshd, user: result.user } };
-      const containers = (await cli.listContainers()).filter((c) => !c.builder);
-      const known = new Set(containers.map((c) => c.id));
-      for (const key of Object.keys(saved)) {
-        if (!known.has(key)) {
-          delete saved[key];
+        const saved = {
+          ...state.get<Record<string, SshHost>>(HOSTS_KEY, {}),
+          [id]: {id, sshd: result.sshd, user: result.user},
+        };
+        const containers = (await cli.listContainers()).filter(c => !c.builder);
+        const known = new Set(containers.map(c => c.id));
+        for (const key of Object.keys(saved)) {
+          if (!known.has(key)) {
+            delete saved[key];
+          }
         }
-      }
-      await state.update(HOSTS_KEY, saved);
-      // Containers never prepared get defaults; they connect once sshd and the key are set up
-      const hosts = containers.map((c) => saved[c.id] ?? { id: c.id, sshd: DEFAULT_SSHD, user: c.user?.split(':')[0] || 'root' });
-      await writeConfig(renderConfig(hosts, await cli.executable()));
-      return result;
-    });
+        await state.update(HOSTS_KEY, saved);
+        // Containers never prepared get defaults; they connect once sshd and the key are set up
+        const hosts = containers.map(
+          c =>
+            saved[c.id] ?? {
+              id: c.id,
+              sshd: DEFAULT_SSHD,
+              user: c.user?.split(':')[0] || 'root',
+            },
+        );
+        await writeConfig(renderConfig(hosts, await cli.executable()));
+        return result;
+      },
+    );
 
   let prepared;
   try {
@@ -99,7 +119,10 @@ export async function openContainerOverSsh(
         throw error;
       }
       try {
-        await withProgress(vscode.l10n.t('Installing openssh-server in {0}...', id), () => installSshd(cli, id));
+        await withProgress(
+          vscode.l10n.t('Installing openssh-server in {0}...', id),
+          () => installSshd(cli, id),
+        );
       } catch (installError) {
         await reportMissingSshd(id, installError);
         return false;
@@ -108,7 +131,13 @@ export async function openContainerOverSsh(
     }
   } catch (error) {
     if (error instanceof SshUserMissingError) {
-      void vscode.window.showErrorMessage(vscode.l10n.t('User {0} does not exist in container {1}.', error.user, id));
+      void vscode.window.showErrorMessage(
+        vscode.l10n.t(
+          'User {0} does not exist in container {1}.',
+          error.user,
+          id,
+        ),
+      );
       return false;
     }
     throw error;
@@ -116,10 +145,15 @@ export async function openContainerOverSsh(
 
   if (!prepared.downloader) {
     try {
-      await withProgress(vscode.l10n.t('Installing wget in {0}...', id), () => installDownloader(cli, id));
+      await withProgress(vscode.l10n.t('Installing wget in {0}...', id), () =>
+        installDownloader(cli, id),
+      );
     } catch (error) {
       // The first connection still works: Remote-SSH downloads the server on this Mac and copies it in
-      const reason = error instanceof NoPackageManagerError ? vscode.l10n.t('No supported package manager was found.') : describeError(error);
+      const reason =
+        error instanceof NoPackageManagerError
+          ? vscode.l10n.t('No supported package manager was found.')
+          : describeError(error);
       void vscode.window.showWarningMessage(
         vscode.l10n.t(
           'Could not install wget in container {0}: {1}. Remote-SSH cannot reconnect while its server is running there; install wget or curl in the container.',
@@ -146,25 +180,35 @@ export async function openContainerOverSsh(
   if (!folder) {
     return false;
   }
-  await state.update(FOLDERS_KEY, { ...folders, [folderKey]: folder });
-  const uri = vscode.Uri.from({ scheme: 'vscode-remote', authority: `ssh-remote+${hostAlias(id)}`, path: folder });
-  await vscode.commands.executeCommand('vscode.openFolder', uri, { forceNewWindow: true });
+  await state.update(FOLDERS_KEY, {...folders, [folderKey]: folder});
+  const uri = vscode.Uri.from({
+    scheme: 'vscode-remote',
+    authority: `ssh-remote+${hostAlias(id)}`,
+    path: folder,
+  });
+  await vscode.commands.executeCommand('vscode.openFolder', uri, {
+    forceNewWindow: true,
+  });
   return true;
 }
 
-
 /** VS Code ships ms-vscode-remote.remote-ssh, Cursor anysphere.remote-ssh, VSCodium-based editors open-remote-ssh */
 async function ensureRemoteSshExtension(): Promise<boolean> {
-  if (vscode.extensions.all.some((e) => /remote-ssh$/i.test(e.id))) {
+  if (vscode.extensions.all.some(e => /remote-ssh$/i.test(e.id))) {
     return true;
   }
   const install = vscode.l10n.t('Find Extension');
   const answer = await vscode.window.showWarningMessage(
-    vscode.l10n.t('Opening a container over SSH needs the Remote - SSH extension.'),
+    vscode.l10n.t(
+      'Opening a container over SSH needs the Remote - SSH extension.',
+    ),
     install,
   );
   if (answer === install) {
-    await vscode.commands.executeCommand('workbench.extensions.search', 'remote-ssh');
+    await vscode.commands.executeCommand(
+      'workbench.extensions.search',
+      'remote-ssh',
+    );
   }
   return false;
 }
@@ -174,12 +218,18 @@ async function reportMissingSshd(id: string, cause: unknown): Promise<void> {
   const copy = vscode.l10n.t('Copy Install Command');
   const shell = vscode.l10n.t('Attach Shell');
   const reason =
-    cause instanceof NoPackageManagerError ? vscode.l10n.t('No supported package manager was found.') : describeError(cause);
+    cause instanceof NoPackageManagerError
+      ? vscode.l10n.t('No supported package manager was found.')
+      : describeError(cause);
   const answer = await vscode.window.showErrorMessage(
     vscode.l10n.t('Could not install openssh-server in container {0}.', id),
     {
       modal: true,
-      detail: vscode.l10n.t('{0}\n\nInstall it inside the container yourself, for example:\n{1}', reason, INSTALL_HINT),
+      detail: vscode.l10n.t(
+        '{0}\n\nInstall it inside the container yourself, for example:\n{1}',
+        reason,
+        INSTALL_HINT,
+      ),
     },
     copy,
     shell,
@@ -187,13 +237,20 @@ async function reportMissingSshd(id: string, cause: unknown): Promise<void> {
   if (answer === copy) {
     await vscode.env.clipboard.writeText(INSTALL_HINT);
   } else if (answer === shell) {
-    await vscode.commands.executeCommand('appleContainer.container.exec', { resource: { id } });
+    await vscode.commands.executeCommand('appleContainer.container.exec', {
+      resource: {id},
+    });
   }
 }
 
 /** Connect the managed host entries to the SSH config used by Remote-SSH automatically. */
 async function ensureIncluded(): Promise<void> {
-  const configured = vscode.workspace.getConfiguration('remote.SSH').get<string>('configFile', '').trim();
-  const userConfig = configured ? configured.replace(/^~(?=\/)/, os.homedir()) : path.join(os.homedir(), '.ssh', 'config');
+  const configured = vscode.workspace
+    .getConfiguration('remote.SSH')
+    .get<string>('configFile', '')
+    .trim();
+  const userConfig = configured
+    ? configured.replace(/^~(?=\/)/, os.homedir())
+    : path.join(os.homedir(), '.ssh', 'config');
   await ensureUserConfigIncluded(userConfig);
 }

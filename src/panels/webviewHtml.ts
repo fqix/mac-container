@@ -10,13 +10,26 @@ export function webviewRoot(extensionUri: vscode.Uri): vscode.Uri {
  * @param view which React view to render (see webview-ui/src/main.tsx)
  * @param data extra data-* attributes for <body>; `labels` is the localized string table
  */
-export function webviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri, view: string, title: string, data: Record<string, string>): string {
+export function webviewHtml(
+  webview: vscode.Webview,
+  extensionUri: vscode.Uri,
+  view: string,
+  title: string,
+  data: Record<string, string>,
+): string {
   const root = webviewRoot(extensionUri);
   const script = webview.asWebviewUri(vscode.Uri.joinPath(root, 'webview.js'));
   const style = webview.asWebviewUri(vscode.Uri.joinPath(root, 'webview.css'));
-  const nonce = Array.from({ length: 32 }, () => Math.floor(Math.random() * 36).toString(36)).join('');
-  const escape = (s: string) => s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
-  const attributes = Object.entries({ view, locale: vscode.env.language, ...data })
+  const nonce = Array.from({length: 32}, () =>
+    Math.floor(Math.random() * 36).toString(36),
+  ).join('');
+  const escape = (s: string) =>
+    s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+  const attributes = Object.entries({
+    view,
+    locale: vscode.env.language,
+    ...data,
+  })
     .map(([key, value]) => `data-${key}="${escape(value)}"`)
     .join(' ');
   return `<!DOCTYPE html>

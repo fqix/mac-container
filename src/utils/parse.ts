@@ -52,7 +52,10 @@ function parsePort(port: Json): PortMapping {
 }
 
 export function formatPort(port: PortMapping): string {
-  const host = port.hostAddress && port.hostAddress !== '0.0.0.0' ? `${port.hostAddress}:${port.hostPort}` : `${port.hostPort}`;
+  const host =
+    port.hostAddress && port.hostAddress !== '0.0.0.0'
+      ? `${port.hostAddress}:${port.hostPort}`
+      : `${port.hostPort}`;
   return `${host}->${port.containerPort}/${port.proto}`;
 }
 
@@ -62,12 +65,27 @@ function parseMount(mount: Json): ContainerMount {
   const options: string[] = Array.isArray(mount.options) ? mount.options : [];
   const readOnly = options.includes('ro');
   if (type.volume) {
-    return { kind: 'volume', source: type.volume.name ?? mount.source, destination: mount.destination, readOnly };
+    return {
+      kind: 'volume',
+      source: type.volume.name ?? mount.source,
+      destination: mount.destination,
+      readOnly,
+    };
   }
   if (type.virtiofs) {
-    return { kind: 'bind', source: mount.source, destination: mount.destination, readOnly };
+    return {
+      kind: 'bind',
+      source: mount.source,
+      destination: mount.destination,
+      readOnly,
+    };
   }
-  return { kind: Object.keys(type)[0] ?? 'unknown', source: mount.source ?? '', destination: mount.destination, readOnly };
+  return {
+    kind: Object.keys(type)[0] ?? 'unknown',
+    source: mount.source ?? '',
+    destination: mount.destination,
+    readOnly,
+  };
 }
 
 /** initProcess.user is either {raw: {userString}} or {id: {uid, gid}} */
@@ -79,13 +97,16 @@ function parseUser(user: Json | undefined): string | undefined {
 }
 
 export function parseContainers(data: unknown): ContainerSummary[] {
-  return asArray(data).map((item) => {
+  return asArray(data).map(item => {
     const config: Json = item.configuration ?? {};
     const status: Json = item.status ?? {};
     const init: Json = config.initProcess ?? {};
-    const command = [init.executable, ...(init.arguments ?? [])].filter(Boolean).join(' ');
+    const command = [init.executable, ...(init.arguments ?? [])]
+      .filter(Boolean)
+      .join(' ');
     const statusNetworks = asArray(status.networks);
-    const ipv4 = statusNetworks.find((n) => n.ipv4Address)?.ipv4Address as string | undefined;
+    const ipv4 = statusNetworks.find(n => n.ipv4Address)?.ipv4Address as
+      string | undefined;
     const platform: Json | undefined = config.platform;
     const labels: Json = config.labels ?? {};
     const publishedPorts = asArray(config.publishedPorts).map(parsePort);
@@ -97,7 +118,9 @@ export function parseContainers(data: unknown): ContainerSummary[] {
       createdAt: config.creationDate,
       startedAt: status.startedDate,
       ipv4: ipv4?.split('/')[0],
-      networks: asArray(config.networks).map((n) => n.network).filter(Boolean),
+      networks: asArray(config.networks)
+        .map(n => n.network)
+        .filter(Boolean),
       ports: publishedPorts.map(formatPort),
       publishedPorts,
       mounts: asArray(config.mounts).map(parseMount),
@@ -105,17 +128,24 @@ export function parseContainers(data: unknown): ContainerSummary[] {
       composeService: labels[COMPOSE_SERVICE_LABEL],
       cpus: config.resources?.cpus,
       memoryBytes: config.resources?.memoryInBytes,
-      platform: platform ? [platform.os, platform.architecture, platform.variant].filter(Boolean).join('/') : undefined,
+      platform: platform
+        ? [platform.os, platform.architecture, platform.variant]
+            .filter(Boolean)
+            .join('/')
+        : undefined,
       user: parseUser(init.user),
-      labels: { ...labels },
+      labels: {...labels},
       builder: labels[RESOURCE_ROLE_LABEL] === 'builder',
-      workdir: typeof init.workingDirectory === 'string' && init.workingDirectory ? init.workingDirectory : undefined,
+      workdir:
+        typeof init.workingDirectory === 'string' && init.workingDirectory
+          ? init.workingDirectory
+          : undefined,
     };
   });
 }
 
 export function parseImages(data: unknown): ImageSummary[] {
-  return asArray(data).map((item) => {
+  return asArray(data).map(item => {
     const config: Json = item.configuration ?? {};
     const variants = asArray(item.variants);
     const reference: string = config.name ?? item.id;
@@ -124,17 +154,22 @@ export function parseImages(data: unknown): ImageSummary[] {
       displayName: shortImageName(reference),
       digest: config.descriptor?.digest ?? item.id ?? '',
       createdAt: config.creationDate,
-      sizeBytes: variants.reduce((sum, v) => sum + (typeof v.size === 'number' ? v.size : 0), 0),
+      sizeBytes: variants.reduce(
+        (sum, v) => sum + (typeof v.size === 'number' ? v.size : 0),
+        0,
+      ),
       platforms: variants
-        .map((v) => v.platform)
+        .map(v => v.platform)
         .filter(Boolean)
-        .map((p: Json) => [p.os, p.architecture, p.variant].filter(Boolean).join('/')),
+        .map((p: Json) =>
+          [p.os, p.architecture, p.variant].filter(Boolean).join('/'),
+        ),
     };
   });
 }
 
 export function parseNetworks(data: unknown): NetworkSummary[] {
-  return asArray(data).map((item) => {
+  return asArray(data).map(item => {
     const config: Json = item.configuration ?? {};
     const status: Json = item.status ?? {};
     return {
@@ -149,7 +184,7 @@ export function parseNetworks(data: unknown): NetworkSummary[] {
 }
 
 export function parseVolumes(data: unknown): VolumeSummary[] {
-  return asArray(data).map((item) => {
+  return asArray(data).map(item => {
     const config: Json = item.configuration ?? {};
     return {
       name: config.name ?? item.id,
@@ -174,7 +209,7 @@ function toIsoDate(value: unknown): string | undefined {
 }
 
 export function parseRegistries(data: unknown): RegistrySummary[] {
-  return asArray(data).map((item) => ({
+  return asArray(data).map(item => ({
     hostname: item.name ?? item.id ?? item.hostname,
     username: item.username ?? '',
     createdAt: toIsoDate(item.creationDate),
@@ -195,7 +230,7 @@ export function parseSystemStatus(data: unknown): SystemStatus {
 }
 
 export function parseStats(data: unknown): ContainerStats[] {
-  return asArray(data).map((item) => ({ ...item, id: item.id }) as ContainerStats);
+  return asArray(data).map(item => ({...item, id: item.id}) as ContainerStats);
 }
 
 export function formatBytes(bytes: number | undefined): string {
@@ -213,7 +248,11 @@ export function formatBytes(bytes: number | undefined): string {
 }
 
 /** Formats a relative time such as "3 minutes ago" for the locale; translations come from Intl */
-export function formatRelativeTime(iso: string | undefined, locale = 'en', now: Date = new Date()): string {
+export function formatRelativeTime(
+  iso: string | undefined,
+  locale = 'en',
+  now: Date = new Date(),
+): string {
   if (!iso) {
     return '';
   }
@@ -233,9 +272,9 @@ export function formatRelativeTime(iso: string | undefined, locale = 'en', now: 
   let value = Math.min(0, seconds);
   let rtf: Intl.RelativeTimeFormat;
   try {
-    rtf = new Intl.RelativeTimeFormat(locale, { numeric: 'auto' });
+    rtf = new Intl.RelativeTimeFormat(locale, {numeric: 'auto'});
   } catch {
-    rtf = new Intl.RelativeTimeFormat('en', { numeric: 'auto' });
+    rtf = new Intl.RelativeTimeFormat('en', {numeric: 'auto'});
   }
   for (const [unit, size] of steps) {
     if (Math.abs(value) < size) {

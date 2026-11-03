@@ -2,19 +2,19 @@
 
 import * as vscode from 'vscode';
 
-import { CliNotFoundError, ContainerCli } from './cli';
-import { describeError } from '../utils/i18n';
-import type { SystemStatus } from '../models/types';
+import {CliNotFoundError, ContainerCli} from './cli';
+import {describeError} from '../utils/i18n';
+import type {SystemStatus} from '../models/types';
 
 export type ServiceState =
-  | { kind: 'unknown' }
-  | { kind: 'cliMissing' }
-  | { kind: 'stopped' }
-  | { kind: 'running'; status: SystemStatus }
-  | { kind: 'error'; message: string };
+  | {kind: 'unknown'}
+  | {kind: 'cliMissing'}
+  | {kind: 'stopped'}
+  | {kind: 'running'; status: SystemStatus}
+  | {kind: 'error'; message: string};
 
 export class ServiceMonitor implements vscode.Disposable {
-  private current: ServiceState = { kind: 'unknown' };
+  private current: ServiceState = {kind: 'unknown'};
   private pending: Promise<ServiceState> | undefined;
   private readonly kindEmitter = new vscode.EventEmitter<ServiceState>();
   private readonly stateEmitter = new vscode.EventEmitter<ServiceState>();
@@ -42,15 +42,26 @@ export class ServiceMonitor implements vscode.Disposable {
     let next: ServiceState;
     try {
       const status = await this.cli.systemStatus();
-      next = status.running ? { kind: 'running', status } : { kind: 'stopped' };
+      next = status.running ? {kind: 'running', status} : {kind: 'stopped'};
     } catch (error) {
-      next = error instanceof CliNotFoundError ? { kind: 'cliMissing' } : { kind: 'error', message: describeError(error) };
+      next =
+        error instanceof CliNotFoundError
+          ? {kind: 'cliMissing'}
+          : {kind: 'error', message: describeError(error)};
     }
     const changed = next.kind !== this.current.kind;
     this.current = next;
     await Promise.all([
-      vscode.commands.executeCommand('setContext', 'appleContainer.cliMissing', next.kind === 'cliMissing'),
-      vscode.commands.executeCommand('setContext', 'appleContainer.serviceStopped', next.kind === 'stopped'),
+      vscode.commands.executeCommand(
+        'setContext',
+        'appleContainer.cliMissing',
+        next.kind === 'cliMissing',
+      ),
+      vscode.commands.executeCommand(
+        'setContext',
+        'appleContainer.serviceStopped',
+        next.kind === 'stopped',
+      ),
     ]);
     if (changed) {
       this.kindEmitter.fire(next);

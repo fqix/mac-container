@@ -11,4 +11,5 @@ export function formatBytes(bytes: number): string {
 
 export const formatRate = (bytes: number) => `${formatBytes(bytes)}/s`;
 
-export const formatPercent = (value: number) => `${value.toFixed(value >= 10 ? 0 : 1)}%`;
+export const formatPercent = (value: number) =>
+  `${value.toFixed(value >= 10 ? 0 : 1)}%`;

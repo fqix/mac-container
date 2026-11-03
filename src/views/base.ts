@@ -2,8 +2,8 @@
 
 import * as vscode from 'vscode';
 
-import { describeError } from '../utils/i18n';
-import type { ServiceMonitor } from '../services/state';
+import {describeError} from '../utils/i18n';
+import type {ServiceMonitor} from '../services/state';
 
 export class ResourceNode<T> extends vscode.TreeItem {
   constructor(
@@ -17,14 +17,19 @@ export class ResourceNode<T> extends vscode.TreeItem {
 class MessageNode extends vscode.TreeItem {
   constructor(message: string) {
     super(message, vscode.TreeItemCollapsibleState.None);
-    this.iconPath = new vscode.ThemeIcon('error', new vscode.ThemeColor('errorForeground'));
+    this.iconPath = new vscode.ThemeIcon(
+      'error',
+      new vscode.ThemeColor('errorForeground'),
+    );
     this.tooltip = message;
   }
 }
 
 export type TreeNode = vscode.TreeItem;
 
-export abstract class ResourceProvider<T> implements vscode.TreeDataProvider<TreeNode>, vscode.Disposable {
+export abstract class ResourceProvider<T>
+  implements vscode.TreeDataProvider<TreeNode>, vscode.Disposable
+{
   private readonly emitter = new vscode.EventEmitter<void>();
   readonly onDidChangeTreeData = this.emitter.event;
 
@@ -35,7 +40,7 @@ export abstract class ResourceProvider<T> implements vscode.TreeDataProvider<Tre
 
   /** Top-level nodes; views that group resources override this */
   protected rootNodes(items: T[]): TreeNode[] {
-    return items.map((r) => this.toNode(r));
+    return items.map(r => this.toNode(r));
   }
 
   /** Children of an expandable node; flat views have none */
@@ -55,7 +60,10 @@ export abstract class ResourceProvider<T> implements vscode.TreeDataProvider<Tre
     if (element) {
       return this.childNodes(element);
     }
-    const state = this.monitor.state.kind === 'unknown' ? await this.monitor.check() : this.monitor.state;
+    const state =
+      this.monitor.state.kind === 'unknown'
+        ? await this.monitor.check()
+        : this.monitor.state;
     // An empty result shows viewsWelcome (CLI missing / service stopped)
     if (state.kind === 'cliMissing' || state.kind === 'stopped') {
       return [];

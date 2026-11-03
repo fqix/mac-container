@@ -1,6 +1,7 @@
 // Slim models used inside the extension, converted from container CLI JSON by parse.ts
 
-export type ContainerState = 'running' | 'stopped' | 'stopping' | 'unknown' | string;
+export type ContainerState =
+  'running' | 'stopped' | 'stopping' | 'unknown' | string;
 
 export interface ContainerMount {
   /** volume: named volume, bind: host directory shared via virtiofs */

@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 
-import type { MountNode, PortNode } from '../views/containers';
-import { CommandContext, register } from './common';
+import type {MountNode, PortNode} from '../views/containers';
+import {CommandContext, register} from './common';
 
 export function registerPortAndMountCommands(ctx: CommandContext): void {
   register(ctx, 'appleContainer.port.open', async (node?: PortNode) => {
@@ -18,7 +18,10 @@ export function registerPortAndMountCommands(ctx: CommandContext): void {
 
   register(ctx, 'appleContainer.mount.reveal', async (node?: MountNode) => {
     if (node?.mount.kind === 'bind') {
-      await vscode.commands.executeCommand('revealFileInOS', vscode.Uri.file(node.mount.source));
+      await vscode.commands.executeCommand(
+        'revealFileInOS',
+        vscode.Uri.file(node.mount.source),
+      );
     }
   });
 }

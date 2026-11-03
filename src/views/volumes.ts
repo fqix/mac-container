@@ -1,11 +1,11 @@
 import * as vscode from 'vscode';
 
-import type { ContainerCli } from '../services/cli';
-import { relativeTime } from '../utils/i18n';
-import { formatBytes } from '../utils/parse';
-import type { ServiceMonitor } from '../services/state';
-import type { VolumeSummary } from '../models/types';
-import { ResourceNode, ResourceProvider } from './base';
+import type {ContainerCli} from '../services/cli';
+import {relativeTime} from '../utils/i18n';
+import {formatBytes} from '../utils/parse';
+import type {ServiceMonitor} from '../services/state';
+import type {VolumeSummary} from '../models/types';
+import {ResourceNode, ResourceProvider} from './base';
 
 export type VolumeNode = ResourceNode<VolumeSummary>;
 
@@ -18,7 +18,9 @@ export class VolumesProvider extends ResourceProvider<VolumeSummary> {
   }
 
   protected async fetch(): Promise<VolumeSummary[]> {
-    return (await this.cli.listVolumes()).sort((a, b) => a.name.localeCompare(b.name));
+    return (await this.cli.listVolumes()).sort((a, b) =>
+      a.name.localeCompare(b.name),
+    );
   }
 
   protected toNode(volume: VolumeSummary): VolumeNode {
@@ -27,7 +29,9 @@ export class VolumesProvider extends ResourceProvider<VolumeSummary> {
     node.contextValue = 'volume';
     node.iconPath = new vscode.ThemeIcon('database');
     // sizeInBytes is the volume capacity, not the space used
-    node.description = [volume.format, relativeTime(volume.createdAt)].filter(Boolean).join(' · ');
+    node.description = [volume.format, relativeTime(volume.createdAt)]
+      .filter(Boolean)
+      .join(' · ');
     const md = new vscode.MarkdownString();
     md.appendMarkdown('**').appendText(volume.name).appendMarkdown('**\n\n');
     const rows: [string, string | undefined][] = [

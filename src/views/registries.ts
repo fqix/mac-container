@@ -1,10 +1,10 @@
 import * as vscode from 'vscode';
 
-import type { ContainerCli } from '../services/cli';
-import { relativeTime } from '../utils/i18n';
-import type { ServiceMonitor } from '../services/state';
-import type { RegistrySummary } from '../models/types';
-import { ResourceNode, ResourceProvider } from './base';
+import type {ContainerCli} from '../services/cli';
+import {relativeTime} from '../utils/i18n';
+import type {ServiceMonitor} from '../services/state';
+import type {RegistrySummary} from '../models/types';
+import {ResourceNode, ResourceProvider} from './base';
 
 export type RegistryNode = ResourceNode<RegistrySummary>;
 
@@ -17,7 +17,9 @@ export class RegistriesProvider extends ResourceProvider<RegistrySummary> {
   }
 
   protected async fetch(): Promise<RegistrySummary[]> {
-    return (await this.cli.listRegistries()).sort((a, b) => a.hostname.localeCompare(b.hostname));
+    return (await this.cli.listRegistries()).sort((a, b) =>
+      a.hostname.localeCompare(b.hostname),
+    );
   }
 
   protected toNode(registry: RegistrySummary): RegistryNode {
@@ -27,10 +29,16 @@ export class RegistriesProvider extends ResourceProvider<RegistrySummary> {
     node.iconPath = new vscode.ThemeIcon('account');
     node.description = registry.username;
     const md = new vscode.MarkdownString();
-    md.appendMarkdown('**').appendText(registry.hostname).appendMarkdown('**\n\n');
-    md.appendMarkdown(`- ${vscode.l10n.t('Username')}: `).appendText(registry.username).appendMarkdown('\n');
+    md.appendMarkdown('**')
+      .appendText(registry.hostname)
+      .appendMarkdown('**\n\n');
+    md.appendMarkdown(`- ${vscode.l10n.t('Username')}: `)
+      .appendText(registry.username)
+      .appendMarkdown('\n');
     if (registry.modifiedAt) {
-      md.appendMarkdown(`- ${vscode.l10n.t('Logged in')}: ${relativeTime(registry.modifiedAt)}\n`);
+      md.appendMarkdown(
+        `- ${vscode.l10n.t('Logged in')}: ${relativeTime(registry.modifiedAt)}\n`,
+      );
     }
     node.tooltip = md;
     return node;

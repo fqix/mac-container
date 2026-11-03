@@ -1,9 +1,13 @@
-import { useCallback, useEffect, useState } from 'react';
+import {useCallback, useEffect, useState} from 'react';
 
-import type { ContainerSettings, FormFromWebview, FormToWebview } from '../../../src/services/containerSettings';
-import type { ContainerMount, PortMapping } from '../../../src/models/types';
-import { useMessages } from '../useMessages';
-import { postMessage, t } from '../vscode';
+import type {
+  ContainerSettings,
+  FormFromWebview,
+  FormToWebview,
+} from '../../../src/services/containerSettings';
+import type {ContainerMount, PortMapping} from '../../../src/models/types';
+import {useMessages} from '../useMessages';
+import {postMessage, t} from '../vscode';
 
 const send = (message: FormFromWebview) => postMessage(message);
 
@@ -30,7 +34,12 @@ export function ContainerForm() {
   // Edited as text, one entry per line, so .env content can be pasted
   const [envText, setEnvText] = useState('');
   const [networks, setNetworks] = useState<string[]>([]);
-  const [scalars, setScalars] = useState<Scalars>({ cpus: '', memory: '', user: '', workdir: '' });
+  const [scalars, setScalars] = useState<Scalars>({
+    cpus: '',
+    memory: '',
+    user: '',
+    workdir: '',
+  });
   const [problems, setProblems] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
 
@@ -38,7 +47,7 @@ export function ContainerForm() {
     useCallback((message: FormToWebview) => {
       switch (message.type) {
         case 'init': {
-          const { settings } = message;
+          const {settings} = message;
           setInfo({
             mode: message.mode,
             name: message.name,
@@ -53,14 +62,23 @@ export function ContainerForm() {
           setMounts(settings.mounts);
           setEnvText(settings.env.join('\n'));
           setNetworks(settings.networks);
-          setScalars({ cpus: settings.cpus, memory: settings.memory, user: settings.user, workdir: settings.workdir });
+          setScalars({
+            cpus: settings.cpus,
+            memory: settings.memory,
+            user: settings.user,
+            workdir: settings.workdir,
+          });
           break;
         }
         case 'envImported':
           setEnvText(message.env.join('\n'));
           break;
         case 'browsed':
-          setMounts((list) => list.map((m, i) => (i === message.index ? { ...m, source: message.path } : m)));
+          setMounts(list =>
+            list.map((m, i) =>
+              i === message.index ? {...m, source: message.path} : m,
+            ),
+          );
           break;
         case 'problems':
           setProblems(message.messages);
@@ -73,17 +91,24 @@ export function ContainerForm() {
   );
 
   // Ask for the initial data once the listener is in place
-  useEffect(() => send({ type: 'ready' }), []);
+  useEffect(() => send({type: 'ready'}), []);
 
   const updatePort = (index: number, patch: Partial<PortMapping>) =>
-    setPorts((list) => list.map((p, i) => (i === index ? { ...p, ...patch } : p)));
+    setPorts(list => list.map((p, i) => (i === index ? {...p, ...patch} : p)));
   const updateMount = (index: number, patch: Partial<ContainerMount>) =>
-    setMounts((list) => list.map((m, i) => (i === index ? { ...m, ...patch } : m)));
+    setMounts(list => list.map((m, i) => (i === index ? {...m, ...patch} : m)));
 
-  const env = () => envText.split('\n').map((line) => line.trim()).filter(Boolean);
-  const setScalar = (key: keyof Scalars, value: string) => setScalars((s) => ({ ...s, [key]: value.trim() }));
+  const env = () =>
+    envText
+      .split('\n')
+      .map(line => line.trim())
+      .filter(Boolean);
+  const setScalar = (key: keyof Scalars, value: string) =>
+    setScalars(s => ({...s, [key]: value.trim()}));
   const toggleNetwork = (network: string, on: boolean) =>
-    setNetworks((list) => (on ? [...list, network] : list.filter((n) => n !== network)));
+    setNetworks(list =>
+      on ? [...list, network] : list.filter(n => n !== network),
+    );
 
   const save = () => {
     setProblems([]);
@@ -91,7 +116,7 @@ export function ContainerForm() {
       type: 'save',
       name: name.trim(),
       command: command.trim(),
-      settings: { ports, mounts, env: env(), networks, ...scalars },
+      settings: {ports, mounts, env: env(), networks, ...scalars},
     });
   };
 
@@ -102,11 +127,16 @@ export function ContainerForm() {
 
   return (
     <div className="edit">
-      <h1>{editing ? `${t('editTitle')}: ${info.name}` : `${t('runTitle')}: ${info.image}`}</h1>
+      <h1>
+        {editing
+          ? `${t('editTitle')}: ${info.name}`
+          : `${t('runTitle')}: ${info.image}`}
+      </h1>
       {editing ? (
         <>
           <div className="muted">
-            {t('image')}: {info.image} · {info.running ? t('running') : t('stopped')}
+            {t('image')}: {info.image} ·{' '}
+            {info.running ? t('running') : t('stopped')}
           </div>
           <p className="muted">{t('hint')}</p>
         </>
@@ -114,11 +144,21 @@ export function ContainerForm() {
         <div className="fields">
           <label>
             <span>{t('name')}</span>
-            <input type="text" placeholder={info.name || t('namePlaceholder')} value={name} onChange={(e) => setName(e.target.value)} />
+            <input
+              type="text"
+              placeholder={info.name || t('namePlaceholder')}
+              value={name}
+              onChange={e => setName(e.target.value)}
+            />
           </label>
           <label className="wide">
             <span>{t('command')}</span>
-            <input type="text" placeholder={t('commandPlaceholder')} value={command} onChange={(e) => setCommand(e.target.value)} />
+            <input
+              type="text"
+              placeholder={t('commandPlaceholder')}
+              value={command}
+              onChange={e => setCommand(e.target.value)}
+            />
             <small className="muted">{t('commandHint')}</small>
           </label>
         </div>
@@ -144,23 +184,39 @@ export function ContainerForm() {
                     type="text"
                     placeholder="0.0.0.0"
                     value={p.hostAddress === '0.0.0.0' ? '' : p.hostAddress}
-                    onChange={(e) => updatePort(i, { hostAddress: e.target.value.trim() || '0.0.0.0' })}
+                    onChange={e =>
+                      updatePort(i, {
+                        hostAddress: e.target.value.trim() || '0.0.0.0',
+                      })
+                    }
                   />
                 </td>
                 <td className="col-narrow">
-                  <PortInput value={p.hostPort} onChange={(hostPort) => updatePort(i, { hostPort })} />
+                  <PortInput
+                    value={p.hostPort}
+                    onChange={hostPort => updatePort(i, {hostPort})}
+                  />
                 </td>
                 <td className="col-narrow">
-                  <PortInput value={p.containerPort} onChange={(containerPort) => updatePort(i, { containerPort })} />
+                  <PortInput
+                    value={p.containerPort}
+                    onChange={containerPort => updatePort(i, {containerPort})}
+                  />
                 </td>
                 <td className="col-narrow">
-                  <select value={p.proto} onChange={(e) => updatePort(i, { proto: e.target.value })}>
+                  <select
+                    value={p.proto}
+                    onChange={e => updatePort(i, {proto: e.target.value})}>
                     <option value="tcp">TCP</option>
                     <option value="udp">UDP</option>
                   </select>
                 </td>
                 <td>
-                  <RemoveButton onClick={() => setPorts((list) => list.filter((_, j) => j !== i))} />
+                  <RemoveButton
+                    onClick={() =>
+                      setPorts(list => list.filter((_, j) => j !== i))
+                    }
+                  />
                 </td>
               </tr>
             ))}
@@ -173,8 +229,17 @@ export function ContainerForm() {
         <button
           className="secondary"
           disabled={busy}
-          onClick={() => setPorts((list) => [...list, { hostAddress: '0.0.0.0', hostPort: NaN, containerPort: NaN, proto: 'tcp' }])}
-        >
+          onClick={() =>
+            setPorts(list => [
+              ...list,
+              {
+                hostAddress: '0.0.0.0',
+                hostPort: NaN,
+                containerPort: NaN,
+                proto: 'tcp',
+              },
+            ])
+          }>
           + {t('addPort')}
         </button>
       </div>
@@ -197,29 +262,48 @@ export function ContainerForm() {
                 <td className="col-select">
                   <select
                     value={m.kind}
-                    onChange={(e) => updateMount(i, { kind: e.target.value, source: e.target.value === 'tmpfs' ? '' : m.source })}
-                  >
+                    onChange={e =>
+                      updateMount(i, {
+                        kind: e.target.value,
+                        source: e.target.value === 'tmpfs' ? '' : m.source,
+                      })
+                    }>
                     <option value="volume">{t('volume')}</option>
                     <option value="bind">{t('bind')}</option>
                     <option value="tmpfs">tmpfs</option>
                   </select>
                 </td>
                 <td>
-                  <MountSource mount={m} index={i} onChange={(source) => updateMount(i, { source })} />
+                  <MountSource
+                    mount={m}
+                    index={i}
+                    onChange={source => updateMount(i, {source})}
+                  />
                 </td>
                 <td>
-                  <input type="text" placeholder="/data" value={m.destination} onChange={(e) => updateMount(i, { destination: e.target.value.trim() })} />
+                  <input
+                    type="text"
+                    placeholder="/data"
+                    value={m.destination}
+                    onChange={e =>
+                      updateMount(i, {destination: e.target.value.trim()})
+                    }
+                  />
                 </td>
                 <td className="col-narrow">
                   <input
                     type="checkbox"
                     checked={m.readOnly}
                     disabled={m.kind === 'tmpfs'}
-                    onChange={(e) => updateMount(i, { readOnly: e.target.checked })}
+                    onChange={e => updateMount(i, {readOnly: e.target.checked})}
                   />
                 </td>
                 <td>
-                  <RemoveButton onClick={() => setMounts((list) => list.filter((_, j) => j !== i))} />
+                  <RemoveButton
+                    onClick={() =>
+                      setMounts(list => list.filter((_, j) => j !== i))
+                    }
+                  />
                 </td>
               </tr>
             ))}
@@ -232,13 +316,17 @@ export function ContainerForm() {
         <button
           className="secondary"
           disabled={busy}
-          onClick={() => setMounts((list) => [...list, { kind: 'volume', source: '', destination: '', readOnly: false }])}
-        >
+          onClick={() =>
+            setMounts(list => [
+              ...list,
+              {kind: 'volume', source: '', destination: '', readOnly: false},
+            ])
+          }>
           + {t('addMount')}
         </button>
       </div>
       <datalist id="volume-names">
-        {info.volumes.map((v) => (
+        {info.volumes.map(v => (
           <option key={v} value={v} />
         ))}
       </datalist>
@@ -249,22 +337,30 @@ export function ContainerForm() {
         spellCheck={false}
         placeholder="KEY=VALUE"
         value={envText}
-        onChange={(e) => setEnvText(e.target.value)}
+        onChange={e => setEnvText(e.target.value)}
       />
       <div className="row">
-        <small className="muted" style={{ flex: 1 }}>
+        <small className="muted" style={{flex: 1}}>
           {t('envHint')}
         </small>
-        <button className="secondary" disabled={busy} onClick={() => send({ type: 'importEnv', env: env() })}>
+        <button
+          className="secondary"
+          disabled={busy}
+          onClick={() => send({type: 'importEnv', env: env()})}>
           {t('importEnv')}
         </button>
       </div>
 
       <h2>{t('networks')}</h2>
       <div className="checks">
-        {info.networks.map((n) => (
+        {info.networks.map(n => (
           <label key={n}>
-            <input type="checkbox" checked={networks.includes(n)} onChange={(e) => toggleNetwork(n, e.target.checked)} /> {n}
+            <input
+              type="checkbox"
+              checked={networks.includes(n)}
+              onChange={e => toggleNetwork(n, e.target.checked)}
+            />{' '}
+            {n}
           </label>
         ))}
       </div>
@@ -274,11 +370,22 @@ export function ContainerForm() {
       <div className="fields">
         <label>
           <span>{t('cpus')}</span>
-          <input type="number" min={1} placeholder={t('defaultValue')} value={scalars.cpus} onChange={(e) => setScalar('cpus', e.target.value)} />
+          <input
+            type="number"
+            min={1}
+            placeholder={t('defaultValue')}
+            value={scalars.cpus}
+            onChange={e => setScalar('cpus', e.target.value)}
+          />
         </label>
         <label>
           <span>{t('memory')}</span>
-          <input type="text" placeholder={t('memoryPlaceholder')} value={scalars.memory} onChange={(e) => setScalar('memory', e.target.value)} />
+          <input
+            type="text"
+            placeholder={t('memoryPlaceholder')}
+            value={scalars.memory}
+            onChange={e => setScalar('memory', e.target.value)}
+          />
         </label>
       </div>
 
@@ -286,21 +393,38 @@ export function ContainerForm() {
       <div className="fields">
         <label>
           <span>{t('user')}</span>
-          <input type="text" placeholder={t('userPlaceholder')} value={scalars.user} onChange={(e) => setScalar('user', e.target.value)} />
+          <input
+            type="text"
+            placeholder={t('userPlaceholder')}
+            value={scalars.user}
+            onChange={e => setScalar('user', e.target.value)}
+          />
         </label>
         <label>
           <span>{t('workdir')}</span>
-          <input type="text" placeholder={t('defaultValue')} value={scalars.workdir} onChange={(e) => setScalar('workdir', e.target.value)} />
+          <input
+            type="text"
+            placeholder={t('defaultValue')}
+            value={scalars.workdir}
+            onChange={e => setScalar('workdir', e.target.value)}
+          />
         </label>
       </div>
 
-      {problems.length ? <div className="error" style={{ marginTop: 16 }}>{problems.join('\n')}</div> : null}
+      {problems.length ? (
+        <div className="error" style={{marginTop: 16}}>
+          {problems.join('\n')}
+        </div>
+      ) : null}
 
       <div className="actions">
         <button disabled={busy} onClick={save}>
           {editing ? t('save') : t('run')}
         </button>
-        <button className="secondary" disabled={busy} onClick={() => send({ type: 'cancel' })}>
+        <button
+          className="secondary"
+          disabled={busy}
+          onClick={() => send({type: 'cancel'})}>
           {t('cancel')}
         </button>
       </div>
@@ -308,7 +432,13 @@ export function ContainerForm() {
   );
 }
 
-function PortInput({ value, onChange }: { value: number; onChange: (value: number) => void }) {
+function PortInput({
+  value,
+  onChange,
+}: {
+  value: number;
+  onChange: (value: number) => void;
+}) {
   return (
     <input
       type="number"
@@ -316,20 +446,37 @@ function PortInput({ value, onChange }: { value: number; onChange: (value: numbe
       max={65535}
       value={Number.isFinite(value) ? value : ''}
       aria-invalid={Number.isFinite(value) && !validPort(value)}
-      onChange={(e) => onChange(e.target.value === '' ? NaN : Number(e.target.value))}
+      onChange={e =>
+        onChange(e.target.value === '' ? NaN : Number(e.target.value))
+      }
     />
   );
 }
 
-function MountSource({ mount, index, onChange }: { mount: ContainerMount; index: number; onChange: (source: string) => void }) {
+function MountSource({
+  mount,
+  index,
+  onChange,
+}: {
+  mount: ContainerMount;
+  index: number;
+  onChange: (source: string) => void;
+}) {
   if (mount.kind === 'tmpfs') {
     return <span className="muted">tmpfs</span>;
   }
   if (mount.kind === 'bind') {
     return (
-      <div style={{ display: 'flex', gap: 4 }}>
-        <input type="text" placeholder={t('bindPlaceholder')} value={mount.source} onChange={(e) => onChange(e.target.value.trim())} />
-        <button className="secondary" onClick={() => send({ type: 'browse', index })}>
+      <div style={{display: 'flex', gap: 4}}>
+        <input
+          type="text"
+          placeholder={t('bindPlaceholder')}
+          value={mount.source}
+          onChange={e => onChange(e.target.value.trim())}
+        />
+        <button
+          className="secondary"
+          onClick={() => send({type: 'browse', index})}>
           {t('browse')}
         </button>
       </div>
@@ -341,12 +488,12 @@ function MountSource({ mount, index, onChange }: { mount: ContainerMount; index:
       list="volume-names"
       placeholder={t('volumePlaceholder')}
       value={mount.source}
-      onChange={(e) => onChange(e.target.value.trim())}
+      onChange={e => onChange(e.target.value.trim())}
     />
   );
 }
 
-function RemoveButton({ onClick }: { onClick: () => void }) {
+function RemoveButton({onClick}: {onClick: () => void}) {
   return (
     <button className="icon" title={t('remove')} onClick={onClick}>
       ✕

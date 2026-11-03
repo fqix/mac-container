@@ -1,6 +1,6 @@
 import * as assert from 'assert';
 
-import { generateContainerName } from '../../src/utils/names';
+import {generateContainerName} from '../../src/utils/names';
 
 describe('container names', () => {
   it('generates adjective_surname names', () => {
@@ -13,7 +13,13 @@ describe('container names', () => {
     const fixed = () => 0;
     const first = generateContainerName(new Set(), fixed);
     assert.strictEqual(first, 'agile_babbage');
-    assert.strictEqual(generateContainerName(new Set([first]), fixed), 'agile_babbage1');
-    assert.strictEqual(generateContainerName(new Set([first, 'agile_babbage1']), fixed), 'agile_babbage2');
+    assert.strictEqual(
+      generateContainerName(new Set([first]), fixed),
+      'agile_babbage1',
+    );
+    assert.strictEqual(
+      generateContainerName(new Set([first, 'agile_babbage1']), fixed),
+      'agile_babbage2',
+    );
   });
 });
