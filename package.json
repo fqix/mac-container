@@ -38,7 +38,8 @@
   "activationEvents": [
     "workspaceContains:.devcontainer/devcontainer.json",
     "workspaceContains:.devcontainer.json",
-    "workspaceContains:.devcontainer/*/devcontainer.json"
+    "workspaceContains:.devcontainer/*/devcontainer.json",
+    "onStartupFinished"
   ],
   "contributes": {
     "viewsContainers": {
@@ -54,31 +55,37 @@
       "appleContainer": [
         {
           "id": "appleContainer.containers",
-          "name": "%view.containers%"
+          "name": "%view.containers%",
+          "when": "!remoteName"
         },
         {
           "id": "appleContainer.images",
-          "name": "%view.images%"
+          "name": "%view.images%",
+          "when": "!remoteName"
         },
         {
           "id": "appleContainer.builder",
           "name": "%view.builder%",
-          "visibility": "collapsed"
+          "visibility": "collapsed",
+          "when": "!remoteName"
         },
         {
           "id": "appleContainer.networks",
           "name": "%view.networks%",
-          "visibility": "collapsed"
+          "visibility": "collapsed",
+          "when": "!remoteName"
         },
         {
           "id": "appleContainer.volumes",
           "name": "%view.volumes%",
-          "visibility": "collapsed"
+          "visibility": "collapsed",
+          "when": "!remoteName"
         },
         {
           "id": "appleContainer.registries",
           "name": "%view.registries%",
-          "visibility": "collapsed"
+          "visibility": "collapsed",
+          "when": "!remoteName"
         }
       ]
     },
@@ -628,6 +635,110 @@
         {
           "command": "appleContainer.file.uploadToContainer",
           "when": "false"
+        },
+        {
+          "command": "appleContainer.refresh",
+          "when": "!remoteName"
+        },
+        {
+          "command": "appleContainer.container.prune",
+          "when": "!remoteName"
+        },
+        {
+          "command": "appleContainer.image.pull",
+          "when": "!remoteName"
+        },
+        {
+          "command": "appleContainer.image.build",
+          "when": "!remoteName"
+        },
+        {
+          "command": "appleContainer.image.run",
+          "when": "!remoteName"
+        },
+        {
+          "command": "appleContainer.image.load",
+          "when": "!remoteName"
+        },
+        {
+          "command": "appleContainer.image.prune",
+          "when": "!remoteName"
+        },
+        {
+          "command": "appleContainer.builder.start",
+          "when": "!remoteName"
+        },
+        {
+          "command": "appleContainer.builder.stop",
+          "when": "!remoteName"
+        },
+        {
+          "command": "appleContainer.builder.restart",
+          "when": "!remoteName"
+        },
+        {
+          "command": "appleContainer.builder.delete",
+          "when": "!remoteName"
+        },
+        {
+          "command": "appleContainer.network.create",
+          "when": "!remoteName"
+        },
+        {
+          "command": "appleContainer.network.prune",
+          "when": "!remoteName"
+        },
+        {
+          "command": "appleContainer.volume.create",
+          "when": "!remoteName"
+        },
+        {
+          "command": "appleContainer.volume.prune",
+          "when": "!remoteName"
+        },
+        {
+          "command": "appleContainer.system.start",
+          "when": "!remoteName"
+        },
+        {
+          "command": "appleContainer.system.stop",
+          "when": "!remoteName"
+        },
+        {
+          "command": "appleContainer.system.status",
+          "when": "!remoteName"
+        },
+        {
+          "command": "appleContainer.system.df",
+          "when": "!remoteName"
+        },
+        {
+          "command": "appleContainer.system.logs",
+          "when": "!remoteName"
+        },
+        {
+          "command": "appleContainer.system.menu",
+          "when": "!remoteName"
+        },
+        {
+          "command": "appleContainer.registry.login",
+          "when": "!remoteName"
+        },
+        {
+          "command": "appleContainer.compose.up",
+          "when": "!remoteName"
+        },
+        {
+          "command": "appleContainer.compose.down",
+          "when": "!remoteName"
+        },
+        {
+          "command": "appleContainer.devcontainer.open",
+          "when": "!remoteName"
+        },
+        {
+          "command": "appleContainer.devcontainer.rebuild",
+          "when": "!remoteName"
         }
       ],
       "view/title": [
@@ -972,54 +1083,54 @@
       "explorer/context": [
         {
           "command": "appleContainer.image.build",
-          "when": "resourceFilename =~ /^(Dockerfile|Containerfile)(\\..*)?$|\\.(Dockerfile|Containerfile)$/",
+          "when": "!remoteName && (resourceFilename =~ /^(Dockerfile|Containerfile)(\\..*)?$|\\.(Dockerfile|Containerfile)$/)",
           "group": "apple-container@1"
         },
         {
           "command": "appleContainer.compose.up",
-          "when": "resourceFilename =~ /^(docker-)?compose(\\..+)?\\.ya?ml$/",
+          "when": "!remoteName && (resourceFilename =~ /^(docker-)?compose(\\..+)?\\.ya?ml$/)",
           "group": "apple-container@2"
         },
         {
           "command": "appleContainer.compose.down",
-          "when": "resourceFilename =~ /^(docker-)?compose(\\..+)?\\.ya?ml$/",
+          "when": "!remoteName && (resourceFilename =~ /^(docker-)?compose(\\..+)?\\.ya?ml$/)",
           "group": "apple-container@3"
         },
         {
           "command": "appleContainer.image.load",
-          "when": "resourceExtname == .tar",
+          "when": "!remoteName && (resourceExtname == .tar)",
           "group": "apple-container@4"
         },
         {
           "command": "appleContainer.file.uploadToContainer",
-          "when": "resourceScheme == file",
+          "when": "!remoteName && (resourceScheme == file)",
           "group": "apple-container@5"
         },
         {
           "command": "appleContainer.devcontainer.open",
-          "when": "resourceFilename == devcontainer.json || resourceFilename == .devcontainer.json",
+          "when": "!remoteName && (resourceFilename == devcontainer.json || resourceFilename == .devcontainer.json)",
           "group": "apple-container@6"
         },
         {
           "command": "appleContainer.devcontainer.rebuild",
-          "when": "resourceFilename == devcontainer.json || resourceFilename == .devcontainer.json",
+          "when": "!remoteName && (resourceFilename == devcontainer.json || resourceFilename == .devcontainer.json)",
           "group": "apple-container@7"
         }
       ],
       "editor/title/context": [
         {
           "command": "appleContainer.compose.up",
-          "when": "resourceFilename =~ /^(docker-)?compose(\\..+)?\\.ya?ml$/",
+          "when": "!remoteName && (resourceFilename =~ /^(docker-)?compose(\\..+)?\\.ya?ml$/)",
           "group": "apple-container@1"
         },
         {
           "command": "appleContainer.compose.down",
-          "when": "resourceFilename =~ /^(docker-)?compose(\\..+)?\\.ya?ml$/",
+          "when": "!remoteName && (resourceFilename =~ /^(docker-)?compose(\\..+)?\\.ya?ml$/)",
           "group": "apple-container@2"
         },
         {
           "command": "appleContainer.devcontainer.open",
-          "when": "resourceFilename == devcontainer.json || resourceFilename == .devcontainer.json",
+          "when": "!remoteName && (resourceFilename == devcontainer.json || resourceFilename == .devcontainer.json)",
           "group": "apple-container@3"
         }
       ]

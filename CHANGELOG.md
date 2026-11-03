@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Remote windows, such as a dev container over Remote-SSH, no longer show the Apple Container views, commands and menus; the extension only installs the dev container's extensions there. It now activates in every window to do so reliably, and local windows show the status bar item and poll the service only once the extension is used
+
 ## 0.5.0
 
 - Build images from a form with build arguments, secrets, labels, target stage, platforms (including multi-platform images), no cache, pull and SSH agent forwarding; the options are remembered per Dockerfile

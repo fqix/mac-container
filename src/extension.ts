@@ -6,7 +6,7 @@ import { register } from './commands/common';
 import { registerBuilderCommands } from './commands/builder';
 import { registerComposeCommands } from './commands/compose';
 import { registerContainerCommands } from './commands/containers';
-import { registerDevContainerCommands } from './commands/devcontainer';
+import { installDevContainerExtensions, registerDevContainerCommands } from './commands/devcontainer';
 import { registerFileCommands } from './commands/files';
 import { registerRemoteSshCommands } from './commands/remoteSsh';
 import { registerImageCommands } from './commands/images';
@@ -18,6 +18,7 @@ import { registerVolumeCommands } from './commands/volumes';
 import { DOCUMENT_SCHEME, ReadonlyDocumentProvider } from './ui/documents';
 import { BuildFormPanel } from './panels/buildFormPanel';
 import { ContainerFormPanel } from './panels/containerFormPanel';
+import { findConfigFiles } from './services/devcontainer';
 import { ServiceMonitor } from './services/state';
 import { StatsPanel } from './panels/statsPanel';
 import { ServiceStatusBar } from './ui/statusBar';
@@ -37,6 +38,13 @@ export interface ExtensionApi {
 }
 
 export function activate(context: vscode.ExtensionContext): ExtensionApi | undefined {
+  // A remote window (e.g. a dev container over Remote-SSH) runs this UI extension too. package.json hides its views
+  // and commands there (!remoteName); the only work left is installing the extensions of a dev container.
+  if (vscode.env.remoteName) {
+    void installDevContainerExtensions(context);
+    return undefined;
+  }
+
   // Apple container only runs on Apple silicon Macs
   if (process.platform !== 'darwin' || process.arch !== 'arm64') {
     void vscode.window.showWarningMessage(vscode.l10n.t('Apple Container requires a Mac with Apple silicon.'));
@@ -77,13 +85,25 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi | undef
     monitor,
     documents,
     vscode.workspace.registerTextDocumentContentProvider(DOCUMENT_SCHEME, documents),
-    new ServiceStatusBar(monitor),
     ...treeViews.flatMap(([view, provider]) => [view, provider]),
     // Service started or stopped: every view switches between its content and the welcome message
     monitor.onDidChangeKind(() => treeViews.forEach(([, p]) => p.refresh())),
   );
 
-  const ctx: CommandContext = { extension: context, cli, monitor, documents, views, refreshAll };
+  // onStartupFinished activates every local window, so the status bar item and polling wait until the window uses
+  // the extension: a view is shown, a command runs, or the workspace has a devcontainer.json
+  let started = false;
+  const start = () => {
+    if (started) {
+      return;
+    }
+    started = true;
+    context.subscriptions.push(new ServiceStatusBar(monitor));
+    startPolling();
+    void monitor.check();
+  };
+
+  const ctx: CommandContext = { extension: context, cli, monitor, documents, views, refreshAll, start };
   register(ctx, 'appleContainer.refresh', refreshAll);
   registerContainerCommands(ctx);
   registerRemoteSshCommands(ctx);
@@ -122,10 +142,12 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi | undef
       }
     }, seconds * 1000);
   };
-  startPolling();
   context.subscriptions.push(
     { dispose: () => timer && clearInterval(timer) },
     vscode.workspace.onDidChangeConfiguration((e) => {
+      if (!started) {
+        return;
+      }
       if (e.affectsConfiguration('appleContainer.path')) {
         cli.reset();
         void refreshAll();
@@ -134,9 +156,13 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi | undef
         startPolling();
       }
     }),
+    ...treeViews.map(([view]) => view.onDidChangeVisibility((e) => e.visible && start())),
   );
 
-  void monitor.check();
+  const folders = (vscode.workspace.workspaceFolders ?? []).filter((f) => f.uri.scheme === 'file');
+  if (treeViews.some(([view]) => view.visible) || folders.some((f) => findConfigFiles(f.uri.fsPath).length)) {
+    start();
+  }
   return { cli, monitor, views };
 }
 

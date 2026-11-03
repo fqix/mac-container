@@ -26,12 +26,15 @@ export interface CommandContext {
     registries: RegistriesProvider;
   };
   refreshAll(): Promise<void>;
+  /** Shows the status bar item and starts polling the service, once; until then the extension is idle */
+  start(): void;
 }
 
 /** Registers a command and reports any error it throws */
 export function register(ctx: CommandContext, id: string, handler: (...args: any[]) => unknown): void {
   ctx.extension.subscriptions.push(
     vscode.commands.registerCommand(id, async (...args: any[]) => {
+      ctx.start();
       try {
         await handler(...args);
       } catch (error) {
