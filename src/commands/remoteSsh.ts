@@ -12,6 +12,7 @@ import {
   ensureClientKey,
   ensureUserConfigIncluded,
   hostAlias,
+  installDownloader,
   installSshd,
   prepareContainer,
   renderConfig,
@@ -111,6 +112,22 @@ export async function openContainerOverSsh(
       return false;
     }
     throw error;
+  }
+
+  if (!prepared.downloader) {
+    try {
+      await withProgress(vscode.l10n.t('Installing wget in {0}...', id), () => installDownloader(cli, id));
+    } catch (error) {
+      // The first connection still works: Remote-SSH downloads the server on this Mac and copies it in
+      const reason = error instanceof NoPackageManagerError ? vscode.l10n.t('No supported package manager was found.') : describeError(error);
+      void vscode.window.showWarningMessage(
+        vscode.l10n.t(
+          'Could not install wget in container {0}: {1}. Remote-SSH cannot reconnect while its server is running there; install wget or curl in the container.',
+          id,
+          reason,
+        ),
+      );
+    }
   }
 
   await writeSessionEnvironment(cli, id, prepared.user, options.remoteEnv);

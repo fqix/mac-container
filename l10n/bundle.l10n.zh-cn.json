@@ -181,6 +181,8 @@
   "Copy Install Command": "复制安装命令",
   "Attach Shell": "打开 Shell",
   "Installing openssh-server in {0}...": "正在为 {0} 安装 openssh-server...",
+  "Installing wget in {0}...": "正在为 {0} 安装 wget...",
+  "Could not install wget in container {0}: {1}. Remote-SSH cannot reconnect while its server is running there; install wget or curl in the container.": "无法在容器 {0} 中安装 wget：{1}。容器里的服务端运行期间，Remote-SSH 无法重新连接；请在容器中安装 wget 或 curl。",
   "No supported package manager was found.": "没有找到支持的包管理器。",
   "Could not install openssh-server in container {0}.": "无法在容器 {0} 中安装 openssh-server。",
   "{0}\n\nInstall it inside the container yourself, for example:\n{1}": "{0}\n\n请在容器内手动安装，例如：\n{1}",

@@ -170,6 +170,8 @@ export interface PrepareResult {
   /** Login name resolved inside the container */
   user: string;
   home: string;
+  /** wget or curl answers --version, the check Remote-SSH makes before it uses one */
+  downloader: boolean;
 }
 
 export function parsePrepareOutput(stdout: string): PrepareResult {
@@ -180,7 +182,12 @@ export function parsePrepareOutput(stdout: string): PrepareResult {
       values.set(line.slice(0, i).trim(), line.slice(i + 1).trim());
     }
   }
-  return { sshd: values.get('sshd') || DEFAULT_SSHD, user: values.get('user') || 'root', home: values.get('home') || '/' };
+  return {
+    sshd: values.get('sshd') || DEFAULT_SSHD,
+    user: values.get('user') || 'root',
+    home: values.get('home') || '/',
+    downloader: values.get('downloader') !== 'no',
+  };
 }
 
 // Runs as root inside the container: finds sshd, creates host keys if the package did not, and authorizes the extension key.
@@ -212,6 +219,8 @@ chown -R "$uid:$gid" "$home/.ssh"
 echo "sshd=$sshd"
 echo "user=$name"
 echo "home=$home"
+# BusyBox wget fails --version, so Remote-SSH treats it as missing too
+if wget --version >/dev/null 2>&1 || curl --version >/dev/null 2>&1; then echo "downloader=yes"; else echo "downloader=no"; fi
 `;
 
 /** Resolves the user spec inside the container, so a uid from the image maps to its login name */
@@ -231,26 +240,38 @@ export async function prepareContainer(cli: ContainerCli, id: string, user: stri
   }
 }
 
-// Installs the OpenSSH server with whichever package manager the image has; runs as root
+// Installs the packages in $@ with whichever package manager the image has; runs as root
 const INSTALL_SCRIPT = `
 set -e
-if command -v apk >/dev/null 2>&1; then apk add --no-cache openssh-server
+if command -v apk >/dev/null 2>&1; then apk add --no-cache "$@"
 elif command -v apt-get >/dev/null 2>&1; then
   export DEBIAN_FRONTEND=noninteractive
   apt-get update
-  apt-get install -y --no-install-recommends openssh-server
-elif command -v dnf >/dev/null 2>&1; then dnf install -y openssh-server
-elif command -v microdnf >/dev/null 2>&1; then microdnf install -y openssh-server
-elif command -v yum >/dev/null 2>&1; then yum install -y openssh-server
-elif command -v zypper >/dev/null 2>&1; then zypper --non-interactive install openssh-server
+  apt-get install -y --no-install-recommends "$@"
+elif command -v dnf >/dev/null 2>&1; then dnf install -y "$@"
+elif command -v microdnf >/dev/null 2>&1; then microdnf install -y "$@"
+elif command -v yum >/dev/null 2>&1; then yum install -y "$@"
+elif command -v zypper >/dev/null 2>&1; then zypper --non-interactive install "$@"
 else echo "no package manager" >&2; exit ${EXIT_NO_PACKAGE_MANAGER}
 fi
 `;
 
 /** Installs openssh-server inside the container; downloading packages needs network access from the container */
-export async function installSshd(cli: ContainerCli, id: string): Promise<void> {
+export function installSshd(cli: ContainerCli, id: string): Promise<void> {
+  return installPackages(cli, id, ['openssh-server']);
+}
+
+/**
+ * Installs wget (GNU, not BusyBox) inside the container. When the VS Code server already runs, Remote-SSH asks it to
+ * delay its shutdown with wget or curl and fails the connection without either; that step has no local fallback.
+ */
+export function installDownloader(cli: ContainerCli, id: string): Promise<void> {
+  return installPackages(cli, id, ['wget', 'ca-certificates']);
+}
+
+async function installPackages(cli: ContainerCli, id: string, packages: string[]): Promise<void> {
   try {
-    await cli.run(['exec', '-u', '0', id, 'sh', '-c', INSTALL_SCRIPT], { timeoutMs: 10 * 60_000 });
+    await cli.run(['exec', '-u', '0', id, 'sh', '-c', INSTALL_SCRIPT, 'sh', ...packages], { timeoutMs: 10 * 60_000 });
   } catch (error) {
     const { exitCode, stderr } = error as { exitCode?: unknown; stderr?: string };
     if (exitCode === EXIT_NO_PACKAGE_MANAGER || stderr?.includes('no package manager')) {

@@ -51,12 +51,13 @@ describe('remote ssh', () => {
   });
 
   it('parses the prepare script output', () => {
-    assert.deepStrictEqual(parsePrepareOutput('sshd=/usr/bin/sshd\nuser=dev\nhome=/home/dev\n'), {
+    assert.deepStrictEqual(parsePrepareOutput('sshd=/usr/bin/sshd\nuser=dev\nhome=/home/dev\ndownloader=no\n'), {
       sshd: '/usr/bin/sshd',
       user: 'dev',
       home: '/home/dev',
+      downloader: false,
     });
-    assert.deepStrictEqual(parsePrepareOutput(''), { sshd: '/usr/sbin/sshd', user: 'root', home: '/' });
+    assert.deepStrictEqual(parsePrepareOutput(''), { sshd: '/usr/sbin/sshd', user: 'root', home: '/', downloader: true });
   });
 
   it('reads the container process user', () => {
