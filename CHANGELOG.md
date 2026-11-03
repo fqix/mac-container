@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Dev container extensions pinned to a version (`publisher.name@1.2.3`) are matched by their id: a later entry for the same extension replaces an earlier one instead of installing both, `-publisher.name` removes a pinned entry, and an installed extension counts as present only at the pinned version
+
 ## 0.6.0
 
 - Remote windows, such as a dev container over Remote-SSH, no longer show the Apple Container views, commands and menus; the extension only installs the dev container's extensions there. It now activates in every window to do so reliably, and local windows show the status bar item and poll the service only once the extension is used

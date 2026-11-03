@@ -138,31 +138,55 @@ export interface ResolvedConfiguration {
   extensions: string[];
 }
 
+/** "publisher.name@1.2.3" or "publisher.name@prerelease", as workbench.extensions.installExtension parses it */
+const EXTENSION_WITH_VERSION =
+  /^([^.]+\..+)@(prerelease|\d+\.\d+\.\d+(?:-.*)?)$/;
+
+/** Splits an extension entry into its id and the version it pins, if any */
+export function splitExtensionId(entry: string): [string, string | undefined] {
+  const match = EXTENSION_WITH_VERSION.exec(entry);
+  return match ? [match[1], match[2]] : [entry, undefined];
+}
+
+/** Whether the installed version (undefined when not installed) satisfies an entry; prerelease accepts any version */
+export function satisfiesExtension(
+  entry: string,
+  installedVersion: string | undefined,
+): boolean {
+  const [, version] = splitExtensionId(entry);
+  return (
+    installedVersion !== undefined &&
+    (!version || version === 'prerelease' || version === installedVersion)
+  );
+}
+
 /**
  * Extension ids to install, from customizations.vscode: one object per source in the merged configuration
  * (features first, devcontainer.json last), or a single object. A later "-publisher.name" removes an id, as in Dev Containers.
+ * An entry may pin a version ("publisher.name@1.2.3"); a later entry for the same id replaces it.
  */
 export function vscodeExtensions(vscodeCustomizations: unknown): string[] {
   const sources = Array.isArray(vscodeCustomizations)
     ? vscodeCustomizations
     : [vscodeCustomizations];
-  const ids = new Set<string>();
+  // Keyed by the id without its version
+  const entries = new Map<string, string>();
   for (const source of sources) {
     const extensions: unknown = (source as Record<string, unknown> | undefined)
       ?.extensions;
-    for (const entry of Array.isArray(extensions) ? extensions : []) {
-      if (typeof entry !== 'string' || !entry.trim()) {
+    for (const value of Array.isArray(extensions) ? extensions : []) {
+      if (typeof value !== 'string' || !value.trim()) {
         continue;
       }
-      const id = entry.trim().toLowerCase();
-      if (id.startsWith('-')) {
-        ids.delete(id.slice(1));
+      const entry = value.trim().toLowerCase();
+      if (entry.startsWith('-')) {
+        entries.delete(splitExtensionId(entry.slice(1))[0]);
       } else {
-        ids.add(id);
+        entries.set(splitExtensionId(entry)[0], entry);
       }
     }
   }
-  return [...ids];
+  return [...entries.values()];
 }
 
 /** Picks what the extension needs from `devcontainer read-configuration --include-merged-configuration` */

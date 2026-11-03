@@ -26,6 +26,8 @@ import {
   prepareDockerWrapper,
   readConfiguration,
   runDefaults,
+  satisfiesExtension,
+  splitExtensionId,
   upArgs,
 } from '../services/devcontainerCli';
 import {containerOfAuthority} from '../services/remoteSsh';
@@ -118,8 +120,14 @@ export async function installDevContainerExtensions(
   }
   const data = await readExtensionsFile(extension);
   const id = containerOfAuthority(authority, Object.keys(data));
+  // A pinned version ("publisher.name@1.2.3") counts as present only at that version
   const missing = extensionsToInstall(id ? data[id] : undefined).filter(
-    ext => !vscode.extensions.getExtension(ext),
+    ext =>
+      !satisfiesExtension(
+        ext,
+        vscode.extensions.getExtension(splitExtensionId(ext)[0])?.packageJSON
+          .version,
+      ),
   );
   if (!id || !missing.length) {
     return;

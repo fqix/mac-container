@@ -11,6 +11,8 @@ import {
   prepareDockerWrapper,
   runDefaults,
   upArgs,
+  satisfiesExtension,
+  splitExtensionId,
   vscodeExtensions,
 } from '../../src/services/devcontainerCli';
 
@@ -156,5 +158,50 @@ describe('devcontainers/cli integration', () => {
       ['ms-python.python'],
     );
     assert.deepStrictEqual(vscodeExtensions(undefined), []);
+  });
+
+  it('keeps one entry per extension when versions are pinned', () => {
+    assert.deepStrictEqual(
+      vscodeExtensions([
+        {extensions: ['golang.Go', 'redhat.vscode-yaml@1.15.0', 'a.b@1.0.0']},
+        {
+          extensions: [
+            'golang.go@0.40.0',
+            '-redhat.vscode-yaml',
+            '-a.b@2.0.0',
+            'ms-python.python@prerelease',
+          ],
+        },
+      ]),
+      ['golang.go@0.40.0', 'ms-python.python@prerelease'],
+    );
+  });
+
+  it('splits a pinned version off an extension id', () => {
+    assert.deepStrictEqual(splitExtensionId('golang.go@0.40.0'), [
+      'golang.go',
+      '0.40.0',
+    ]);
+    assert.deepStrictEqual(splitExtensionId('a.b@1.2.3-beta.1'), [
+      'a.b',
+      '1.2.3-beta.1',
+    ]);
+    assert.deepStrictEqual(splitExtensionId('a.b@prerelease'), [
+      'a.b',
+      'prerelease',
+    ]);
+    // Not a version installExtension accepts, so it stays part of the id
+    assert.deepStrictEqual(splitExtensionId('a.b@latest'), [
+      'a.b@latest',
+      undefined,
+    ]);
+  });
+
+  it('treats an extension as present only at its pinned version', () => {
+    assert.strictEqual(satisfiesExtension('a.b', '1.0.0'), true);
+    assert.strictEqual(satisfiesExtension('a.b', undefined), false);
+    assert.strictEqual(satisfiesExtension('a.b@1.0.0', '1.0.0'), true);
+    assert.strictEqual(satisfiesExtension('a.b@2.0.0', '1.0.0'), false);
+    assert.strictEqual(satisfiesExtension('a.b@prerelease', '1.1.0'), true);
   });
 });
