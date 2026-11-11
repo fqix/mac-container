@@ -108,7 +108,7 @@ The status bar shows whether the `container` service is running and how many con
 
 ## Open a container over Remote-SSH
 
-Right-click a running container → **Open in Remote-SSH**, confirm the folder, and a new VS Code or Cursor window connects to it.
+Right-click a running container → **Open in Remote-SSH**, browse to the folder to open, and a new VS Code or Cursor window connects to it.
 
 ssh reaches the container through `ProxyCommand container exec -i <id> sshd -i`, so the container needs no IP route, published port or running SSH daemon. On each open the extension:
 

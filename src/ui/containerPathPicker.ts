@@ -21,10 +21,20 @@ async function list(
   cli: ContainerCli,
   id: string,
   dir: string,
+  user: string | undefined,
 ): Promise<ContainerEntry[]> {
   // $1 keeps the path out of the script, so spaces and quotes need no escaping
   const out = await cli.run(
-    ['exec', id, 'sh', '-c', 'cd -- "$1" && ls -1Ap', 'sh', dir],
+    [
+      'exec',
+      ...(user ? ['-u', user] : []),
+      id,
+      'sh',
+      '-c',
+      'cd -- "$1" && ls -1Ap',
+      'sh',
+      dir,
+    ],
     {timeoutMs: 15_000},
   );
   return parseListing(out);
@@ -34,14 +44,21 @@ async function list(
  * Lets the user walk the container filesystem. In 'directory' mode only a directory can be chosen;
  * in 'any' mode a file can be picked directly and the current directory can be chosen as well.
  * Typing an absolute path and pressing Enter jumps there. Falls back to an input box when the image has no shell.
+ * `user` lists as that user (exec -u), so only what they can open shows; by default the container's own user.
  */
 export async function pickContainerPath(
   cli: ContainerCli,
   id: string,
-  options: {title: string; start: string; mode: Mode; selectLabel: string},
+  options: {
+    title: string;
+    start: string;
+    mode: Mode;
+    selectLabel: string;
+    user?: string;
+  },
 ): Promise<string | undefined> {
   try {
-    await list(cli, id, options.start);
+    await list(cli, id, options.start, options.user);
   } catch {
     const typed = await vscode.window.showInputBox({
       title: options.title,
@@ -65,7 +82,7 @@ export async function pickContainerPath(
     qp.title = `${options.title} — ${dir}`;
     qp.value = '';
     try {
-      const entries = await list(cli, id, dir);
+      const entries = await list(cli, id, dir, options.user);
       const items: PickItem[] = [
         {
           label: `$(check) ${options.selectLabel}`,

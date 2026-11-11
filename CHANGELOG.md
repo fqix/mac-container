@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- **Open in Remote-SSH** picks the folder by browsing the container as the login user, instead of typing its path
 - Dev container extensions pinned to a version (`publisher.name@1.2.3`) are matched by their id: a later entry for the same extension replaces an earlier one instead of installing both, `-publisher.name` removes a pinned entry, and an installed extension counts as present only at the pinned version
 
 ## 0.6.0

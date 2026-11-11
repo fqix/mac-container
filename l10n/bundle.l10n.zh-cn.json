@@ -175,7 +175,7 @@
   "Preparing SSH access to {0}...": "正在为 {0} 准备 SSH 访问...",
   "User {0} does not exist in container {1}.": "容器 {1} 中不存在用户 {0}。",
   "Open {0} over Remote-SSH": "通过 Remote-SSH 打开 {0}",
-  "Folder inside the container": "容器内的目录",
+  "Open this folder": "打开此目录",
   "Find Extension": "查找扩展",
   "Opening a container over SSH needs the Remote - SSH extension.": "通过 SSH 打开容器需要安装 Remote - SSH 扩展。",
   "Copy Install Command": "复制安装命令",

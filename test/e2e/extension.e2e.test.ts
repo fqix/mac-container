@@ -952,7 +952,9 @@ describe('Apple Container e2e', function () {
       async (options: vscode.InputBoxOptions) => options.value,
     );
 
-    // 1. No sshd or Include: install sshd, prepend the Include and open the user's home in one command
+    // 1. No sshd or Include: install sshd, prepend the Include and open the user's home in one command.
+    // The folder is picked by browsing the container as the login user; every open accepts the start folder.
+    const browsed = scriptQuickPick('Open this folder');
     const unrelated = 'Host example\n  HostName example.com\n';
     const included = `Include "${hostConfig}"\n${unrelated}`;
     fs.writeFileSync(userSshConfig, unrelated);
@@ -960,6 +962,7 @@ describe('Apple Container e2e', function () {
       'appleContainer.container.openRemoteSsh',
       node,
     );
+    await browsed;
     assert.ok(await hasSshd(), 'openssh-server was not installed');
     assert.deepStrictEqual(messages, []);
     assert.strictEqual(opened.length, 1);

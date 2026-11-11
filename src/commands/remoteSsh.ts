@@ -21,8 +21,9 @@ import {
 } from '../services/remoteSsh';
 import {describeError} from '../utils/i18n';
 import type {ContainerSummary} from '../models/types';
+import {pickContainerPath} from '../ui/containerPathPicker';
 import type {ContainerNode} from '../views/containers';
-import {CommandContext, ask, register, withProgress} from './common';
+import {CommandContext, register, withProgress} from './common';
 
 /** globalState keys: sshd path and login user per container, last opened folder per user@container */
 const HOSTS_KEY = 'remoteSsh.hosts';
@@ -172,10 +173,13 @@ export async function openContainerOverSsh(
   const folders = state.get<Record<string, string>>(FOLDERS_KEY, {});
   const folder =
     options.folder ??
-    (await ask({
+    (await pickContainerPath(cli, id, {
       title: vscode.l10n.t('Open {0} over Remote-SSH', id),
-      prompt: vscode.l10n.t('Folder inside the container'),
-      value: folders[folderKey] ?? prepared.home,
+      start: folders[folderKey] ?? prepared.home,
+      mode: 'directory',
+      selectLabel: vscode.l10n.t('Open this folder'),
+      // Browse as the login user, so the folders shown are the ones the window can open
+      user: prepared.user,
     }));
   if (!folder) {
     return false;

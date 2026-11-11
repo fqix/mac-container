@@ -108,7 +108,7 @@
 
 ## 通过 Remote-SSH 打开容器
 
-右键运行中的容器 → **在 Remote-SSH 中打开**，确认目录后，VS Code 或 Cursor 会打开新窗口连接到容器。
+右键运行中的容器 → **在 Remote-SSH 中打开**，浏览并选择要打开的目录后，VS Code 或 Cursor 会打开新窗口连接到容器。
 
 ssh 通过 `ProxyCommand container exec -i <id> sshd -i` 连接容器，不依赖容器 IP、端口映射，也不需要容器里常驻 sshd。每次打开时，插件会：
 
