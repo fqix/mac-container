@@ -33,7 +33,7 @@ import {
 import {containerOfAuthority} from '../services/remoteSsh';
 import {parseEnvOutput, resolveContainerEnv} from '../utils/env';
 import {describeError} from '../utils/i18n';
-import {runTask} from '../ui/terminal';
+import {StepTerminal} from '../ui/stepTerminal';
 import {CommandContext, isLocal, register} from './common';
 import {openContainerOverSsh} from './remoteSsh';
 
@@ -350,65 +350,94 @@ export async function openDevContainer(
   const defaultMemory = vscode.workspace
     .getConfiguration('appleContainer')
     .get<string>('devcontainer.memory', '4G');
-  // The task terminal shows the CLI log: image builds, features, lifecycle commands and shim warnings
-  const code = await runTask(
+  // One terminal shows the whole job as steps: the CLI log (image builds, features, lifecycle commands and shim
+  // warnings), then the Remote-SSH preparation (installing openssh-server and friends)
+  const terminal = await StepTerminal.start(
     vscode.l10n.t('Dev Container: {0}', name),
-    paths.node,
-    upArgs(paths, target, {removeExisting: rebuild && !!existing}),
-    target.workspaceFolder,
-    cliEnv(paths, runDefaults(config.hostRequirements, defaultMemory)),
   );
-  await ctx.refreshAll();
-  if (code !== 0) {
-    throw new Error(
-      vscode.l10n.t(
-        'Starting the dev container failed (exit {0}). See the task output.',
-        String(code),
-      ),
-    );
+  let ok = false;
+  try {
+    ok = await createAndOpen(terminal);
+    return ok;
+  } catch (error) {
+    // Stopped by the user in the terminal
+    if (error instanceof vscode.CancellationError) {
+      return false;
+    }
+    throw error;
+  } finally {
+    terminal.end(ok);
   }
-  const container = await findDevContainer(ctx, target);
-  if (!container) {
-    throw new Error(
-      vscode.l10n.t(
-        'The dev container for {0} was not found after it started.',
-        name,
-      ),
-    );
-  }
-  await ctx.extension.globalState.update(CONFIG_HASHES_KEY, {
-    ...hashes,
-    [container.id]: configHash,
-  });
 
-  const resolved = await readConfiguration(paths, target);
-  // Entries of deleted containers are dropped
-  const existingIds = new Set((await ctx.cli.listContainers()).map(c => c.id));
-  const extensions = Object.fromEntries(
-    Object.entries(await readExtensionsFile(ctx.extension)).filter(([id]) =>
-      existingIds.has(id),
-    ),
-  );
-  await writeExtensionsFile(ctx.extension, {
-    ...extensions,
-    [container.id]: wantExtensions(
-      extensions[container.id],
-      container.createdAt,
-      resolved.extensions,
-    ),
-  });
-  // remoteEnv may refer to the container's variables and can change without a rebuild, so it is resolved on every open
-  const remoteEnv = resolveContainerEnv(
-    resolved.remoteEnv,
-    parseEnvOutput(await ctx.cli.run(['exec', container.id, 'env'])),
-  );
-  return openContainerOverSsh(
-    ctx,
-    {id: container.id, user: container.user},
-    {
-      user: resolved.remoteUser ?? resolved.containerUser,
-      folder: resolved.workspaceFolder,
-      remoteEnv,
-    },
-  );
+  async function createAndOpen(terminal: StepTerminal): Promise<boolean> {
+    const code = await terminal.run(
+      rebuild
+        ? vscode.l10n.t('Rebuild the dev container')
+        : vscode.l10n.t('Create or start the dev container'),
+      paths.node,
+      upArgs(paths, target, {
+        removeExisting: rebuild && !!existing,
+      }),
+      {
+        cwd: target.workspaceFolder,
+        env: cliEnv(paths, runDefaults(config.hostRequirements, defaultMemory)),
+      },
+    );
+    await ctx.refreshAll();
+    if (code !== 0) {
+      throw new Error(
+        vscode.l10n.t(
+          'Starting the dev container failed (exit {0}). See the task output.',
+          String(code),
+        ),
+      );
+    }
+    const container = await findDevContainer(ctx, target);
+    if (!container) {
+      throw new Error(
+        vscode.l10n.t(
+          'The dev container for {0} was not found after it started.',
+          name,
+        ),
+      );
+    }
+    await ctx.extension.globalState.update(CONFIG_HASHES_KEY, {
+      ...hashes,
+      [container.id]: configHash,
+    });
+
+    const resolved = await readConfiguration(paths, target);
+    // Entries of deleted containers are dropped
+    const existingIds = new Set(
+      (await ctx.cli.listContainers()).map(c => c.id),
+    );
+    const extensions = Object.fromEntries(
+      Object.entries(await readExtensionsFile(ctx.extension)).filter(([id]) =>
+        existingIds.has(id),
+      ),
+    );
+    await writeExtensionsFile(ctx.extension, {
+      ...extensions,
+      [container.id]: wantExtensions(
+        extensions[container.id],
+        container.createdAt,
+        resolved.extensions,
+      ),
+    });
+    // remoteEnv may refer to the container's variables and can change without a rebuild, so it is resolved on every open
+    const remoteEnv = resolveContainerEnv(
+      resolved.remoteEnv,
+      parseEnvOutput(await ctx.cli.run(['exec', container.id, 'env'])),
+    );
+    return openContainerOverSsh(
+      ctx,
+      {id: container.id, user: container.user},
+      {
+        user: resolved.remoteUser ?? resolved.containerUser,
+        folder: resolved.workspaceFolder,
+        remoteEnv,
+        terminal,
+      },
+    );
+  }
 }

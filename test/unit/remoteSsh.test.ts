@@ -8,7 +8,12 @@ import {
   containerOfAuthority,
   ensureUserConfigIncluded,
   hostAlias,
+  type InstallCommand,
+  InstallFailedError,
+  installPackages,
+  NoPackageManagerError,
   isIncluded,
+  missingPackages,
   parsePrepareOutput,
   renderConfig,
 } from '../../src/services/remoteSsh';
@@ -124,13 +129,14 @@ describe('remote ssh', () => {
   it('parses the prepare script output', () => {
     assert.deepStrictEqual(
       parsePrepareOutput(
-        'sshd=/usr/bin/sshd\nuser=dev\nhome=/home/dev\ndownloader=no\n',
+        'sshd=/usr/bin/sshd\nuser=dev\nhome=/home/dev\ndownloader=no\nbash=no\n',
       ),
       {
         sshd: '/usr/bin/sshd',
         user: 'dev',
         home: '/home/dev',
         downloader: false,
+        bash: false,
       },
     );
     assert.deepStrictEqual(parsePrepareOutput(''), {
@@ -138,7 +144,25 @@ describe('remote ssh', () => {
       user: 'root',
       home: '/',
       downloader: true,
+      bash: true,
     });
+  });
+
+  it('installs what Remote-SSH needs and the container lacks in one go', () => {
+    const base = {sshd: '/usr/sbin/sshd', user: 'root', home: '/root'};
+    // BusyBox-only images such as Alpine have neither bash nor a working wget
+    assert.deepStrictEqual(
+      missingPackages({...base, bash: false, downloader: false}),
+      ['bash', 'wget', 'ca-certificates'],
+    );
+    assert.deepStrictEqual(
+      missingPackages({...base, bash: false, downloader: true}),
+      ['bash'],
+    );
+    assert.deepStrictEqual(
+      missingPackages({...base, bash: true, downloader: true}),
+      [],
+    );
   });
 
   it('reads the container process user', () => {
@@ -245,5 +269,57 @@ describe('automatic SSH config inclusion', () => {
       code: 'EISDIR',
     });
     assert.strictEqual(await fs.readFile(marker, 'utf8'), 'untouched');
+  });
+});
+
+describe('package installs in the container', () => {
+  it('runs the package manager as root and maps its exit code', async () => {
+    const calls: InstallCommand[] = [];
+    const runner =
+      (code: number | undefined) => async (command: InstallCommand) => {
+        calls.push(command);
+        return code;
+      };
+
+    await installPackages('dev', ['wget', 'ca-certificates'], runner(0));
+    assert.deepStrictEqual(calls[0].packages, ['wget', 'ca-certificates']);
+    assert.deepStrictEqual(calls[0].args.slice(0, 6), [
+      'exec',
+      '-u',
+      '0',
+      'dev',
+      'sh',
+      '-c',
+    ]);
+    assert.deepStrictEqual(calls[0].args.slice(7), [
+      'sh',
+      'wget',
+      'ca-certificates',
+    ]);
+
+    // Cancelling stops the install script inside the container, as root
+    assert.deepStrictEqual(calls[0].cancelArgs.slice(0, 6), [
+      'exec',
+      '-u',
+      '0',
+      'dev',
+      'sh',
+      '-c',
+    ]);
+
+    await assert.rejects(
+      installPackages('dev', ['bash'], runner(5)),
+      NoPackageManagerError,
+    );
+    await assert.rejects(
+      installPackages('dev', ['bash'], runner(100)),
+      (error: unknown) =>
+        error instanceof InstallFailedError && error.exitCode === 100,
+    );
+    // A task that ended without an exit code (e.g. terminated) is a failure too
+    await assert.rejects(
+      installPackages('dev', ['bash'], runner(undefined)),
+      InstallFailedError,
+    );
   });
 });

@@ -5,14 +5,18 @@ import * as vscode from 'vscode';
 
 import {
   DEFAULT_SSHD,
+  InstallFailedError,
+  type InstallRunner,
   NoPackageManagerError,
+  type PrepareResult,
   type SshHost,
   SshdMissingError,
   SshUserMissingError,
   ensureClientKey,
   ensureUserConfigIncluded,
   hostAlias,
-  installDownloader,
+  installPackages,
+  missingPackages,
   installSshd,
   prepareContainer,
   renderConfig,
@@ -22,6 +26,7 @@ import {
 import {describeError} from '../utils/i18n';
 import type {ContainerSummary} from '../models/types';
 import {pickContainerPath} from '../ui/containerPathPicker';
+import {StepTerminal} from '../ui/stepTerminal';
 import type {ContainerNode} from '../views/containers';
 import {CommandContext, register, withProgress} from './common';
 
@@ -54,6 +59,8 @@ export interface SshOpenOptions {
   folder?: string;
   /** Extra variables for SSH sessions on top of the container environment (devcontainer.json remoteEnv) */
   remoteEnv?: Record<string, string>;
+  /** Terminal to run package installs in, such as the dev container build's; one is opened when needed otherwise */
+  terminal?: StepTerminal;
 }
 
 /**
@@ -77,6 +84,21 @@ export async function openContainerOverSsh(
     .get<string>('sshUser', '')
     .trim();
   const user = options.user || configured || container.user || 'root';
+  // Package installs show the package manager's output as steps in a terminal: the caller's, or one opened on first use
+  let ownTerminal: StepTerminal | undefined;
+  const install: InstallRunner = async ({args, packages, cancelArgs}) => {
+    const terminal =
+      options.terminal ??
+      (ownTerminal ??= await StepTerminal.start(
+        vscode.l10n.t('Prepare {0} for Remote-SSH', id),
+      ));
+    return terminal.run(
+      vscode.l10n.t('Install {0}', packages.join(' ')),
+      await cli.executable(),
+      args,
+      {onCancel: () => cli.run(cancelArgs, {timeoutMs: 15_000})},
+    );
+  };
 
   const prepare = () =>
     withProgress(
@@ -111,58 +133,88 @@ export async function openContainerOverSsh(
       },
     );
 
-  let prepared;
-  try {
+  // Resolves undefined when Remote-SSH cannot be used, after telling the user why
+  const prepareAndInstall = async (): Promise<PrepareResult | undefined> => {
+    let result: PrepareResult;
     try {
-      prepared = await prepare();
-    } catch (error) {
-      if (!(error instanceof SshdMissingError)) {
-        throw error;
-      }
       try {
-        await withProgress(
-          vscode.l10n.t('Installing openssh-server in {0}...', id),
-          () => installSshd(cli, id),
-        );
-      } catch (installError) {
-        await reportMissingSshd(id, installError);
-        return false;
+        result = await prepare();
+      } catch (error) {
+        if (!(error instanceof SshdMissingError)) {
+          throw error;
+        }
+        try {
+          await installSshd(id, install);
+        } catch (installError) {
+          // Stopped by the user in the terminal: no error to report
+          if (installError instanceof vscode.CancellationError) {
+            throw installError;
+          }
+          await reportMissingSshd(id, installError);
+          return undefined;
+        }
+        result = await prepare();
       }
-      prepared = await prepare();
-    }
-  } catch (error) {
-    if (error instanceof SshUserMissingError) {
-      void vscode.window.showErrorMessage(
-        vscode.l10n.t(
-          'User {0} does not exist in container {1}.',
-          error.user,
-          id,
-        ),
-      );
-      return false;
-    }
-    throw error;
-  }
-
-  if (!prepared.downloader) {
-    try {
-      await withProgress(vscode.l10n.t('Installing wget in {0}...', id), () =>
-        installDownloader(cli, id),
-      );
     } catch (error) {
-      // The first connection still works: Remote-SSH downloads the server on this Mac and copies it in
-      const reason =
-        error instanceof NoPackageManagerError
-          ? vscode.l10n.t('No supported package manager was found.')
-          : describeError(error);
-      void vscode.window.showWarningMessage(
-        vscode.l10n.t(
-          'Could not install wget in container {0}: {1}. Remote-SSH cannot reconnect while its server is running there; install wget or curl in the container.',
-          id,
-          reason,
-        ),
-      );
+      if (error instanceof SshUserMissingError) {
+        void vscode.window.showErrorMessage(
+          vscode.l10n.t(
+            'User {0} does not exist in container {1}.',
+            error.user,
+            id,
+          ),
+        );
+        return undefined;
+      }
+      throw error;
     }
+
+    const packages = missingPackages(result);
+    if (packages.length) {
+      try {
+        await installPackages(id, packages, install);
+      } catch (error) {
+        if (error instanceof vscode.CancellationError) {
+          throw error;
+        }
+        const reason = installFailure(error);
+        // Remote-SSH cannot connect at all without bash
+        if (!result.bash) {
+          void vscode.window.showErrorMessage(
+            vscode.l10n.t(
+              'Remote-SSH needs bash, which container {0} does not have, and installing it failed: {1}. Install bash in the container, or use an image that has it.',
+              id,
+              reason,
+            ),
+          );
+          return undefined;
+        }
+        // The first connection still works: Remote-SSH downloads the server on this Mac and copies it in
+        void vscode.window.showWarningMessage(
+          vscode.l10n.t(
+            'Could not install wget in container {0}: {1}. Remote-SSH cannot reconnect while its server is running there; install wget or curl in the container.',
+            id,
+            reason,
+          ),
+        );
+      }
+    }
+    return result;
+  };
+
+  let prepared: PrepareResult | undefined;
+  try {
+    prepared = await prepareAndInstall();
+  } catch (error) {
+    if (!(error instanceof vscode.CancellationError)) {
+      throw error;
+    }
+  } finally {
+    // A terminal opened here only shows the installs; a failed one keeps the package manager's output
+    ownTerminal?.end(prepared !== undefined);
+  }
+  if (!prepared) {
+    return false;
   }
 
   await writeSessionEnvironment(cli, id, prepared.user, options.remoteEnv);
@@ -217,14 +269,25 @@ async function ensureRemoteSshExtension(): Promise<boolean> {
   return false;
 }
 
+/** Why a package install in the container failed, for messages */
+function installFailure(error: unknown): string {
+  if (error instanceof NoPackageManagerError) {
+    return vscode.l10n.t('No supported package manager was found.');
+  }
+  if (error instanceof InstallFailedError) {
+    return vscode.l10n.t(
+      'The package manager exited with code {0}; its output is in the terminal.',
+      String(error.exitCode ?? '?'),
+    );
+  }
+  return describeError(error);
+}
+
 /** Automatic installation failed (no package manager, no network, ...): leave it to the user */
 async function reportMissingSshd(id: string, cause: unknown): Promise<void> {
   const copy = vscode.l10n.t('Copy Install Command');
   const shell = vscode.l10n.t('Attach Shell');
-  const reason =
-    cause instanceof NoPackageManagerError
-      ? vscode.l10n.t('No supported package manager was found.')
-      : describeError(cause);
+  const reason = installFailure(cause);
   const answer = await vscode.window.showErrorMessage(
     vscode.l10n.t('Could not install openssh-server in container {0}.', id),
     {

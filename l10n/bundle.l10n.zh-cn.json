@@ -180,8 +180,12 @@
   "Opening a container over SSH needs the Remote - SSH extension.": "通过 SSH 打开容器需要安装 Remote - SSH 扩展。",
   "Copy Install Command": "复制安装命令",
   "Attach Shell": "打开 Shell",
-  "Installing openssh-server in {0}...": "正在为 {0} 安装 openssh-server...",
-  "Installing wget in {0}...": "正在为 {0} 安装 wget...",
+  "Prepare {0} for Remote-SSH": "为 Remote-SSH 准备 {0}",
+  "Install {0}": "安装 {0}",
+  "exit code {0}": "退出码 {0}",
+  "Rebuild the dev container": "重建开发容器",
+  "Create or start the dev container": "创建或启动开发容器",
+  "The package manager exited with code {0}; its output is in the terminal.": "包管理器退出码为 {0}，输出见终端。",
   "Could not install wget in container {0}: {1}. Remote-SSH cannot reconnect while its server is running there; install wget or curl in the container.": "无法在容器 {0} 中安装 wget：{1}。容器里的服务端运行期间，Remote-SSH 无法重新连接；请在容器中安装 wget 或 curl。",
   "No supported package manager was found.": "没有找到支持的包管理器。",
   "Could not install openssh-server in container {0}.": "无法在容器 {0} 中安装 openssh-server。",
@@ -307,5 +311,6 @@
   "Not published: reachable from this Mac through the container IP, not through localhost or from other devices.": "未发布：可在本机通过容器 IP 访问，不能通过 localhost 或从其他设备访问。",
   "loopback only": "仅回环地址",
   "Only listens on a loopback address, so it cannot be reached from this Mac. Listen on 0.0.0.0 instead, or forward the port over Remote-SSH.": "只监听回环地址，本机无法访问。请改为监听 0.0.0.0，或通过 Remote-SSH 转发端口。",
-  "No published or listening ports": "没有发布或监听的端口"
+  "No published or listening ports": "没有发布或监听的端口",
+  "Remote-SSH needs bash, which container {0} does not have, and installing it failed: {1}. Install bash in the container, or use an image that has it.": "Remote-SSH 需要 bash，容器 {0} 中没有且安装失败：{1}。请在容器中安装 bash，或改用自带 bash 的镜像。"
 }

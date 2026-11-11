@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Installing `openssh-server` and the other packages Remote-SSH needs shows the package manager's output in a terminal instead of a progress notification. A dev container shows its build and this preparation as steps of one terminal, each with its result and duration
 - **Ports** of a running container lists the TCP ports it listens on without publishing them, opened through the container IP without recreating it; ports listening only on loopback are flagged as unreachable from the Mac
 - The BuildKit builder is listed among the containers again, with its own icon and the builder commands, instead of in a separate Builder view
 - **Open in Remote-SSH** picks the folder by browsing the container as the login user, instead of typing its path

@@ -194,6 +194,8 @@ export interface PrepareResult {
   home: string;
   /** wget or curl answers --version, the check Remote-SSH makes before it uses one */
   downloader: boolean;
+  /** Remote-SSH runs its server setup in a bash subshell on Linux and fails with "bash not found" without it */
+  bash: boolean;
 }
 
 export function parsePrepareOutput(stdout: string): PrepareResult {
@@ -209,7 +211,16 @@ export function parsePrepareOutput(stdout: string): PrepareResult {
     user: values.get('user') || 'root',
     home: values.get('home') || '/',
     downloader: values.get('downloader') !== 'no',
+    bash: values.get('bash') !== 'no',
   };
+}
+
+/** Packages Remote-SSH needs that the container lacks, installed together to make one package manager run */
+export function missingPackages(prepared: PrepareResult): string[] {
+  return [
+    ...(prepared.bash ? [] : ['bash']),
+    ...(prepared.downloader ? [] : ['wget', 'ca-certificates']),
+  ];
 }
 
 // Runs as root inside the container: finds sshd, creates host keys if the package did not, and authorizes the extension key.
@@ -243,6 +254,7 @@ echo "user=$name"
 echo "home=$home"
 # BusyBox wget fails --version, so Remote-SSH treats it as missing too
 if wget --version >/dev/null 2>&1 || curl --version >/dev/null 2>&1; then echo "downloader=yes"; else echo "downloader=no"; fi
+if command -v bash >/dev/null 2>&1; then echo "bash=yes"; else echo "bash=no"; fi
 `;
 
 /** Resolves the user spec inside the container, so a uid from the image maps to its login name */
@@ -270,9 +282,14 @@ export async function prepareContainer(
   }
 }
 
+/** Process id of the running install script inside the container, so that it can be stopped */
+const INSTALL_PID_FILE = '/tmp/.apple-container-install.pid';
+
 // Installs the packages in $@ with whichever package manager the image has; runs as root
 const INSTALL_SCRIPT = `
 set -e
+echo $$ > ${INSTALL_PID_FILE}
+trap 'rm -f ${INSTALL_PID_FILE}' EXIT
 if command -v apk >/dev/null 2>&1; then apk add --no-cache "$@"
 elif command -v apt-get >/dev/null 2>&1; then
   export DEBIAN_FRONTEND=noninteractive
@@ -286,41 +303,92 @@ else echo "no package manager" >&2; exit ${EXIT_NO_PACKAGE_MANAGER}
 fi
 `;
 
-/** Installs openssh-server inside the container; downloading packages needs network access from the container */
-export function installSshd(cli: ContainerCli, id: string): Promise<void> {
-  return installPackages(cli, id, ['openssh-server']);
+// Stops the install script and the package manager it runs: a stopped `container exec` client leaves them running.
+// Walks /proc (PPid in status) since images often have no pkill or ps.
+const CANCEL_INSTALL_SCRIPT = `
+pid=$(cat ${INSTALL_PID_FILE} 2>/dev/null) || exit 0
+stop() {
+  for status in $(grep -l "^PPid:[[:space:]]*$1\$" /proc/[0-9]*/status 2>/dev/null); do
+    child=\${status#/proc/}
+    stop "\${child%/status}"
+  done
+  kill -TERM "$1" 2>/dev/null
+}
+stop "$pid"
+rm -f ${INSTALL_PID_FILE}
+`;
+
+export interface InstallCommand {
+  /** `container` arguments that install the packages */
+  args: string[];
+  /** What they install, for the terminal's step line */
+  packages: string[];
+  /** `container` arguments that stop the install when the user cancels it */
+  cancelArgs: string[];
 }
 
 /**
- * Installs wget (GNU, not BusyBox) inside the container. When the VS Code server already runs, Remote-SSH asks it to
- * delay its shutdown with wget or curl and fails the connection without either; that step has no local fallback.
+ * Runs `container` with the install arguments where the user can follow the output (a terminal) and resolves with
+ * its exit code
  */
-export function installDownloader(
-  cli: ContainerCli,
-  id: string,
-): Promise<void> {
-  return installPackages(cli, id, ['wget', 'ca-certificates']);
+export type InstallRunner = (
+  command: InstallCommand,
+) => Promise<number | undefined>;
+
+export class InstallFailedError extends Error {
+  constructor(
+    readonly containerId: string,
+    readonly packages: string[],
+    readonly exitCode: number | undefined,
+  ) {
+    super(
+      `installing ${packages.join(' ')} in ${containerId} exited with code ${exitCode ?? 'unknown'}; its output is in the terminal`,
+    );
+    this.name = 'InstallFailedError';
+  }
 }
 
-async function installPackages(
-  cli: ContainerCli,
+/** The `container exec` commands that install packages as root with the image's package manager, or stop that */
+export function installCommand(id: string, packages: string[]): InstallCommand {
+  return {
+    args: [
+      'exec',
+      '-u',
+      '0',
+      id,
+      'sh',
+      '-c',
+      INSTALL_SCRIPT,
+      'sh',
+      ...packages,
+    ],
+    packages,
+    cancelArgs: ['exec', '-u', '0', id, 'sh', '-c', CANCEL_INSTALL_SCRIPT],
+  };
+}
+
+/** Installs openssh-server inside the container; downloading packages needs network access from the container */
+export function installSshd(id: string, run: InstallRunner): Promise<void> {
+  return installPackages(id, ['openssh-server'], run);
+}
+
+/**
+ * Installs packages inside the container with its package manager, such as those from missingPackages: bash, and
+ * wget (GNU, not BusyBox), as when the VS Code server already runs Remote-SSH asks it to delay its shutdown with wget
+ * or curl and fails the connection without either; that step has no local fallback.
+ * `run` shows the package manager's output, which can take minutes, instead of hiding it behind a progress bar.
+ */
+export async function installPackages(
   id: string,
   packages: string[],
+  run: InstallRunner,
 ): Promise<void> {
-  try {
-    await cli.run(
-      ['exec', '-u', '0', id, 'sh', '-c', INSTALL_SCRIPT, 'sh', ...packages],
-      {timeoutMs: 10 * 60_000},
-    );
-  } catch (error) {
-    const {exitCode, stderr} = error as {exitCode?: unknown; stderr?: string};
-    if (
-      exitCode === EXIT_NO_PACKAGE_MANAGER ||
-      stderr?.includes('no package manager')
-    ) {
-      throw new NoPackageManagerError(id);
-    }
-    throw error;
+  const code = await run(installCommand(id, packages));
+  if (code === EXIT_NO_PACKAGE_MANAGER) {
+    throw new NoPackageManagerError(id);
+  }
+  if (code !== 0) {
+    throw new InstallFailedError(id, packages, code);
   }
 }
 
