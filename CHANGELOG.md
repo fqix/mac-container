@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.7.0
 
 - Installing `openssh-server` and the other packages Remote-SSH needs shows the package manager's output in a terminal instead of a progress notification. A dev container shows its build and this preparation as steps of one terminal, each with its result and duration
 - Dev container windows offer **Rebuild Container**, **Rebuild Container Without Cache**, **Reopen Folder Locally** and **Show Dev Container Log** in the Remote indicator menu and the Command Palette; a rebuild reopens the folder locally while the container is created again, then reconnects the same window
