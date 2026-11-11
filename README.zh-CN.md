@@ -20,11 +20,10 @@
 
 ## 亮点
 
-- 🧭 **一个侧边栏管理全部资源**：容器、镜像、网络、卷、镜像仓库、container-compose 项目和 `container` 系统服务。
-- 🖥️ **把容器作为远程工作区打开**：通过 Remote-SSH 在 VS Code 或 Cursor 中打开，不需要端口映射，也不需要常驻 SSH 服务，`openssh-server` 自动安装。
-- 📦 **不依赖 Docker 的 `devcontainer.json`**：用 Apple `container` 构建并运行开发容器，支持 features 和生命周期命令，基于内置的 Dev Containers CLI。
-- 📝 **用表单运行和编辑容器**：端口、挂载、环境变量、网络、CPU、内存、用户和工作目录。
-- 📊 **实时资源用量、日志、Shell、文件上传下载**，右键即可使用。
+- 🧭 **一个侧边栏** 管理容器、镜像、网络、卷、镜像仓库、container-compose 项目和 `container` 服务。
+- 🖥️ **把容器作为远程工作区打开**：通过 Remote-SSH 连接，不需要端口映射，也不需要常驻 SSH 服务。
+- 📦 **不依赖 Docker 的 `devcontainer.json`**，支持 features 和生命周期命令。
+- 📝 **用表单运行和编辑容器**，构建镜像时可设置构建参数、Secrets 和平台。
 - 🌐 **中英双语**。
 
 ## 环境要求
@@ -57,116 +56,68 @@
 
 ### 容器
 
-- 运行中的容器排在前面，显示镜像、IP 和启动时间；悬停可查看命令、网络、端口、资源和平台。
-- 启动、停止、重启、强制终止、删除（支持多选）、清理已停止的容器。
-- 在集成终端中 **打开 Shell**（`container exec -it`）、**查看日志**（`logs -f`）和 **查看启动日志**。
-- 展开容器可以看到 **卷** 和 **端口**。TCP 端口可以直接在浏览器中打开或复制 URL，绑定挂载的目录可以在访达中显示。
-- 运行中容器的 **端口** 还会列出容器内在监听但未发布的 TCP 端口。每个容器都有本机可直接访问的 IP，所以无需用 `--publish` 重建容器，就能通过 `http://<容器 IP>:<端口>` 打开；只监听 `127.0.0.1` 的端口会被标出，因为本机无法访问。
-- **上传文件...** 和 **下载...** 在本机与运行中的容器之间复制文件和文件夹，容器内路径可以逐级浏览选择。本机已有同名文件时不会覆盖（自动加 ` (1)` 后缀）。资源管理器中的文件右键有 **上传到容器...**。
-- **查看资源用量** 打开 CPU、内存、网络 I/O、磁盘 I/O 的实时图表。
+- 启动、停止、重启、强制终止、删除（支持多选）和清理；在终端中 **打开 Shell**、**查看日志**、**查看启动日志**。
+- 展开容器可以看到 **卷** 和 **端口**。端口里也包括容器内在监听但未发布的端口，通过容器 IP 打开。
+- 逐级浏览容器目录来 **上传文件...** / **下载...**；**查看资源用量** 显示 CPU、内存、网络和磁盘的实时图表。
 
   ![实时资源用量图表](docs/media/stats.gif)
 
-- **编辑...** 修改端口转发、挂载、环境变量（每行一个 `KEY=VALUE`，也可从 `.env` 文件导入）、网络、CPU、内存、用户和工作目录。
-  Apple `container` 不支持修改已有容器的这些配置，所以保存时会用相同的镜像和命令重建容器，表单里没有的配置（标签、DNS、capabilities、ulimit、平台等）保持不变。
-  **保留改动并重建** 会先把容器提交为快照镜像，容器内改过的文件不会丢失。新容器启动失败时会自动恢复原容器。
+- **编辑...** 修改端口、挂载、环境变量、网络、CPU、内存、用户和工作目录。Apple `container` 不能直接修改已有容器，所以会重建容器；**保留改动并重建** 会先打快照，容器内改过的文件不会丢失。
 
   ![编辑端口与挂载](docs/media/edit.gif)
 
 ### 镜像
 
-- 拉取、从 `Dockerfile` / `Containerfile` 构建（也可在资源管理器中右键）、打标签、查看详情、删除、清理。
-- **构建镜像...** 打开表单，可设置标签、构建上下文、目标阶段（从 `FROM ... AS` 中选择）、平台（`linux/amd64` 通过 Rosetta 构建，选择多个会构建多平台镜像）、构建参数、Secrets（`id=KEY[,env=VAR|,src=/path]`，供 `RUN --mount=type=secret` 使用）、标签、不使用缓存、重新拉取和 SSH agent 转发。选项按 Dockerfile 记住。
-- **运行...** 打开与 **编辑...** 相同的表单，另有名称（留空时随机生成 Docker 风格的名字如 `brave_hopper`）和可选的命令或 shell 脚本（用 `/bin/sh -c` 执行）。
-- **推送...** 把镜像推送到仓库（改成别的名字会先打标签；构建完成的通知里也可以直接推送）。
-- **导出为 tar...** 把一个或多个镜像保存为 OCI 归档；**从 tar 导入...** 加载归档，也可在资源管理器中右键 `.tar` 文件。
-- 和 Docker 一样，本机回环地址的仓库（如 `localhost:5000`）自动走 http；其他 http 仓库加到 `appleContainer.insecureRegistries`。
+- 拉取、打标签、推送、查看详情、删除、清理，以及导出 / 导入 OCI tar 归档。
+- **构建镜像...** 打开表单，可设置标签、构建上下文、目标阶段、平台（含多平台）、构建参数、Secrets 和标签。
+- **运行...** 打开与 **编辑...** 相同的表单，另可填写名称和命令。
 
-### 构建器
+### 其他
 
-镜像构建在一个 BuildKit 容器（`buildkit`）中进行，由 `container build` 按需启动。它显示在容器列表中，使用工具图标，右键菜单是构建器专用的命令，而不是普通容器的命令。
-
-- **启动**、**停止**、**重启构建器**，**查看日志** 和 **查看详情**。
-- **删除构建器...** 可以重置卡住的构建器并释放构建缓存，下次构建时会重新创建。
-- 构建器使用系统属性 `build.cpus` / `build.memory` 指定的 CPU 和内存（见 `container system property list`）。传入其他值时 CLI 会重建构建器，所以这里不提供设置。
-
-### 网络、卷和镜像仓库
-
-- 网络：创建（可指定子网）、查看详情、删除、清理；内置的 `default` 网络不可删除。
-- 卷：创建（可指定容量）、查看详情、删除、清理。
-- 镜像仓库：登录（密码通过 `container registry login --password-stdin` 传入，不会出现在命令行参数里）、登出。
-
-### container-compose
-
-由 [container-compose](https://github.com/mcrich23/container-compose) 启动的容器会按项目分组显示。
-
-- 一键启动 / 停止 / 重启 / 删除项目的全部容器。
-- 在项目节点上，或在资源管理器 / 编辑器中右键 `compose.yml` / `docker-compose.yml`，执行 **Compose 启动** / **Compose 停止**。插件按项目名（`name:` 字段，没有则用所在目录名）在工作区中查找对应的 compose 文件。
-
-### 系统服务
-
-状态栏显示 `container` 服务是否运行以及运行中的容器数量，点击可以启动 / 停止服务，或查看状态、磁盘占用和日志。CLI 未安装或服务未启动时，视图中会给出处理提示。
+- **构建器**：`container build` 启动的 BuildKit 容器显示在容器列表中，可以启动、停止、重启、查看日志，**删除构建器...** 可重置它并释放构建缓存。
+- **网络**、**卷** 和 **镜像仓库登录**。
+- **container-compose**：容器按项目分组，可对整个项目启动、停止、重启、删除；在项目或 compose 文件上执行 **Compose 启动** / **Compose 停止**。
+- **状态栏**：显示服务是否运行以及运行中的容器数；点击可启动或停止服务，或查看状态、磁盘占用和日志。
 
 ## 通过 Remote-SSH 打开容器
 
-右键运行中的容器 → **在 Remote-SSH 中打开**，浏览并选择要打开的目录后，VS Code 或 Cursor 会打开新窗口连接到容器。
+右键运行中的容器 → **在 Remote-SSH 中打开**，浏览容器目录选择要打开的文件夹。新的 VS Code 或 Cursor 窗口通过 `container exec` 连接容器，不需要端口或 IP 路由。
 
-ssh 通过 `ProxyCommand container exec -i <id> sshd -i` 连接容器，不依赖容器 IP、端口映射，也不需要容器里常驻 sshd。每次打开时，插件会：
-
-1. 容器内没有 `sshd` 时，用镜像自带的包管理器（`apk`、`apt-get`、`dnf`、`microdnf`、`yum`、`zypper`）安装 `openssh-server`。这需要容器能访问外网；安装失败或镜像没有包管理器时，会给出手动安装命令。
-2. 缺失时生成 SSH 主机密钥，把插件自己的公钥加入登录用户的 `authorized_keys`。如果该账号未设密码（`/etc/shadow` 中为 `!`，sshd 视为锁定），会改成 `*` 以允许密钥登录。
-3. 把容器的环境变量（镜像 `ENV`、`--env`，开发容器还包括 `remoteEnv`）写入登录用户的 `~/.ssh/environment`，sshd 以 `PermitUserEnvironment=yes` 读取，VS Code Server 和终端里看到的变量与 `container exec` 一致。
-4. 按需在 `~/.ssh/config`（或 `remote.SSH.configFile` 指定的文件）顶部补齐 `Include ~/.ssh/apple-container/config`，保留原有配置；主机条目（`apple-container.<id>`）和密钥对放在 `~/.ssh/apple-container/`。
-
-登录用户默认是容器自身的用户（镜像 `USER` 或 `--user`，默认 root），可用 `appleContainer.sshUser` 覆盖。
-VS Code / Cursor Server 会在容器内下载，需要容器能访问外网；否则开启 `remote.SSH.localServerDownload`。
+- 镜像里缺少的 Remote-SSH 依赖（`openssh-server`、`bash`、`wget`）会用镜像自带的包管理器安装，过程显示在终端中。这需要容器能访问外网。
+- 你的 SSH 配置只会多一行：`~/.ssh/config` 顶部的 `Include ~/.ssh/apple-container/config`；主机条目和插件的密钥对放在 `~/.ssh/apple-container/`。
+- 登录用户是容器自身的用户（镜像 `USER` 或 `--user`），也可以用 `appleContainer.sshUser` 指定。
 
 ## 开发容器（devcontainer.json）
 
-**在开发容器中打开文件夹** 会读取文件夹中的 `devcontainer.json`（`.devcontainer/devcontainer.json`、`.devcontainer.json` 或 `.devcontainer/<名称>/devcontainer.json`），用 Apple `container` 创建容器，再[通过 Remote-SSH](#通过-remote-ssh-打开容器) 打开容器内的工作区文件夹。打开带有该配置的本地文件夹时会提示；在该文件上右键还有 **重建并打开开发容器**。
+**在开发容器中打开文件夹** 用内置的 [Dev Containers CLI](https://github.com/devcontainers/cli)（规范的参考实现）按文件夹中的 `devcontainer.json` 创建容器，再通过 Remote-SSH 打开。构建和 Remote-SSH 准备在同一个终端中分步显示。下次打开会复用容器，配置有改动时会询问是否重建。
 
-在开发容器的窗口中，左下角的远程指示器菜单和命令面板提供 **重建容器**、**不使用缓存重建容器**、**在本地重新打开文件夹** 和 **显示开发容器日志**（最近一次创建或打开的输出）。重建时窗口会先切换到本地文件夹，容器重新创建后再让同一窗口重新连接。
-
-容器由规范的参考实现 [Dev Containers CLI](https://github.com/devcontainers/cli)（`@devcontainers/cli` 0.90.0）创建，所以 `devcontainer.json` 的行为与在 Docker 下一致，包括 features。CLI 随插件打包，用编辑器自带的 Node 运行时执行，无需另外安装。CLI 通过插件自带的 docker 兼容层（`dist/docker-shim.js`）调用 Apple `container`，日志（镜像构建、features、生命周期命令）显示在任务终端中。
-
-容器名为 `devc-<文件夹>-<哈希>`，带 `devcontainer.local_folder` / `devcontainer.config_file` 标签，下次打开会复用；配置或其 Dockerfile 自上次打开后有改动时会询问是否重建。
+在开发容器的窗口中，远程指示器菜单和命令面板提供 **重建容器**、**不使用缓存重建容器**、**在本地重新打开文件夹** 和 **显示开发容器日志**。
 
 | 配置项 | 支持情况 |
 |---|---|
-| `image`、`build` | ✅ |
-| `features` | ✅ 安装到基于基础镜像构建的新镜像中 |
+| `image`、`build`、`features` | ✅ |
 | `workspaceFolder`、`workspaceMount`、`mounts` | ✅ |
 | `containerEnv`、`remoteEnv`、`containerUser`、`remoteUser` | ✅ |
-| 生命周期命令，从 `initializeCommand`（在本机执行）到 `postAttachCommand` | ✅ |
-| `appPort` | ✅ 通过 `container run --publish` 发布 |
-| `forwardPorts` | ⚠️ 不发布；Remote-SSH 会转发它检测到在容器内监听的端口，这些端口也会以容器 IP 列在 **端口** 下 |
-| `hostRequirements.cpus` / `memory` | ✅ 以 `--cpus` / `--memory` 应用；内存至少为 `appleContainer.devcontainer.memory`（4G） |
-| `capAdd`、`init`、`overrideCommand` | ✅ |
-| `runArgs` | ⚠️ 传给 `container run`；Docker 专有选项会被丢弃并给出警告，见[已知限制](#已知限制) |
-| `privileged` | ⚠️ 转为 `--cap-add ALL` |
-| `securityOpt` | ❌ 忽略并给出警告 |
-| `dockerComposeFile` | ❌ 不支持 |
-| `customizations.vscode.extensions` | ✅ 远程窗口连上后安装，每个容器只装一次，包括 features 声明的扩展；VS Code 和 Cursor 各自从自己的扩展市场安装 |
+| 生命周期命令，`initializeCommand` 到 `postAttachCommand` | ✅ |
+| `appPort`、`capAdd`、`init`、`overrideCommand`、`hostRequirements` | ✅ |
+| `customizations.vscode.extensions` | ✅ 窗口连上后安装，从编辑器自己的扩展市场下载 |
+| `forwardPorts` | ⚠️ 不发布；由 Remote-SSH 转发，**端口** 中也会以容器 IP 列出 |
+| `runArgs`、`privileged` | ⚠️ 见[已知限制](#已知限制) |
+| `securityOpt`、`dockerComposeFile` | ❌ |
 
 ## 已知限制
 
-Apple `container` 的每个容器都运行在独立的轻量虚拟机里，有自己的 Linux 内核，而不是共享一个 Docker daemon，所以部分 Docker 选项没有对应能力（基于 `container` 1.6.1 核实）：
+Apple `container` 的每个容器都是独立的轻量虚拟机，有自己的 Linux 内核，而不是共享 Docker daemon 的进程，所以部分 Docker 选项没有对应能力（基于 `container` 1.6.1 核实）。`devcontainer.json` 中（`runArgs`、`privileged` 或 features 带来的）这类选项会被丢弃并给出警告，容器仍能启动。
 
 | Docker 选项 | Apple `container` 中 |
 |---|---|
-| `--privileged` | 不支持。改用 `--cap-add` / `capAdd` 添加 capability（`ALL` 表示全部）。 |
-| `--ipc`、`--pid`、`--userns`、`--cgroupns` | 不支持：没有可共享的宿主内核命名空间。 |
-| `--device`、`--gpus`、绑定挂载 `/dev` 或 `/run/udev` | 不支持：宿主是 macOS，没有可透传的 Linux 设备。 |
+| `--privileged` | 转为 `--cap-add ALL`。 |
+| `--ipc`、`--pid`、`--userns`、`--cgroupns`、`--network host` | 不支持：没有共享的宿主内核。 |
+| `--device`、`--gpus`、挂载 `/dev`、`/proc` 或 `/sys` | 不支持：宿主是 macOS。 |
 | `--security-opt`、`--add-host`、`--hostname` | 不支持。 |
-| Docker Compose | 不支持。支持 [container-compose](#container-compose) 项目，但不支持 `devcontainer.json` 中的 `dockerComposeFile`。 |
-| Docker-in-Docker | 不支持，它依赖特权模式。 |
+| Docker Compose、Docker-in-Docker | 不支持。支持 [container-compose](https://github.com/mcrich23/container-compose) 项目，不支持 `dockerComposeFile`。 |
 
-对 `devcontainer.json` 的影响：
-
-- docker 兼容层会丢弃 Apple `container` 无法应用的 `runArgs`（`--ipc`、`--pid`、`--security-opt`、`--device`、`--gpus`、`--add-host`、`--network host`，以及挂载 `/dev`、`/proc`、`/sys` 或本机不存在的路径），并在任务终端中给出警告。`--privileged`（包括来自 `privileged: true` 或 feature 的）会转为 `--cap-add ALL`。容器可以启动，但依赖这些选项的功能无法工作。
-- Apple `container` 的每个容器都是内存固定的虚拟机（默认 1 GB），而 Docker 容器共享整个 Docker 虚拟机。开发容器使用 `appleContainer.devcontainer.memory`（4G）与 `hostRequirements.memory` 中较大的值；构建较重时调大该值并重建容器。
-- 依赖特权模式或 Docker daemon 的 features（如 `docker-in-docker`）能安装但无法工作；`docker-outside-of-docker` 没有可连接的 Docker socket。
-- 为 Codespaces 或 Docker 编写、在开发容器里运行 containerd、Kubernetes 等嵌套容器运行时的配置只能部分工作：需要宿主设备或嵌套容器的部分会失败。
+另外每个容器的内存是固定的（默认 1 GB），开发容器使用 `appleContainer.devcontainer.memory`。
 
 ## 设置
 
@@ -179,15 +130,15 @@ Apple `container` 的每个容器都运行在独立的轻量虚拟机里，有�
 | `appleContainer.statsInterval` | `2` | 资源用量图表的采样间隔（秒） |
 | `appleContainer.execShell` | `/bin/sh` | **打开 Shell** 使用的 shell |
 | `appleContainer.logTail` | `200` | 查看日志时显示的末尾行数，`0` 表示全部 |
-| `appleContainer.sshUser` | _（空）_ | **在 Remote-SSH 中打开** 时登录的用户；留空自动使用容器自身的用户（镜像 `USER` 或 `--user`，默认 root） |
-| `appleContainer.devcontainer.memory` | `4G` | 开发容器的内存，`hostRequirements.memory` 更大时以它为准。Apple `container` 默认每个容器 1 GB，而 Docker 容器不限内存。留空使用 Apple `container` 的默认值 |
+| `appleContainer.sshUser` | _（空）_ | **在 Remote-SSH 中打开** 时登录的用户；留空使用容器自身的用户 |
+| `appleContainer.devcontainer.memory` | `4G` | 开发容器的内存，`hostRequirements.memory` 更大时以它为准；留空使用 Apple `container` 默认的 1 GB |
 
 ## 常见问题
 
 <details>
 <summary><b>工作区在远程（SSH、Dev Containers、WSL）时能用吗？</b></summary>
 
-可以。插件运行在本地 UI 端（`extensionKind: ["ui"]`），管理的始终是你面前这台 Mac 上的容器。构建镜像和 Compose 需要本机文件，远程工作区中的文件会提示不支持。
+可以。插件运行在本地 UI 端，管理的始终是你这台 Mac 上的容器。构建镜像和 Compose 需要本机上的文件。
 </details>
 
 <details>
@@ -200,12 +151,6 @@ Server 是在容器内下载的。容器无法访问外网时，开启 `remote.S
 <summary><b><code>Compose 停止</code> 后容器还在。</b></summary>
 
 `container-compose down`（1.2.0）只停止容器、不删除。需要删除时在项目上用 **删除全部容器**。
-</details>
-
-<details>
-<summary><b>需要安装 Docker 吗？</b></summary>
-
-不需要，所有操作都通过 `container` CLI 完成；开发容器由内置的 Dev Containers CLI 经 docker 兼容层调用它。Compose、特权模式等 Docker 专有选项不可用，见[已知限制](#已知限制)。
 </details>
 
 ## 参与贡献
