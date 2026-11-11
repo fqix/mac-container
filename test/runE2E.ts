@@ -18,7 +18,7 @@ async function main(): Promise<void> {
   fs.writeFileSync(
     path.join(workspace, 'Dockerfile'),
     [
-      'FROM docker.io/library/alpine:latest AS base',
+      'FROM docker.io/library/ubuntu:latest AS base',
       'ARG GREETING=default',
       'RUN --mount=type=secret,id=token cp /run/secrets/token /secret.txt && echo "$GREETING" > /greeting.txt',
       'FROM base AS final',
@@ -30,7 +30,7 @@ async function main(): Promise<void> {
   // Compose project for the compose up / down test; the unique name keeps it apart from real projects
   fs.writeFileSync(
     path.join(workspace, 'compose.yml'),
-    `name: e2e-compose-${Date.now().toString(36)}\nservices:\n  app:\n    image: docker.io/library/alpine:latest\n    command: ["sleep", "3600"]\n`,
+    `name: e2e-compose-${Date.now().toString(36)}\nservices:\n  app:\n    image: docker.io/library/ubuntu:latest\n    command: ["sleep", "3600"]\n`,
   );
 
   // Remote-SSH: keep the generated key and host config out of the real ~/.ssh, and point Remote-SSH at a scratch user config

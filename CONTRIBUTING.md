@@ -45,7 +45,7 @@ The e2e suite launches the installed VS Code (`/Applications/Visual Studio Code.
 - It only touches resources it creates (prefixed with `e2e-`) and never runs prune.
 - `E2E_SKIP_BUILD=1` skips the image build test; `E2E_GREP=<pattern>` runs a subset.
 - It runs twice: once with a workspace folder and once as an empty window, for commands that must work without a folder.
-- The Remote-SSH test lets the extension install `openssh-server` from the Alpine repositories, pulls `busybox` for the no-package-manager case, and keeps its key and SSH config in a temporary directory, never in `~/.ssh`.
+- The Remote-SSH test lets the extension install `openssh-server` from the Ubuntu repositories, pulls `busybox` for the no-package-manager case, and keeps its key and SSH config in a temporary directory, never in `~/.ssh`.
 
 ## Docker shim
 

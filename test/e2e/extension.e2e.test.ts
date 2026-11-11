@@ -21,7 +21,7 @@ const manifest = JSON.parse(
   fs.readFileSync(path.resolve(__dirname, '../../../package.json'), 'utf8'),
 );
 const EXTENSION_ID = `${manifest.publisher}.${manifest.name}`;
-const IMAGE = 'docker.io/library/alpine:latest';
+const IMAGE = 'docker.io/library/ubuntu:latest';
 const suffix = Date.now().toString(36);
 const names = {
   container: `e2e-${suffix}`,
@@ -36,7 +36,7 @@ const names = {
   sshBare: `e2e-sshbare-${suffix}`,
   registry: `e2e-registry-${suffix}`,
   files: `e2e-files-${suffix}`,
-  pushed: `localhost:15095/e2e/alpine:${suffix}`,
+  pushed: `localhost:15095/e2e/ubuntu:${suffix}`,
 };
 
 /** Containers named by the extension, removed in the after hook if a test fails half way */
@@ -327,7 +327,7 @@ describe('Apple Container e2e', function () {
     await waitFor(
       'run tab',
       async () =>
-        webviewTabOpen('appleContainer.run', 'Run: alpine:latest')
+        webviewTabOpen('appleContainer.run', 'Run: ubuntu:latest')
           ? true
           : undefined,
       10_000,
@@ -906,7 +906,7 @@ describe('Apple Container e2e', function () {
       return undefined;
     });
 
-    // uid 1000 has no passwd entry yet; the extension must map it to a name once the user exists
+    // uid 1001 has no passwd entry yet (Ubuntu images own 1000 as ubuntu); the extension must map it to a name once the user exists
     await api.cli.run(
       [
         'run',
@@ -914,7 +914,7 @@ describe('Apple Container e2e', function () {
         '--name',
         names.ssh,
         '--user',
-        '1000',
+        '1001',
         IMAGE,
         'sleep',
         '3600',
@@ -927,17 +927,17 @@ describe('Apple Container e2e', function () {
           n.resource.id === names.ssh && n.contextValue === 'container.running',
       ),
     );
-    assert.strictEqual(node.resource.user, '1000');
+    assert.strictEqual(node.resource.user, '1001');
 
     await api.cli.run([
       'exec',
       '-u',
       '0',
       names.ssh,
-      'adduser',
-      '-D',
-      '-u',
-      '1000',
+      'useradd',
+      '--create-home',
+      '--uid',
+      '1001',
       'dev',
     ]);
     const hasSshd = () =>
@@ -945,7 +945,7 @@ describe('Apple Container e2e', function () {
         () => true,
         () => false,
       );
-    assert.ok(!(await hasSshd()), 'alpine should not ship sshd');
+    assert.ok(!(await hasSshd()), 'ubuntu should not ship sshd');
 
     stub(
       'showInputBox',
@@ -1084,7 +1084,8 @@ describe('Apple Container e2e', function () {
     assert.match(created.image, /vsc-devc-.*-features/);
     assert.strictEqual(created.cpus, 2);
     assert.strictEqual(created.memoryBytes, 6 * 1024 ** 3);
-    assert.strictEqual(await exec(created.id, 'command -v bash'), '/bin/bash');
+    // The common-utils feature ran: plain Ubuntu has no curl
+    assert.match(await exec(created.id, 'command -v curl'), /\/curl$/);
     assert.strictEqual(opened.length, 1);
     assert.strictEqual(
       opened[0].authority,
@@ -1375,7 +1376,7 @@ describe('Apple Container e2e', function () {
     answerInputs(names.pushed);
     await vscode.commands.executeCommand('appleContainer.image.push', image);
     const tags = (await (
-      await fetch('http://127.0.0.1:15095/v2/e2e/alpine/tags/list')
+      await fetch('http://127.0.0.1:15095/v2/e2e/ubuntu/tags/list')
     ).json()) as {tags: string[]};
     assert.deepStrictEqual(tags.tags, [suffix]);
 

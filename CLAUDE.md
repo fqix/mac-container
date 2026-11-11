@@ -36,6 +36,8 @@ E2E_SKIP_BUILD=1 npm run test:e2e             # skip the image build test
 
 The suite runs twice: with a workspace folder and as an empty window. It keeps its SSH key and config out of `~/.ssh` via `APPLE_CONTAINER_SSH_DIR`.
 
+Test containers use Ubuntu (`docker.io/library/ubuntu:latest`), in the e2e suite (its `IMAGE`, the Dockerfile and compose file written by `test/runE2E.ts`) and for containers started to try a change by hand. Plain Ubuntu ships without sshd, wget or curl, so it exercises the package installs of the Remote-SSH preparation. Its uid 1000 is the `ubuntu` user. Only the no-package-manager case uses `busybox`.
+
 ## Architecture
 
 **Bundles** (`esbuild.mjs`): `dist/extension.js` (from `src/extension.ts`), `dist/docker-shim.js` (from `src/dockerShim/main.ts`), `dist/devcontainer-cli/` (the `@devcontainers/cli` bundle copied from node_modules and patched so registry lookups use `linux/arm64`; the patch must match exactly once, so upgrading the CLI fails the build until it is rechecked), and `dist/webview/` (one Vite bundle for all panels; `<body data-view>` selects the React view in `webview-ui/src/main.tsx`). `.vscodeignore` is an allowlist, so new runtime files must be added there.

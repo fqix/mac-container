@@ -9,7 +9,7 @@ const manifest = JSON.parse(
   fs.readFileSync(path.resolve(__dirname, '../../../package.json'), 'utf8'),
 );
 const EXTENSION_ID = `${manifest.publisher}.${manifest.name}`;
-const IMAGE = 'docker.io/library/alpine:latest';
+const IMAGE = 'docker.io/library/ubuntu:latest';
 
 describe('Apple Container e2e (no folder open)', function () {
   const window = vscode.window as any;
