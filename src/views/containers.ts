@@ -133,8 +133,7 @@ export class ContainersProvider extends ResourceProvider<ContainerSummary> {
   }
 
   protected async fetch(): Promise<ContainerSummary[]> {
-    // The builder has its own view
-    const items = (await this.cli.listContainers()).filter(c => !c.builder);
+    const items = await this.cli.listContainers();
     // Running containers first, then by ID
     return items.sort(
       (a, b) =>
@@ -185,15 +184,22 @@ export class ContainersProvider extends ResourceProvider<ContainerSummary> {
       c.mounts.length || c.publishedPorts.length
         ? vscode.TreeItemCollapsibleState.Collapsed
         : vscode.TreeItemCollapsibleState.None;
-    // Compose-managed containers get a suffix: they are edited through their compose file, not recreated here
-    node.contextValue = `container.${running ? 'running' : 'stopped'}${c.composeProject ? '.compose' : ''}`;
-    node.iconPath = running
-      ? new vscode.ThemeIcon(
-          'vm-running',
-          new vscode.ThemeColor('testing.iconPassed'),
-        )
-      : new vscode.ThemeIcon('vm-outline');
-    const parts = [c.composeService ?? shortImageName(c.image)];
+    // Compose-managed containers get a suffix: they are edited through their compose file, not recreated here.
+    // The BuildKit builder gets the builder commands (`container builder ...`) instead of the container ones.
+    node.contextValue = c.builder
+      ? `builder.${running ? 'running' : 'stopped'}`
+      : `container.${running ? 'running' : 'stopped'}${c.composeProject ? '.compose' : ''}`;
+    const passed = new vscode.ThemeColor('testing.iconPassed');
+    node.iconPath = c.builder
+      ? new vscode.ThemeIcon('tools', running ? passed : undefined)
+      : running
+        ? new vscode.ThemeIcon('vm-running', passed)
+        : new vscode.ThemeIcon('vm-outline');
+    const parts = [
+      c.builder
+        ? vscode.l10n.t('Builder')
+        : (c.composeService ?? shortImageName(c.image)),
+    ];
     if (running && c.ipv4) {
       parts.push(c.ipv4);
     }
@@ -238,6 +244,13 @@ export class ContainersProvider extends ResourceProvider<ContainerSummary> {
       if (v) {
         md.appendMarkdown(`- ${k}: `).appendText(v).appendMarkdown('\n');
       }
+    }
+    if (c.builder) {
+      md.appendMarkdown('\n').appendText(
+        vscode.l10n.t(
+          'Builds use the CPUs and memory of the build.cpus / build.memory system properties.',
+        ),
+      );
     }
     node.tooltip = md;
     return node;

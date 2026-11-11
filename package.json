@@ -64,12 +64,6 @@
           "when": "!remoteName"
         },
         {
-          "id": "appleContainer.builder",
-          "name": "%view.builder%",
-          "visibility": "collapsed",
-          "when": "!remoteName"
-        },
-        {
           "id": "appleContainer.networks",
           "name": "%view.networks%",
           "visibility": "collapsed",
@@ -108,11 +102,6 @@
       {
         "view": "appleContainer.images",
         "contents": "%welcome.noImages%",
-        "when": "!appleContainer.cliMissing && !appleContainer.serviceStopped"
-      },
-      {
-        "view": "appleContainer.builder",
-        "contents": "%welcome.noBuilder%",
         "when": "!appleContainer.cliMissing && !appleContainer.serviceStopped"
       },
       {

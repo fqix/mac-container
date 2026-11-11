@@ -1460,27 +1460,18 @@ describe('Apple Container e2e', function () {
     );
   });
 
-  it('shows the builder in its own view, not among the containers', async function () {
+  it('shows the builder among the containers with the builder commands', async function () {
     if (process.env.E2E_SKIP_BUILD) {
       this.skip();
     }
     this.timeout(5 * 60_000);
     // Any build leaves the builder running; start it in case this test runs alone
     await vscode.commands.executeCommand('appleContainer.builder.start');
-    const builderNode = async (state: string) => {
-      const nodes = await children(api.views.builder);
-      return nodes.length === 1 && nodes[0].contextValue === `builder.${state}`
-        ? nodes[0]
-        : undefined;
-    };
-    const running = await waitFor('running builder', () =>
-      builderNode('running'),
-    );
-    assert.ok(running.resource.builder);
-    assert.ok(
-      !(await children(api.views.containers)).some(n => n.resource.builder),
-      'builder listed among the containers',
-    );
+    const builderNode = async (state: string) =>
+      (await children(api.views.containers)).find(
+        n => n.resource?.builder && n.contextValue === `builder.${state}`,
+      );
+    await waitFor('running builder', () => builderNode('running'));
 
     await vscode.commands.executeCommand('appleContainer.builder.stop');
     await waitFor('stopped builder', () => builderNode('stopped'));

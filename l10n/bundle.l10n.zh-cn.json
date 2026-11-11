@@ -293,6 +293,7 @@
   "expected env=VAR or src=/path after the id": "id 之后应为 env=VAR 或 src=/path",
   "the environment variable {0} is not set for VS Code": "VS Code 的环境中没有设置环境变量 {0}",
   "SSH_AUTH_SOCK is not set for VS Code, so there is no agent to forward": "VS Code 的环境中没有设置 SSH_AUTH_SOCK，没有可转发的 agent",
+  "Builder": "构建器",
   "Start Builder": "启动构建器",
   "Stopping the builder...": "正在停止构建器...",
   "Delete the builder?": "删除构建器？",

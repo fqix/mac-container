@@ -13,7 +13,7 @@ export function registerBuilderCommands(ctx: CommandContext): void {
   const start = async () => {
     // A task, since the first start pulls the builder image
     await runCliTask(cli, vscode.l10n.t('Start Builder'), ['builder', 'start']);
-    ctx.views.builder.refresh();
+    ctx.views.containers.refresh();
   };
   const stop = () =>
     withProgress(vscode.l10n.t('Stopping the builder...'), () =>
@@ -24,7 +24,7 @@ export function registerBuilderCommands(ctx: CommandContext): void {
 
   register(ctx, 'appleContainer.builder.stop', async () => {
     await stop();
-    ctx.views.builder.refresh();
+    ctx.views.containers.refresh();
   });
 
   register(ctx, 'appleContainer.builder.restart', async () => {
@@ -46,6 +46,6 @@ export function registerBuilderCommands(ctx: CommandContext): void {
     await withProgress(vscode.l10n.t('Deleting the builder...'), () =>
       cli.run(['builder', 'delete', '--force'], {timeoutMs: 120_000}),
     );
-    ctx.views.builder.refresh();
+    ctx.views.containers.refresh();
   });
 }

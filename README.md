@@ -83,7 +83,7 @@
 
 ### Builder
 
-Image builds run in a BuildKit container (`buildkit`) that `container build` starts on demand. It is shown in its own **Builder** view instead of among the containers.
+Image builds run in a BuildKit container (`buildkit`) that `container build` starts on demand. It is listed among the containers with a tools icon and the builder commands instead of the container ones.
 
 - **Start**, **Stop** and **Restart Builder**, **View Logs** and **Inspect**.
 - **Delete Builder...** resets a stuck builder and frees its build cache; the next build creates it again.

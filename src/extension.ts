@@ -27,7 +27,6 @@ import {StatsPanel} from './panels/statsPanel';
 import {ServiceStatusBar} from './ui/statusBar';
 import type {ResourceProvider} from './views/base';
 import {ContainersProvider} from './views/containers';
-import {BuilderProvider} from './views/builder';
 import {ImagesProvider} from './views/images';
 import {NetworksProvider} from './views/networks';
 import {RegistriesProvider} from './views/registries';
@@ -66,7 +65,6 @@ export function activate(
   const views = {
     containers: new ContainersProvider(monitor, cli),
     images: new ImagesProvider(monitor, cli),
-    builder: new BuilderProvider(monitor, cli),
     networks: new NetworksProvider(monitor, cli),
     volumes: new VolumesProvider(monitor, cli),
     registries: new RegistriesProvider(monitor, cli),
