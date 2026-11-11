@@ -12,6 +12,7 @@ import {
 } from './commands/devcontainer';
 import {registerFileCommands} from './commands/files';
 import {registerRemoteSshCommands} from './commands/remoteSsh';
+import {registerRemoteWindowCommands} from './commands/remoteWindow';
 import {registerImageCommands} from './commands/images';
 import {registerNetworkCommands} from './commands/networks';
 import {registerPortAndMountCommands} from './commands/ports';
@@ -37,15 +38,19 @@ export interface ExtensionApi {
   cli: ContainerCli;
   monitor: ServiceMonitor;
   views: CommandContext['views'];
+  /** Global storage folder, e.g. for the dev container logs */
+  storagePath: string;
 }
 
 export function activate(
   context: vscode.ExtensionContext,
 ): ExtensionApi | undefined {
   // A remote window (e.g. a dev container over Remote-SSH) runs this UI extension too. package.json hides its views
-  // and commands there (!remoteName); the only work left is installing the extensions of a dev container.
+  // and commands there (!remoteName); what is left is installing a dev container's extensions and its window commands.
   if (vscode.env.remoteName) {
     void installDevContainerExtensions(context);
+    // Rebuild, reopen locally and the creation log, shown only in a dev container's window
+    registerRemoteWindowCommands(context);
     return undefined;
   }
 
@@ -194,7 +199,7 @@ export function activate(
   ) {
     start();
   }
-  return {cli, monitor, views};
+  return {cli, monitor, views, storagePath: context.globalStorageUri.fsPath};
 }
 
 export function deactivate(): void {}

@@ -116,7 +116,7 @@ function targetArgs(
 export function upArgs(
   paths: DevContainerCliPaths,
   target: DevContainerTarget,
-  options: {removeExisting?: boolean} = {},
+  options: {removeExisting?: boolean; buildNoCache?: boolean} = {},
 ): string[] {
   return [
     paths.script,
@@ -125,7 +125,49 @@ export function upArgs(
     '--log-format',
     'text',
     ...(options.removeExisting ? ['--remove-existing-container'] : []),
+    ...(options.buildNoCache ? ['--build-no-cache'] : []),
   ];
+}
+
+/** Creation log of a dev container, by container name (known before it is created, see devContainerName) */
+export function devContainerLogFile(
+  storageDir: string,
+  containerName: string,
+): string {
+  return path.join(storageDir, 'logs', `${containerName}.log`);
+}
+
+/** What a dev container's remote window asks the local window of its folder to do after switching to it */
+export interface PendingAction {
+  action: 'rebuild' | 'rebuildNoCache';
+  workspaceFolder: string;
+  configFile: string;
+  /** Date.now() when it was requested */
+  at: number;
+}
+
+/** File in global storage: written by the remote window, read by the local window that replaces it */
+export const PENDING_ACTION_FILE = 'devcontainer-pending.json';
+
+/** Pending actions are picked up right after the window switches, so older ones are stale */
+const PENDING_ACTION_MAX_AGE_MS = 5 * 60_000;
+
+/** The pending action for a local window opened on this folder, if it is recent */
+export function pendingActionFor(
+  pending: PendingAction | undefined,
+  folder: string | undefined,
+  now: number,
+): PendingAction | undefined {
+  // APFS volumes are case-insensitive by default, so the same folder can be spelled with another case
+  if (
+    !pending ||
+    !folder ||
+    pending.workspaceFolder.toLowerCase() !== folder.toLowerCase()
+  ) {
+    return undefined;
+  }
+  const age = now - pending.at;
+  return age >= 0 && age <= PENDING_ACTION_MAX_AGE_MS ? pending : undefined;
 }
 
 export interface ResolvedConfiguration {

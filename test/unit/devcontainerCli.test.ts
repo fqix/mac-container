@@ -6,7 +6,9 @@ import * as path from 'path';
 
 import {
   cliEnv,
+  devContainerLogFile,
   dockerWrapper,
+  pendingActionFor,
   parseReadConfiguration,
   prepareDockerWrapper,
   runDefaults,
@@ -77,7 +79,9 @@ describe('devcontainers/cli integration', () => {
     );
   });
 
-  it('writes an executable docker wrapper that quotes paths and forwards arguments', async () => {
+  it('writes an executable docker wrapper that quotes paths and forwards arguments', async function () {
+    // Spawns a shell, which can take a while on a busy machine
+    this.timeout(10_000);
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'shim-'));
     try {
       // A stand-in "node" that prints its arguments, under a path with a space and a quote
@@ -203,5 +207,55 @@ describe('devcontainers/cli integration', () => {
     assert.strictEqual(satisfiesExtension('a.b@1.0.0', '1.0.0'), true);
     assert.strictEqual(satisfiesExtension('a.b@2.0.0', '1.0.0'), false);
     assert.strictEqual(satisfiesExtension('a.b@prerelease', '1.1.0'), true);
+  });
+
+  it('rebuilds without cache and records the CLI log', () => {
+    assert.deepStrictEqual(
+      upArgs(paths, target, {removeExisting: true, buildNoCache: true}).slice(
+        -2,
+      ),
+      ['--remove-existing-container', '--build-no-cache'],
+    );
+    const logFile = devContainerLogFile('/storage', 'devc-my-app-12345678');
+    assert.strictEqual(logFile, '/storage/logs/devc-my-app-12345678.log');
+  });
+
+  it('hands a recent pending action only to the local window of its folder', () => {
+    const pending = {
+      action: 'rebuild' as const,
+      workspaceFolder: '/Users/dev/My App',
+      configFile: '/Users/dev/My App/.devcontainer/devcontainer.json',
+      at: 1_000_000,
+    };
+    assert.strictEqual(
+      pendingActionFor(pending, '/Users/dev/My App', 1_000_000 + 30_000),
+      pending,
+    );
+    assert.strictEqual(
+      pendingActionFor(pending, '/Users/dev/Other', 1_000_000),
+      undefined,
+    );
+    // APFS is case-insensitive, so another spelling of the folder is the same folder
+    assert.strictEqual(
+      pendingActionFor(pending, '/users/dev/my app', 1_000_000),
+      pending,
+    );
+    assert.strictEqual(
+      pendingActionFor(pending, undefined, 1_000_000),
+      undefined,
+    );
+    // Stale after five minutes, and never from the future
+    assert.strictEqual(
+      pendingActionFor(pending, '/Users/dev/My App', 1_000_000 + 6 * 60_000),
+      undefined,
+    );
+    assert.strictEqual(
+      pendingActionFor(pending, '/Users/dev/My App', 1_000_000 - 1),
+      undefined,
+    );
+    assert.strictEqual(
+      pendingActionFor(undefined, '/Users/dev/My App', 1_000_000),
+      undefined,
+    );
   });
 });

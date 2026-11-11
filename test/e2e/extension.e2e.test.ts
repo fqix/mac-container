@@ -305,8 +305,14 @@ describe('Apple Container e2e', function () {
       (c: {command: string}) => c.command,
     );
     const registered = new Set(await vscode.commands.getCommands(true));
+    // The dev container window commands only exist in a remote window (src/commands/remoteWindow.ts)
+    const remoteOnly = (c: string) => c.startsWith('appleContainer.remote.');
     assert.deepStrictEqual(
-      declared.filter(c => !registered.has(c)),
+      declared.filter(c => !remoteOnly(c) && !registered.has(c)),
+      [],
+    );
+    assert.deepStrictEqual(
+      declared.filter(c => remoteOnly(c) && registered.has(c)),
       [],
     );
   });
@@ -1160,6 +1166,13 @@ describe('Apple Container e2e', function () {
       await exec(created.id, 'echo $E2E_FROM'),
       `devc-${suffix}`,
     );
+    // The CLI output is kept for Show Dev Container Log in the container's window
+    const log = fs.readFileSync(
+      path.join(api.storagePath, 'logs', `${created.id}.log`),
+      'utf8',
+    );
+    assert.match(log, /Container started/);
+    assert.match(log, /postCreateCommand/);
     assert.strictEqual(
       await exec(
         created.id,

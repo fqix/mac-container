@@ -125,6 +125,8 @@ VS Code / Cursor Server 会在容器内下载，需要容器能访问外网；�
 
 **在开发容器中打开文件夹** 会读取文件夹中的 `devcontainer.json`（`.devcontainer/devcontainer.json`、`.devcontainer.json` 或 `.devcontainer/<名称>/devcontainer.json`），用 Apple `container` 创建容器，再[通过 Remote-SSH](#通过-remote-ssh-打开容器) 打开容器内的工作区文件夹。打开带有该配置的本地文件夹时会提示；在该文件上右键还有 **重建并打开开发容器**。
 
+在开发容器的窗口中，左下角的远程指示器菜单和命令面板提供 **重建容器**、**不使用缓存重建容器**、**在本地重新打开文件夹** 和 **显示开发容器日志**（最近一次创建或打开的输出）。重建时窗口会先切换到本地文件夹，容器重新创建后再让同一窗口重新连接。
+
 容器由规范的参考实现 [Dev Containers CLI](https://github.com/devcontainers/cli)（`@devcontainers/cli` 0.90.0）创建，所以 `devcontainer.json` 的行为与在 Docker 下一致，包括 features。CLI 随插件打包，用编辑器自带的 Node 运行时执行，无需另外安装。CLI 通过插件自带的 docker 兼容层（`dist/docker-shim.js`）调用 Apple `container`，日志（镜像构建、features、生命周期命令）显示在任务终端中。
 
 容器名为 `devc-<文件夹>-<哈希>`，带 `devcontainer.local_folder` / `devcontainer.config_file` 标签，下次打开会复用；配置或其 Dockerfile 自上次打开后有改动时会询问是否重建。

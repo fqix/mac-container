@@ -85,5 +85,9 @@
   "command.container.download": "Download...",
   "command.file.uploadToContainer": "Upload to Container...",
   "command.devcontainer.open": "Open Folder in Dev Container",
-  "command.devcontainer.rebuild": "Rebuild and Open Dev Container"
+  "command.devcontainer.rebuild": "Rebuild and Open Dev Container",
+  "command.remote.reopenLocally": "Reopen Folder Locally",
+  "command.remote.rebuild": "Rebuild Container",
+  "command.remote.rebuildNoCache": "Rebuild Container Without Cache",
+  "command.remote.showLog": "Show Dev Container Log"
 }

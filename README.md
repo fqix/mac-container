@@ -125,6 +125,8 @@ The VS Code / Cursor server is downloaded inside the container, so it needs inte
 
 **Open Folder in Dev Container** reads the folder's `devcontainer.json` (`.devcontainer/devcontainer.json`, `.devcontainer.json` or `.devcontainer/<name>/devcontainer.json`), creates the container with Apple `container` and opens the workspace folder in it [over Remote-SSH](#open-a-container-over-remote-ssh). Opening a local folder that has one offers to do so; the file's context menu also has **Rebuild and Open Dev Container**.
 
+In the dev container's window, the Remote indicator menu (bottom left) and the Command Palette offer **Rebuild Container**, **Rebuild Container Without Cache**, **Reopen Folder Locally** and **Show Dev Container Log** (the output of the last create or open). Rebuilding switches the window to the local folder while the container is created again, then reconnects the same window to it.
+
 The container is created by the [Dev Containers CLI](https://github.com/devcontainers/cli) (`@devcontainers/cli` 0.90.0), the reference implementation of the spec, so `devcontainer.json` behaves as it does with Docker, features included. It is bundled with the extension and runs on the editor's own Node runtime; nothing needs to be installed. The CLI talks to Apple `container` through a docker-compatible shim that ships with the extension (`dist/docker-shim.js`), and its log, including image builds, features and lifecycle commands, is shown in a task terminal.
 
 The container is named `devc-<folder>-<hash>` and labelled with `devcontainer.local_folder` / `devcontainer.config_file`, so the next open reuses it. When the configuration or its Dockerfile changed since the last open, you are asked whether to rebuild.

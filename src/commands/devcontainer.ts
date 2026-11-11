@@ -1,8 +1,8 @@
 // Opens a folder in a dev container described by devcontainer.json: the bundled devcontainers/cli creates it
 // with Apple container (through the docker shim) and the folder is entered over Remote-SSH
 
-import {existsSync} from 'fs';
-import {mkdir, readFile, writeFile} from 'fs/promises';
+import {existsSync, watch, type FSWatcher} from 'fs';
+import {mkdir, readFile, realpath, writeFile} from 'fs/promises';
 import * as path from 'path';
 
 import * as vscode from 'vscode';
@@ -10,6 +10,7 @@ import * as vscode from 'vscode';
 import type {ContainerSummary} from '../models/types';
 import {
   type ContainerExtensions,
+  devContainerName,
   extensionsToInstall,
   findConfigFiles,
   hash,
@@ -22,7 +23,10 @@ import {
 import {
   cliEnv,
   type DevContainerCliPaths,
+  devContainerLogFile,
   type DevContainerTarget,
+  PENDING_ACTION_FILE,
+  pendingActionFor,
   prepareDockerWrapper,
   readConfiguration,
   runDefaults,
@@ -32,10 +36,11 @@ import {
 } from '../services/devcontainerCli';
 import {containerOfAuthority} from '../services/remoteSsh';
 import {parseEnvOutput, resolveContainerEnv} from '../utils/env';
-import {describeError} from '../utils/i18n';
+import {describeError, showError} from '../utils/i18n';
 import {StepTerminal} from '../ui/stepTerminal';
 import {CommandContext, isLocal, register} from './common';
 import {openContainerOverSsh} from './remoteSsh';
+import {readPendingAction, writePendingAction} from './remoteWindow';
 
 /** workspaceState key */
 const PROMPT_DISMISSED_KEY = 'devcontainer.promptDismissed';
@@ -50,6 +55,10 @@ const EXTENSIONS_FILE = 'devcontainer-extensions.json';
 export interface DevContainerOptions {
   /** Delete the existing container (and rebuild its image) first */
   rebuild?: boolean;
+  /** Build the image without the build cache (with rebuild) */
+  noCache?: boolean;
+  /** Open the container in this window, as when a dev container window rebuilds itself */
+  reuseWindow?: boolean;
 }
 
 export function registerDevContainerCommands(ctx: CommandContext): void {
@@ -75,7 +84,90 @@ export function registerDevContainerCommands(ctx: CommandContext): void {
     },
   );
 
-  void offerToOpen(ctx);
+  // A dev container window that asked to be rebuilt reopened this folder locally; otherwise offer to open it
+  void runPendingAction(ctx).then(async ran => {
+    if (!ran) {
+      await offerToOpen(ctx);
+    }
+  });
+  // When this window was already open on the folder, VS Code focuses it instead of reopening the folder, so the
+  // request is picked up as it is written
+  ctx.extension.subscriptions.push(
+    watchPendingAction(ctx.extension, () => void runPendingAction(ctx)),
+  );
+}
+
+/** Calls onChange whenever the pending action file in global storage is written */
+function watchPendingAction(
+  extension: vscode.ExtensionContext,
+  onChange: () => void,
+): vscode.Disposable {
+  const dir = extension.globalStorageUri.fsPath;
+  let watcher: FSWatcher | undefined;
+  let disposed = false;
+  void mkdir(dir, {recursive: true})
+    .then(() => {
+      if (!disposed) {
+        watcher = watch(dir, (_event, file) => {
+          if (file === PENDING_ACTION_FILE) {
+            onChange();
+          }
+        });
+        watcher.on('error', () => undefined);
+      }
+    })
+    .catch(() => undefined);
+  return {
+    dispose: () => {
+      disposed = true;
+      watcher?.close();
+    },
+  };
+}
+
+/** Pending actions may be read by the activation and the watcher at once; only one runs */
+let runningPendingAction = false;
+
+/** Runs what the Remote-SSH window of a dev container asked for before it switched to this local folder */
+async function runPendingAction(ctx: CommandContext): Promise<boolean> {
+  if (runningPendingAction) {
+    return false;
+  }
+  runningPendingAction = true;
+  try {
+    const local = (vscode.workspace.workspaceFolders ?? []).find(
+      f => f.uri.scheme === 'file',
+    )?.uri.fsPath;
+    const requested = await readPendingAction(ctx.extension);
+    // The container label and the window may spell the folder differently (symlinks such as /tmp)
+    const canonical = (p: string) => realpath(p).catch(() => p);
+    const pending = pendingActionFor(
+      requested && {
+        ...requested,
+        workspaceFolder: await canonical(requested.workspaceFolder),
+      },
+      local && (await canonical(local)),
+      Date.now(),
+    );
+    if (!pending || !requested) {
+      return false;
+    }
+    // Taken before running, so a reload of this window does not rebuild again
+    await writePendingAction(ctx.extension, undefined);
+    ctx.start();
+    try {
+      await openDevContainer(ctx, requested.configFile, {
+        rebuild: true,
+        noCache: pending.action === 'rebuildNoCache',
+        reuseWindow: true,
+      });
+    } catch (error) {
+      showError(error);
+    }
+    return true;
+  } finally {
+    runningPendingAction = false;
+  }
 }
 
 async function readExtensionsFile(
@@ -377,10 +469,16 @@ export async function openDevContainer(
       paths.node,
       upArgs(paths, target, {
         removeExisting: rebuild && !!existing,
+        buildNoCache: rebuild && options.noCache,
       }),
       {
         cwd: target.workspaceFolder,
         env: cliEnv(paths, runDefaults(config.hostRequirements, defaultMemory)),
+        // Shown by Show Dev Container Log in the container's window; the shim names the container this way
+        logFile: devContainerLogFile(
+          ctx.extension.globalStorageUri.fsPath,
+          devContainerName(target.workspaceFolder, target.configFile),
+        ),
       },
     );
     await ctx.refreshAll();
@@ -436,6 +534,7 @@ export async function openDevContainer(
         user: resolved.remoteUser ?? resolved.containerUser,
         folder: resolved.workspaceFolder,
         remoteEnv,
+        reuseWindow: options.reuseWindow,
         terminal,
       },
     );

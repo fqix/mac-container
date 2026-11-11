@@ -85,5 +85,9 @@
   "command.container.download": "下载...",
   "command.file.uploadToContainer": "上传到容器...",
   "command.devcontainer.open": "在开发容器中打开文件夹",
-  "command.devcontainer.rebuild": "重建并打开开发容器"
+  "command.devcontainer.rebuild": "重建并打开开发容器",
+  "command.remote.reopenLocally": "在本地重新打开文件夹",
+  "command.remote.rebuild": "重建容器",
+  "command.remote.rebuildNoCache": "不使用缓存重建容器",
+  "command.remote.showLog": "显示开发容器日志"
 }

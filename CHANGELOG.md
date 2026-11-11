@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Installing `openssh-server` and the other packages Remote-SSH needs shows the package manager's output in a terminal instead of a progress notification. A dev container shows its build and this preparation as steps of one terminal, each with its result and duration
+- Dev container windows offer **Rebuild Container**, **Rebuild Container Without Cache**, **Reopen Folder Locally** and **Show Dev Container Log** in the Remote indicator menu and the Command Palette; a rebuild reopens the folder locally while the container is created again, then reconnects the same window
 - **Ports** of a running container lists the TCP ports it listens on without publishing them, opened through the container IP without recreating it; ports listening only on loopback are flagged as unreachable from the Mac
 - The BuildKit builder is listed among the containers again, with its own icon and the builder commands, instead of in a separate Builder view
 - **Open in Remote-SSH** picks the folder by browsing the container as the login user, instead of typing its path

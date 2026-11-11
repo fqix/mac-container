@@ -473,6 +473,30 @@
         "title": "%command.devcontainer.rebuild%",
         "category": "%category%",
         "icon": "$(refresh)"
+      },
+      {
+        "command": "appleContainer.remote.reopenLocally",
+        "title": "%command.remote.reopenLocally%",
+        "category": "%category%",
+        "icon": "$(folder-opened)"
+      },
+      {
+        "command": "appleContainer.remote.rebuild",
+        "title": "%command.remote.rebuild%",
+        "category": "%category%",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "appleContainer.remote.rebuildNoCache",
+        "title": "%command.remote.rebuildNoCache%",
+        "category": "%category%",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "appleContainer.remote.showLog",
+        "title": "%command.remote.showLog%",
+        "category": "%category%",
+        "icon": "$(output)"
       }
     ],
     "menus": {
@@ -728,6 +752,22 @@
         {
           "command": "appleContainer.devcontainer.rebuild",
           "when": "!remoteName"
+        },
+        {
+          "command": "appleContainer.remote.reopenLocally",
+          "when": "remoteName == ssh-remote && appleContainer.inDevContainer"
+        },
+        {
+          "command": "appleContainer.remote.rebuild",
+          "when": "remoteName == ssh-remote && appleContainer.inDevContainer"
+        },
+        {
+          "command": "appleContainer.remote.rebuildNoCache",
+          "when": "remoteName == ssh-remote && appleContainer.inDevContainer"
+        },
+        {
+          "command": "appleContainer.remote.showLog",
+          "when": "remoteName == ssh-remote && appleContainer.inDevContainer"
         }
       ],
       "view/title": [
@@ -1121,6 +1161,28 @@
           "command": "appleContainer.devcontainer.open",
           "when": "!remoteName && (resourceFilename == devcontainer.json || resourceFilename == .devcontainer.json)",
           "group": "apple-container@3"
+        }
+      ],
+      "statusBar/remoteIndicator": [
+        {
+          "command": "appleContainer.remote.reopenLocally",
+          "when": "remoteName == ssh-remote && appleContainer.inDevContainer",
+          "group": "remote_20_apple-container_devcontainer@1"
+        },
+        {
+          "command": "appleContainer.remote.rebuild",
+          "when": "remoteName == ssh-remote && appleContainer.inDevContainer",
+          "group": "remote_20_apple-container_devcontainer@2"
+        },
+        {
+          "command": "appleContainer.remote.rebuildNoCache",
+          "when": "remoteName == ssh-remote && appleContainer.inDevContainer",
+          "group": "remote_20_apple-container_devcontainer@3"
+        },
+        {
+          "command": "appleContainer.remote.showLog",
+          "when": "remoteName == ssh-remote && appleContainer.inDevContainer",
+          "group": "remote_20_apple-container_devcontainer@4"
         }
       ]
     },

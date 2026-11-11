@@ -182,6 +182,7 @@
   "Attach Shell": "打开 Shell",
   "Prepare {0} for Remote-SSH": "为 Remote-SSH 准备 {0}",
   "Install {0}": "安装 {0}",
+  "No published or listening ports": "没有发布或监听的端口",
   "exit code {0}": "退出码 {0}",
   "Rebuild the dev container": "重建开发容器",
   "Create or start the dev container": "创建或启动开发容器",
@@ -306,11 +307,14 @@
   "Builds use the CPUs and memory of the build.cpus / build.memory system properties.": "构建使用系统属性 build.cpus / build.memory 指定的 CPU 和内存。",
   "Installing dev container extensions": "正在安装开发容器扩展",
   "Some extensions from devcontainer.json could not be installed: {0}": "devcontainer.json 中的部分扩展未能安装：{0}",
+  "This window is not attached to a dev container created by Apple Container.": "此窗口连接的不是由 Apple Container 创建的开发容器。",
+  "Rebuild the dev container {0}?": "重建开发容器 {0}？",
+  "The window reopens the folder locally while the container is deleted and created again, then connects to the new container. Files outside the workspace folder and mounts are lost.": "窗口会先在本地重新打开该文件夹，删除并重新创建容器后再连接到新容器。工作区文件夹和挂载之外的文件会丢失。",
+  "No log was recorded for {0}. The log is written when the dev container is created or opened with Apple Container.": "没有 {0} 的日志记录。用 Apple Container 创建或打开开发容器时才会写入日志。",
   "Listening on {0}": "监听于 {0}",
   "{0} (not published)": "{0}（未发布）",
   "Not published: reachable from this Mac through the container IP, not through localhost or from other devices.": "未发布：可在本机通过容器 IP 访问，不能通过 localhost 或从其他设备访问。",
   "loopback only": "仅回环地址",
   "Only listens on a loopback address, so it cannot be reached from this Mac. Listen on 0.0.0.0 instead, or forward the port over Remote-SSH.": "只监听回环地址，本机无法访问。请改为监听 0.0.0.0，或通过 Remote-SSH 转发端口。",
-  "No published or listening ports": "没有发布或监听的端口",
   "Remote-SSH needs bash, which container {0} does not have, and installing it failed: {1}. Install bash in the container, or use an image that has it.": "Remote-SSH 需要 bash，容器 {0} 中没有且安装失败：{1}。请在容器中安装 bash，或改用自带 bash 的镜像。"
 }

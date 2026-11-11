@@ -19,12 +19,12 @@ export class ReadonlyDocumentProvider
   }
 
   /** Opens (or refreshes an already open) document; reopening the same path reloads its content */
-  async open(path: string, loader: Loader): Promise<void> {
+  async open(path: string, loader: Loader, language = 'json'): Promise<void> {
     const uri = vscode.Uri.from({scheme: DOCUMENT_SCHEME, path});
     this.loaders.set(uri.toString(), loader);
     this.emitter.fire(uri);
     const doc = await vscode.workspace.openTextDocument(uri);
-    await vscode.languages.setTextDocumentLanguage(doc, 'json');
+    await vscode.languages.setTextDocumentLanguage(doc, language);
     await vscode.window.showTextDocument(doc, {preview: true});
   }
 

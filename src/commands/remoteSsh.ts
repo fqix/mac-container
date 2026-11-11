@@ -59,6 +59,8 @@ export interface SshOpenOptions {
   folder?: string;
   /** Extra variables for SSH sessions on top of the container environment (devcontainer.json remoteEnv) */
   remoteEnv?: Record<string, string>;
+  /** Open in the current window instead of a new one, e.g. when a dev container window rebuilds itself */
+  reuseWindow?: boolean;
   /** Terminal to run package installs in, such as the dev container build's; one is opened when needed otherwise */
   terminal?: StepTerminal;
 }
@@ -242,9 +244,11 @@ export async function openContainerOverSsh(
     authority: `ssh-remote+${hostAlias(id)}`,
     path: folder,
   });
-  await vscode.commands.executeCommand('vscode.openFolder', uri, {
-    forceNewWindow: true,
-  });
+  await vscode.commands.executeCommand(
+    'vscode.openFolder',
+    uri,
+    options.reuseWindow ? {forceReuseWindow: true} : {forceNewWindow: true},
+  );
   return true;
 }
 
