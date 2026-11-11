@@ -36,6 +36,7 @@ const names = {
   sshBare: `e2e-sshbare-${suffix}`,
   registry: `e2e-registry-${suffix}`,
   files: `e2e-files-${suffix}`,
+  ports: `e2e-ports-${suffix}`,
   pushed: `localhost:15095/e2e/ubuntu:${suffix}`,
 };
 
@@ -270,6 +271,7 @@ describe('Apple Container e2e', function () {
         ...generatedNames,
         ...devContainers,
         names.files,
+        names.ports,
         names.ssh,
         names.sshBare,
         names.container,
@@ -555,7 +557,7 @@ describe('Apple Container e2e', function () {
     );
   });
 
-  it('groups compose containers and shows Volumes / Ports only when present', async () => {
+  it('groups compose containers and shows Volumes only when present', async () => {
     const label = (service: string) => [
       '--label',
       `com.docker.compose.project=${names.project}`,
@@ -615,11 +617,20 @@ describe('Apple Container e2e', function () {
       'Volumes',
       'Ports',
     ]);
+    // A running container always has Ports, for the ports it listens on without publishing them
     assert.strictEqual(
       worker.collapsibleState,
-      vscode.TreeItemCollapsibleState.None,
+      vscode.TreeItemCollapsibleState.Collapsed,
     );
-    assert.deepStrictEqual(await childLabels(api.views.containers, worker), []);
+    assert.deepStrictEqual(await childLabels(api.views.containers, worker), [
+      'Ports',
+    ]);
+    const [workerPorts] = await api.views.containers.getChildren(worker);
+    // Nothing published or listening: a note instead of an empty section
+    assert.deepStrictEqual(
+      await childLabels(api.views.containers, workerPorts),
+      ['No published or listening ports'],
+    );
 
     const [volumes, ports] = await api.views.containers.getChildren(web);
     const [mount] = await api.views.containers.getChildren(volumes);
@@ -665,6 +676,51 @@ describe('Apple Container e2e', function () {
         n => n.id === `compose:${names.project}`,
       ),
     );
+  });
+
+  it('lists ports a container listens on without publishing them, reached through its IP', async () => {
+    // One port on every interface and one on loopback only, none published. The servers use BusyBox nc, which
+    // Ubuntu (IMAGE) does not have, so this container runs Alpine.
+    const http = (port: number, address = '') =>
+      `while true; do printf 'HTTP/1.0 200 OK\\r\\n\\r\\nport-${port}\\r\\n' | nc -l ${address}-p ${port}; done`;
+    await api.cli.run(
+      [
+        'run',
+        '--detach',
+        '--name',
+        names.ports,
+        'docker.io/library/alpine:latest',
+        'sh',
+        '-c',
+        `${http(18098)} & ${http(18099, '-s 127.0.0.1 ')} & wait`,
+      ],
+      {timeoutMs: 5 * 60_000},
+    );
+    const node = await waitFor('ports container', async () =>
+      (await children(api.views.containers)).find(
+        n => n.resource.id === names.ports && n.resource.ipv4,
+      ),
+    );
+    const [ports] = await api.views.containers.getChildren(node);
+    assert.strictEqual(ports.label, 'Ports');
+    const listening = await waitFor('listening ports', async () => {
+      const items = await api.views.containers.getChildren(ports);
+      return items.length === 2 ? items : undefined;
+    });
+    const ip = node.resource.ipv4!;
+    const [open, loopback] = listening;
+    assert.strictEqual(open.label, '18098/tcp');
+    assert.strictEqual(open.contextValue, 'port.tcp');
+    await vscode.commands.executeCommand('appleContainer.port.copyUrl', open);
+    const url = await vscode.env.clipboard.readText();
+    assert.strictEqual(url, `http://${ip}:18098`);
+    const response = await fetch(url);
+    assert.strictEqual((await response.text()).trim(), 'port-18098');
+
+    // Not reachable from the Mac, so it cannot be opened or copied
+    assert.strictEqual(loopback.label, '18099/tcp');
+    assert.strictEqual(loopback.contextValue, 'port.loopback');
+    await api.cli.run(['delete', '--force', names.ports]);
   });
 
   it('runs compose up and down for a workspace compose file', async function () {

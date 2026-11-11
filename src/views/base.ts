@@ -44,7 +44,7 @@ export abstract class ResourceProvider<T>
   }
 
   /** Children of an expandable node; flat views have none */
-  protected childNodes(_element: TreeNode): TreeNode[] {
+  protected childNodes(_element: TreeNode): TreeNode[] | Promise<TreeNode[]> {
     return [];
   }
 

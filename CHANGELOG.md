@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- **Ports** of a running container lists the TCP ports it listens on without publishing them, opened through the container IP without recreating it; ports listening only on loopback are flagged as unreachable from the Mac
 - The BuildKit builder is listed among the containers again, with its own icon and the builder commands, instead of in a separate Builder view
 - **Open in Remote-SSH** picks the folder by browsing the container as the login user, instead of typing its path
 - Dev container extensions pinned to a version (`publisher.name@1.2.3`) are matched by their id: a later entry for the same extension replaces an earlier one instead of installing both, `-publisher.name` removes a pinned entry, and an installed extension counts as present only at the pinned version

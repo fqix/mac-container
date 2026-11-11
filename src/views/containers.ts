@@ -4,6 +4,12 @@ import type {ContainerCli} from '../services/cli';
 import {ComposeProject, groupByComposeProject} from '../services/compose';
 import {relativeTime} from '../utils/i18n';
 import {formatBytes, formatPort, shortImageName} from '../utils/parse';
+import {
+  containerPortUrl,
+  type ListeningPort,
+  LISTENING_PORTS_SCRIPT,
+  parseListeningPorts,
+} from '../utils/ports';
 import type {ServiceMonitor} from '../services/state';
 import type {
   ContainerMount,
@@ -51,11 +57,12 @@ export class ContainerSectionNode extends vscode.TreeItem {
     this.iconPath = new vscode.ThemeIcon(
       section === 'volumes' ? 'database' : 'plug',
     );
-    this.description = String(
+    // Listening ports are only known once the section is expanded, so a running container's Ports show no count
+    const count =
       section === 'volumes'
         ? container.mounts.length
-        : container.publishedPorts.length,
-    );
+        : container.publishedPorts.length;
+    this.description = count ? String(count) : undefined;
   }
 }
 
@@ -124,6 +131,51 @@ export class PortNode extends vscode.TreeItem {
   }
 }
 
+/** A port a process listens on in the container, reached through the container's IP without --publish */
+export class ListeningPortNode extends vscode.TreeItem {
+  constructor(
+    readonly container: ContainerSummary,
+    readonly port: ListeningPort,
+  ) {
+    super(`${port.port}/tcp`, vscode.TreeItemCollapsibleState.None);
+    this.id = `container:${container.id}/listening/${port.port}`;
+    const md = new vscode.MarkdownString();
+    md.appendText(
+      vscode.l10n.t('Listening on {0}', port.addresses.join(', ')),
+    ).appendMarkdown('\n\n');
+    if (port.reachable && container.ipv4) {
+      this.contextValue = 'port.tcp';
+      this.iconPath = new vscode.ThemeIcon('radio-tower');
+      this.description = vscode.l10n.t('{0} (not published)', this.url);
+      md.appendText(
+        vscode.l10n.t(
+          'Not published: reachable from this Mac through the container IP, not through localhost or from other devices.',
+        ),
+      );
+    } else {
+      this.contextValue = 'port.loopback';
+      this.iconPath = new vscode.ThemeIcon(
+        'warning',
+        new vscode.ThemeColor('problemsWarningIcon.foreground'),
+      );
+      this.description = vscode.l10n.t('loopback only');
+      md.appendText(
+        vscode.l10n.t(
+          'Only listens on a loopback address, so it cannot be reached from this Mac. Listen on 0.0.0.0 instead, or forward the port over Remote-SSH.',
+        ),
+      );
+    }
+    this.tooltip = md;
+  }
+
+  get url(): string {
+    return containerPortUrl(this.container.ipv4 ?? '', this.port.port);
+  }
+}
+
+/** How long listening ports are reused before the container is asked again */
+const LISTENING_PORTS_TTL_MS = 15_000;
+
 export class ContainersProvider extends ResourceProvider<ContainerSummary> {
   constructor(
     monitor: ServiceMonitor,
@@ -150,30 +202,82 @@ export class ContainersProvider extends ResourceProvider<ContainerSummary> {
     ];
   }
 
-  protected override childNodes(element: TreeNode): TreeNode[] {
+  protected override async childNodes(element: TreeNode): Promise<TreeNode[]> {
     if (element instanceof ComposeProjectNode) {
       return element.project.containers.map(c => this.toNode(c));
     }
     if (element instanceof ResourceNode) {
       const c = element.resource as ContainerSummary;
-      // Sections only appear when they have entries
+      // Sections only appear when they have entries; a running container may have listening ports
       const sections: TreeNode[] = [];
       if (c.mounts.length) {
         sections.push(new ContainerSectionNode(c, 'volumes'));
       }
-      if (c.publishedPorts.length) {
+      if (hasPortsSection(c)) {
         sections.push(new ContainerSectionNode(c, 'ports'));
       }
       return sections;
     }
     if (element instanceof ContainerSectionNode) {
-      return element.section === 'volumes'
-        ? element.container.mounts.map(m => new MountNode(element.container, m))
-        : element.container.publishedPorts.map(
-            p => new PortNode(element.container, p),
-          );
+      const c = element.container;
+      if (element.section === 'volumes') {
+        return c.mounts.map(m => new MountNode(c, m));
+      }
+      const published = new Set(
+        c.publishedPorts
+          .filter(p => p.proto === 'tcp')
+          .map(p => p.containerPort),
+      );
+      const listening = (await this.listeningPorts(c)).filter(
+        p => !published.has(p.port),
+      );
+      const ports = [
+        ...c.publishedPorts.map(p => new PortNode(c, p)),
+        ...listening.map(p => new ListeningPortNode(c, p)),
+      ];
+      if (!ports.length) {
+        // The section is shown for every running container, before its listening ports are known
+        const none = new vscode.TreeItem(
+          vscode.l10n.t('No published or listening ports'),
+        );
+        none.id = `container:${c.id}/ports/none`;
+        none.iconPath = new vscode.ThemeIcon('info');
+        return [none];
+      }
+      return ports;
     }
     return [];
+  }
+
+  /** Listening ports read recently, per container run; polling refreshes expanded sections every few seconds */
+  private readonly listeningCache = new Map<
+    string,
+    {at: number; ports: Promise<ListeningPort[]>}
+  >();
+
+  /** Read when the Ports section is expanded; images without a shell or cat just show no listening ports */
+  private listeningPorts(c: ContainerSummary): Promise<ListeningPort[]> {
+    if (c.state !== 'running') {
+      return Promise.resolve([]);
+    }
+    const key = `${c.id}@${c.startedAt ?? ''}`;
+    const cached = this.listeningCache.get(key);
+    if (cached && Date.now() - cached.at < LISTENING_PORTS_TTL_MS) {
+      return cached.ports;
+    }
+    const ports = this.cli
+      .run(['exec', c.id, 'sh', '-c', LISTENING_PORTS_SCRIPT], {
+        timeoutMs: 5_000,
+      })
+      .then(parseListeningPorts, () => []);
+    // Entries of other runs and of removed containers go when the cache is written
+    for (const [k, v] of this.listeningCache) {
+      if (Date.now() - v.at >= LISTENING_PORTS_TTL_MS) {
+        this.listeningCache.delete(k);
+      }
+    }
+    this.listeningCache.set(key, {at: Date.now(), ports});
+    return ports;
   }
 
   protected toNode(c: ContainerSummary): ContainerNode {
@@ -181,7 +285,7 @@ export class ContainersProvider extends ResourceProvider<ContainerSummary> {
     const node = new ResourceNode(c, c.id);
     node.id = `container:${c.id}`;
     node.collapsibleState =
-      c.mounts.length || c.publishedPorts.length
+      c.mounts.length || hasPortsSection(c)
         ? vscode.TreeItemCollapsibleState.Collapsed
         : vscode.TreeItemCollapsibleState.None;
     // Compose-managed containers get a suffix: they are edited through their compose file, not recreated here.
@@ -255,6 +359,11 @@ export class ContainersProvider extends ResourceProvider<ContainerSummary> {
     node.tooltip = md;
     return node;
   }
+}
+
+/** Published ports, or a running container that may listen on ports reachable through its IP */
+function hasPortsSection(c: ContainerSummary): boolean {
+  return c.publishedPorts.length > 0 || (c.state === 'running' && !c.builder);
 }
 
 export function stateLabel(state: string): string {

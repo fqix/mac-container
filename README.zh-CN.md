@@ -61,6 +61,7 @@
 - 启动、停止、重启、强制终止、删除（支持多选）、清理已停止的容器。
 - 在集成终端中 **打开 Shell**（`container exec -it`）、**查看日志**（`logs -f`）和 **查看启动日志**。
 - 展开容器可以看到 **卷** 和 **端口**。TCP 端口可以直接在浏览器中打开或复制 URL，绑定挂载的目录可以在访达中显示。
+- 运行中容器的 **端口** 还会列出容器内在监听但未发布的 TCP 端口。每个容器都有本机可直接访问的 IP，所以无需用 `--publish` 重建容器，就能通过 `http://<容器 IP>:<端口>` 打开；只监听 `127.0.0.1` 的端口会被标出，因为本机无法访问。
 - **上传文件...** 和 **下载...** 在本机与运行中的容器之间复制文件和文件夹，容器内路径可以逐级浏览选择。本机已有同名文件时不会覆盖（自动加 ` (1)` 后缀）。资源管理器中的文件右键有 **上传到容器...**。
 - **查看资源用量** 打开 CPU、内存、网络 I/O、磁盘 I/O 的实时图表。
 
@@ -136,7 +137,7 @@ VS Code / Cursor Server 会在容器内下载，需要容器能访问外网；�
 | `containerEnv`、`remoteEnv`、`containerUser`、`remoteUser` | ✅ |
 | 生命周期命令，从 `initializeCommand`（在本机执行）到 `postAttachCommand` | ✅ |
 | `appPort` | ✅ 通过 `container run --publish` 发布 |
-| `forwardPorts` | ⚠️ 不发布；Remote-SSH 会转发它检测到在容器内监听的端口，本机也可以直接访问容器 IP |
+| `forwardPorts` | ⚠️ 不发布；Remote-SSH 会转发它检测到在容器内监听的端口，这些端口也会以容器 IP 列在 **端口** 下 |
 | `hostRequirements.cpus` / `memory` | ✅ 以 `--cpus` / `--memory` 应用；内存至少为 `appleContainer.devcontainer.memory`（4G） |
 | `capAdd`、`init`、`overrideCommand` | ✅ |
 | `runArgs` | ⚠️ 传给 `container run`；Docker 专有选项会被丢弃并给出警告，见[已知限制](#已知限制) |

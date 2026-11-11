@@ -61,6 +61,7 @@
 - Start, stop, restart, kill, delete (multi-select supported), prune stopped containers.
 - **Attach Shell** (`container exec -it`), **View Logs** (`logs -f`) and **View Boot Logs** in the integrated terminal.
 - Expand a container to see its **Volumes** and **Ports**. Open a TCP port in the browser, copy its URL, or reveal a bind-mounted folder in Finder.
+- **Ports** of a running container also lists the TCP ports it listens on without publishing them. Every container has its own IP that this Mac can reach, so they open at `http://<container IP>:<port>` without recreating the container with `--publish`; ports that only listen on `127.0.0.1` are flagged, as they cannot be reached from the Mac.
 - **Upload Files...** and **Download...** copy files and folders in and out of a running container; container paths are picked by browsing the container. Existing local files are never overwritten (a ` (1)` suffix is added). Files in the explorer have **Upload to Container...**.
 - **Show Stats** opens live charts for CPU, memory, network I/O and block I/O.
 
@@ -136,7 +137,7 @@ The container is named `devc-<folder>-<hash>` and labelled with `devcontainer.lo
 | `containerEnv`, `remoteEnv`, `containerUser`, `remoteUser` | ✅ |
 | Lifecycle commands, from `initializeCommand` (on this Mac) to `postAttachCommand` | ✅ |
 | `appPort` | ✅ published with `container run --publish` |
-| `forwardPorts` | ⚠️ not published; Remote-SSH forwards ports it sees listening in the container, and the container IP is reachable from the Mac |
+| `forwardPorts` | ⚠️ not published; Remote-SSH forwards ports it sees listening in the container, and they are listed under **Ports** with the container IP |
 | `hostRequirements.cpus` / `memory` | ✅ applied with `--cpus` / `--memory`; memory is at least `appleContainer.devcontainer.memory` (4G) |
 | `capAdd`, `init`, `overrideCommand` | ✅ |
 | `runArgs` | ⚠️ passed to `container run`; Docker-only options are dropped with a warning, see [Limitations](#limitations) |

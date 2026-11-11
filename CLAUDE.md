@@ -36,7 +36,7 @@ E2E_SKIP_BUILD=1 npm run test:e2e             # skip the image build test
 
 The suite runs twice: with a workspace folder and as an empty window. It keeps its SSH key and config out of `~/.ssh` via `APPLE_CONTAINER_SSH_DIR`.
 
-Test containers use Ubuntu (`docker.io/library/ubuntu:latest`), in the e2e suite (its `IMAGE`, the Dockerfile and compose file written by `test/runE2E.ts`) and for containers started to try a change by hand. Plain Ubuntu ships without sshd, wget or curl, so it exercises the package installs of the Remote-SSH preparation. Its uid 1000 is the `ubuntu` user. Only the no-package-manager case uses `busybox`.
+Test containers use Ubuntu (`docker.io/library/ubuntu:latest`), in the e2e suite (its `IMAGE`, the Dockerfile and compose file written by `test/runE2E.ts`) and for containers started to try a change by hand. Plain Ubuntu ships without sshd, wget or curl, so it exercises the package installs of the Remote-SSH preparation. Its uid 1000 is the `ubuntu` user. Only the no-package-manager case uses `busybox`, and the listening-ports test uses `alpine` for BusyBox `nc`.
 
 ## Architecture
 
