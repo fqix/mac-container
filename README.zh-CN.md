@@ -31,7 +31,7 @@
 | | |
 |---|---|
 | 硬件 | 搭载 Apple 芯片的 Mac |
-| `container` CLI | [apple/container](https://github.com/apple/container/releases)，已在 1.6.1 上测试 |
+| `container` CLI | [apple/container](https://github.com/apple/container/releases)，已在 1.7.1 上测试 |
 | 编辑器 | VS Code 1.90 及以上，或 Cursor |
 | 可选 | [container-compose](https://github.com/mcrich23/container-compose)（compose 项目）；Remote - SSH 扩展（远程工作区和开发容器） |
 
@@ -107,7 +107,7 @@
 
 ## 已知限制
 
-Apple `container` 的每个容器都是独立的轻量虚拟机，有自己的 Linux 内核，而不是共享 Docker daemon 的进程，所以部分 Docker 选项没有对应能力（基于 `container` 1.6.1 核实）。`devcontainer.json` 中（`runArgs`、`privileged` 或 features 带来的）这类选项会被丢弃并给出警告，容器仍能启动。
+Apple `container` 的每个容器都是独立的轻量虚拟机，有自己的 Linux 内核，而不是共享 Docker daemon 的进程，所以部分 Docker 选项没有对应能力（基于 `container` 1.7.1 核实）。`devcontainer.json` 中（`runArgs`、`privileged` 或 features 带来的）这类选项会被丢弃并给出警告，容器仍能启动。
 
 | Docker 选项 | Apple `container` 中 |
 |---|---|

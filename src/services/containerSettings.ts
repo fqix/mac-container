@@ -1,5 +1,5 @@
 // The container settings shown in the run / edit form, converted to and from `container run` arguments.
-// No vscode dependency. Field layout of the inspect configuration follows apple/container 1.6.1.
+// No vscode dependency. Field layout of the inspect configuration follows apple/container 1.7.1.
 
 import type {ContainerMount, PortMapping} from '../models/types';
 
@@ -201,10 +201,14 @@ export interface SettingsProblem {
   reason: ProblemReason;
 }
 
-/** Returns the problems found; empty when the settings can be applied */
+/**
+ * Returns the problems found; empty when the settings can be applied. `hostCpus` caps the CPUs, as `container run`
+ * refuses more CPUs than the host has cores since 1.7.1.
+ */
 export function validateSettings(
   settings: ContainerSettings,
   name?: string,
+  hostCpus = Infinity,
 ): SettingsProblem[] {
   const problems: SettingsProblem[] = [];
   if (
@@ -254,7 +258,10 @@ export function validateSettings(
       problems.push({section: 'env', index, reason: 'envName'});
     }
   });
-  if (settings.cpus && !/^[1-9][0-9]*$/.test(settings.cpus)) {
+  if (
+    settings.cpus &&
+    (!/^[1-9][0-9]*$/.test(settings.cpus) || Number(settings.cpus) > hostCpus)
+  ) {
     problems.push({section: 'resources', index: 0, reason: 'cpus'});
   }
   if (settings.memory && !/^[1-9][0-9]*[KMGTP]?$/i.test(settings.memory)) {

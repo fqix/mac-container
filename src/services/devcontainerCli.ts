@@ -70,19 +70,29 @@ function sizeBytes(size: string): number | undefined {
     : undefined;
 }
 
+/** hostRequirements.cpus when it is a usable CPU count */
+export function requiredCpus(
+  hostRequirements: Record<string, unknown> | undefined,
+): number | undefined {
+  const cpus = Number(hostRequirements?.cpus);
+  return Number.isInteger(cpus) && cpus > 0 ? cpus : undefined;
+}
+
 /**
  * CPUs and memory for the dev container. devcontainers/cli only checks hostRequirements, and Docker containers are
  * not limited by default, but an Apple container VM gets 1 GB unless told otherwise. So the memory is the larger of
- * hostRequirements.memory and the configured default, and hostRequirements.cpus is passed on as is.
+ * hostRequirements.memory and the configured default. hostRequirements.cpus is passed on, at most `hostCpus`: since
+ * 1.7.1 `container run` refuses more CPUs than the host has cores.
  */
 export function runDefaults(
   hostRequirements: Record<string, unknown> | undefined,
   defaultMemory: string,
+  hostCpus: number,
 ): string[] {
   const args: string[] = [];
-  const cpus = Number(hostRequirements?.cpus);
-  if (Number.isInteger(cpus) && cpus > 0) {
-    args.push('--cpus', String(cpus));
+  const cpus = requiredCpus(hostRequirements);
+  if (cpus !== undefined) {
+    args.push('--cpus', String(Math.min(cpus, hostCpus)));
   }
   const required =
     typeof hostRequirements?.memory === 'string'

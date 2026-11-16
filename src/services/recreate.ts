@@ -1,7 +1,7 @@
 // Rebuilds `container run` / `container create` arguments from a container's inspect configuration,
 // with edited settings. Apple container cannot change these on an existing container, so editing
 // means deleting the container and creating it again. No vscode dependency.
-// Field layout follows ContainerConfiguration / ProcessConfiguration of apple/container 1.6.1.
+// Field layout follows ContainerConfiguration / ProcessConfiguration of apple/container 1.7.1.
 
 import {type ContainerSettings, settingsArgs} from './containerSettings';
 

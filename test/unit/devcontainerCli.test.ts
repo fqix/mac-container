@@ -9,6 +9,7 @@ import {
   devContainerLogFile,
   dockerWrapper,
   pendingActionFor,
+  requiredCpus,
   parseReadConfiguration,
   prepareDockerWrapper,
   runDefaults,
@@ -55,28 +56,35 @@ describe('devcontainers/cli integration', () => {
   });
 
   it('sizes the dev container from hostRequirements and the default memory', () => {
-    assert.deepStrictEqual(runDefaults(undefined, '4G'), ['--memory', '4G']);
+    assert.deepStrictEqual(runDefaults(undefined, '4G', 10), [
+      '--memory',
+      '4G',
+    ]);
     // The larger of the two wins, as hostRequirements is a minimum
-    assert.deepStrictEqual(runDefaults({cpus: 8, memory: '16gb'}, '4G'), [
+    assert.deepStrictEqual(runDefaults({cpus: 8, memory: '16gb'}, '4G', 10), [
       '--cpus',
       '8',
       '--memory',
       '16G',
     ]);
-    assert.deepStrictEqual(runDefaults({memory: '512mb'}, '4G'), [
+    assert.deepStrictEqual(runDefaults({memory: '512mb'}, '4G', 10), [
       '--memory',
       '4G',
     ]);
-    assert.deepStrictEqual(runDefaults({memory: '1.5gb'}, '1G'), [
+    assert.deepStrictEqual(runDefaults({memory: '1.5gb'}, '1G', 10), [
       '--memory',
       '1536M',
     ]);
     // An empty setting leaves the Apple container default unless hostRequirements asks for more
-    assert.deepStrictEqual(runDefaults(undefined, ''), []);
+    assert.deepStrictEqual(runDefaults(undefined, '', 10), []);
     assert.deepStrictEqual(
-      runDefaults({cpus: 'many', memory: 'lots'}, 'bogus'),
+      runDefaults({cpus: 'many', memory: 'lots'}, 'bogus', 10),
       [],
     );
+    // container run refuses more CPUs than the host has cores
+    assert.deepStrictEqual(runDefaults({cpus: 16}, '', 10), ['--cpus', '10']);
+    assert.strictEqual(requiredCpus({cpus: 16}), 16);
+    assert.strictEqual(requiredCpus({cpus: 0}), undefined);
   });
 
   it('writes an executable docker wrapper that quotes paths and forwards arguments', async function () {

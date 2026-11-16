@@ -3,6 +3,7 @@
 
 import {existsSync, watch, type FSWatcher} from 'fs';
 import {mkdir, readFile, realpath, writeFile} from 'fs/promises';
+import * as os from 'os';
 import * as path from 'path';
 
 import * as vscode from 'vscode';
@@ -29,6 +30,7 @@ import {
   pendingActionFor,
   prepareDockerWrapper,
   readConfiguration,
+  requiredCpus,
   runDefaults,
   satisfiesExtension,
   splitExtensionId,
@@ -462,6 +464,17 @@ export async function openDevContainer(
   }
 
   async function createAndOpen(terminal: StepTerminal): Promise<boolean> {
+    const hostCpus = os.cpus().length;
+    const cpus = requiredCpus(config.hostRequirements);
+    if (cpus !== undefined && cpus > hostCpus) {
+      terminal.writeLine(
+        `⚠️ ${vscode.l10n.t(
+          'hostRequirements.cpus asks for {0} CPUs, but this Mac has {1} cores; the dev container gets {1}.',
+          String(cpus),
+          String(hostCpus),
+        )}`,
+      );
+    }
     const code = await terminal.run(
       rebuild
         ? vscode.l10n.t('Rebuild the dev container')
@@ -473,7 +486,10 @@ export async function openDevContainer(
       }),
       {
         cwd: target.workspaceFolder,
-        env: cliEnv(paths, runDefaults(config.hostRequirements, defaultMemory)),
+        env: cliEnv(
+          paths,
+          runDefaults(config.hostRequirements, defaultMemory, hostCpus),
+        ),
         // Shown by Show Dev Container Log in the container's window; the shim names the container this way
         logFile: devContainerLogFile(
           ctx.extension.globalStorageUri.fsPath,

@@ -1,5 +1,5 @@
 // The options shown in the build form, converted to `container build` arguments.
-// No vscode dependency. Options follow apple/container 1.6.1 (Sources/ContainerCommands/Build/BuildOptions.swift).
+// No vscode dependency. Options follow apple/container 1.7.1 (Sources/ContainerCommands/Build/BuildOptions.swift).
 
 export interface BuildOptions {
   /** Image name and tag */

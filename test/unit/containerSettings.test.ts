@@ -168,6 +168,7 @@ describe('container settings', () => {
         workdir: 'relative',
       },
       '-bad',
+      10,
     );
     assert.deepStrictEqual(
       problems.map(p => `${p.section}[${p.index}] ${p.reason}`),
@@ -181,10 +182,18 @@ describe('container settings', () => {
     );
     assert.deepStrictEqual(
       validateSettings(
-        {...EMPTY_SETTINGS, cpus: '4', memory: '2g', workdir: '/app'},
+        {...EMPTY_SETTINGS, cpus: '10', memory: '2g', workdir: '/app'},
         '',
+        10,
       ),
       [],
+    );
+    // container run refuses more CPUs than the host has cores
+    assert.deepStrictEqual(
+      validateSettings({...EMPTY_SETTINGS, cpus: '11'}, undefined, 10).map(
+        p => p.reason,
+      ),
+      ['cpus'],
     );
   });
 });

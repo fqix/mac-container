@@ -31,7 +31,7 @@
 | | |
 |---|---|
 | Hardware | Mac with Apple silicon |
-| `container` CLI | [apple/container](https://github.com/apple/container/releases), tested with 1.6.1 |
+| `container` CLI | [apple/container](https://github.com/apple/container/releases), tested with 1.7.1 |
 | Editor | VS Code 1.90 or later, or Cursor |
 | Optional | [container-compose](https://github.com/mcrich23/container-compose) for compose projects; the Remote - SSH extension for remote workspaces and dev containers |
 
@@ -107,7 +107,7 @@ In the dev container's window, the Remote indicator menu and the Command Palette
 
 ## Limitations
 
-Every Apple `container` container is its own lightweight VM with its own Linux kernel, not a process on a shared Docker daemon, so some Docker options have no equivalent (checked against `container` 1.6.1). In `devcontainer.json` (`runArgs`, `privileged` or features), they are dropped with a warning and the container still starts.
+Every Apple `container` container is its own lightweight VM with its own Linux kernel, not a process on a shared Docker daemon, so some Docker options have no equivalent (checked against `container` 1.7.1). In `devcontainer.json` (`runArgs`, `privileged` or features), they are dropped with a warning and the container still starts.
 
 | Docker option | In Apple `container` |
 |---|---|
