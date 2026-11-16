@@ -1,5 +1,6 @@
 // Parses container CLI JSON output into the extension model. Depends only on types.ts so it can be unit tested.
-// Field layout follows the actual output of container CLI 1.6.1, see test/fixtures.
+// Field layout follows the actual output of container CLI 1.6.1, see test/fixtures; 1.7.1 only adds cpuUtilization
+// to the stats output.
 
 import type {
   ContainerMount,

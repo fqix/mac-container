@@ -1,6 +1,8 @@
 // Webview form for running a container from an image, or editing an existing container.
 // Editing is applied by recreating the container, since Apple container cannot change these settings in place.
 
+import * as os from 'os';
+
 import * as vscode from 'vscode';
 
 import type {ContainerCli} from '../services/cli';
@@ -245,7 +247,7 @@ export class ContainerFormPanel implements vscode.Disposable {
     command: string,
     settings: ContainerSettings,
   ): Promise<void> {
-    const problems = validateSettings(settings, name);
+    const problems = validateSettings(settings, name, os.cpus().length);
     if (problems.length) {
       this.post({type: 'problems', messages: problems.map(problemMessage)});
       return;
@@ -280,7 +282,7 @@ export class ContainerFormPanel implements vscode.Disposable {
     containerId: string,
     settings: ContainerSettings,
   ): Promise<void> {
-    const problems = validateSettings(settings);
+    const problems = validateSettings(settings, undefined, os.cpus().length);
     if (problems.length) {
       this.post({type: 'problems', messages: problems.map(problemMessage)});
       return;
@@ -508,7 +510,10 @@ export function problemMessage(problem: SettingsProblem): string {
       'the container path is mounted more than once',
     ),
     envName: vscode.l10n.t('expected KEY=VALUE with a valid name'),
-    cpus: vscode.l10n.t('CPUs must be a whole number of at least 1'),
+    cpus: vscode.l10n.t(
+      'CPUs must be a whole number from 1 to {0}, the cores of this Mac',
+      String(os.cpus().length),
+    ),
     memory: vscode.l10n.t(
       'memory must be a number with an optional K, M, G, T or P suffix',
     ),
