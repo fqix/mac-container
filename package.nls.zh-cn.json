@@ -45,7 +45,7 @@
   "command.volume.prune": "清理卷",
   "command.system.start": "启动系统服务",
   "command.system.stop": "停止系统服务",
-  "command.system.status": "查看系统状态",
+  "command.system.status": "查看系统概览",
   "command.system.df": "查看磁盘占用",
   "command.system.logs": "查看系统日志",
   "command.system.menu": "系统服务菜单",

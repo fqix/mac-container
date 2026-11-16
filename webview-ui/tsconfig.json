@@ -13,5 +13,5 @@
     "noEmit": true,
     "isolatedModules": true
   },
-  "include": ["src", "vite.config.ts", "../src/services/stats.ts", "../src/services/recreate.ts", "../src/models/types.ts"]
+  "include": ["src", "vite.config.ts", "../src/services/stats.ts", "../src/services/recreate.ts", "../src/services/systemOverview.ts", "../src/models/types.ts"]
 }

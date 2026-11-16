@@ -6,6 +6,8 @@ import type {
   ContainerMount,
   ContainerStats,
   ContainerSummary,
+  DiskUsage,
+  DiskUsageEntry,
   ImageSummary,
   NetworkSummary,
   PortMapping,
@@ -227,6 +229,33 @@ export function parseSystemStatus(data: unknown): SystemStatus {
     containersRunning: item.resources?.containersRunning,
     containersTotal: item.resources?.containersTotal,
     images: item.resources?.images,
+    hostCpus: item.host?.cpus,
+    operatingSystem: item.host?.operatingSystem,
+    appRoot: item.paths?.appRoot,
+    installRoot: item.paths?.installRoot,
+  };
+}
+
+function parseDiskUsageEntry(item: Json | undefined): DiskUsageEntry {
+  const count = (value: unknown) => {
+    const n = Number(value);
+    return Number.isFinite(n) && n > 0 ? n : 0;
+  };
+  return {
+    total: count(item?.total),
+    active: count(item?.active),
+    sizeBytes: count(item?.sizeInBytes),
+    reclaimableBytes: count(item?.reclaimable),
+  };
+}
+
+/** `container system df --format json` */
+export function parseDiskUsage(data: unknown): DiskUsage {
+  const item = (data ?? {}) as Json;
+  return {
+    images: parseDiskUsageEntry(item.images),
+    containers: parseDiskUsageEntry(item.containers),
+    volumes: parseDiskUsageEntry(item.volumes),
   };
 }
 

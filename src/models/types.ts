@@ -92,6 +92,25 @@ export interface SystemStatus {
   containersRunning?: number;
   containersTotal?: number;
   images?: number;
+  hostCpus?: number;
+  operatingSystem?: string;
+  /** Data directory of the container service */
+  appRoot?: string;
+  installRoot?: string;
+}
+
+/** One row of `container system df` */
+export interface DiskUsageEntry {
+  total: number;
+  active: number;
+  sizeBytes: number;
+  reclaimableBytes: number;
+}
+
+export interface DiskUsage {
+  images: DiskUsageEntry;
+  containers: DiskUsageEntry;
+  volumes: DiskUsageEntry;
 }
 
 export interface ContainerStats {

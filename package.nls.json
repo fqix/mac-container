@@ -45,7 +45,7 @@
   "command.volume.prune": "Prune Volumes",
   "command.system.start": "Start System Service",
   "command.system.stop": "Stop System Service",
-  "command.system.status": "Show System Status",
+  "command.system.status": "Show System Overview",
   "command.system.df": "Show Disk Usage",
   "command.system.logs": "Show System Logs",
   "command.system.menu": "System Service Menu",
