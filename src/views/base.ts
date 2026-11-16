@@ -36,11 +36,12 @@ export abstract class ResourceProvider<T>
   constructor(protected readonly monitor: ServiceMonitor) {}
 
   protected abstract fetch(): Promise<T[]>;
-  protected abstract toNode(resource: T): ResourceNode<T>;
+  /** One row per resource; views whose rows are not the resources override rootNodes instead */
+  protected toNode?(resource: T): ResourceNode<T>;
 
   /** Top-level nodes; views that group resources override this */
   protected rootNodes(items: T[]): TreeNode[] {
-    return items.map(r => this.toNode(r));
+    return this.toNode ? items.map(r => this.toNode!(r)) : [];
   }
 
   /** Children of an expandable node; flat views have none */

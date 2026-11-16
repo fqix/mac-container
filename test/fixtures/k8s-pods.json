@@ -1,0 +1,352 @@
+{
+  "items": [
+    {
+      "kind": "Pod",
+      "metadata": {
+        "name": "coredns-7d764666f9-9sqn2",
+        "namespace": "kube-system",
+        "creationTimestamp": "2026-11-16T07:02:15Z",
+        "labels": {
+          "k8s-app": "kube-dns",
+          "pod-template-hash": "7d764666f9"
+        }
+      },
+      "spec": {
+        "containers": [
+          {
+            "name": "coredns"
+          }
+        ]
+      },
+      "status": {
+        "phase": "Running",
+        "containerStatuses": [
+          {
+            "name": "coredns",
+            "ready": true,
+            "restartCount": 0,
+            "state": {
+              "running": {
+                "startedAt": "2026-11-16T07:02:27Z"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "kind": "Pod",
+      "metadata": {
+        "name": "coredns-7d764666f9-xncwz",
+        "namespace": "kube-system",
+        "creationTimestamp": "2026-11-16T07:02:15Z",
+        "labels": {
+          "k8s-app": "kube-dns",
+          "pod-template-hash": "7d764666f9"
+        }
+      },
+      "spec": {
+        "containers": [
+          {
+            "name": "coredns"
+          }
+        ]
+      },
+      "status": {
+        "phase": "Running",
+        "containerStatuses": [
+          {
+            "name": "coredns",
+            "ready": true,
+            "restartCount": 0,
+            "state": {
+              "running": {
+                "startedAt": "2026-11-16T07:02:27Z"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "kind": "Pod",
+      "metadata": {
+        "name": "etcd-e2e-cluster",
+        "namespace": "kube-system",
+        "creationTimestamp": "2026-11-16T07:02:07Z",
+        "labels": {
+          "component": "etcd",
+          "tier": "control-plane"
+        }
+      },
+      "spec": {
+        "containers": [
+          {
+            "name": "etcd"
+          }
+        ]
+      },
+      "status": {
+        "phase": "Running",
+        "containerStatuses": [
+          {
+            "name": "etcd",
+            "ready": true,
+            "restartCount": 0,
+            "state": {
+              "running": {
+                "startedAt": "2026-11-16T07:02:04Z"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "kind": "Pod",
+      "metadata": {
+        "name": "kindnet-t4r2j",
+        "namespace": "kube-system",
+        "creationTimestamp": "2026-11-16T07:02:18Z",
+        "labels": {
+          "app": "kindnet",
+          "controller-revision-hash": "84bb979f97",
+          "k8s-app": "kindnet",
+          "pod-template-generation": "1",
+          "tier": "node"
+        }
+      },
+      "spec": {
+        "containers": [
+          {
+            "name": "kindnet-cni"
+          }
+        ]
+      },
+      "status": {
+        "phase": "Running",
+        "containerStatuses": [
+          {
+            "name": "kindnet-cni",
+            "ready": true,
+            "restartCount": 0,
+            "state": {
+              "running": {
+                "startedAt": "2026-11-16T07:02:20Z"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "kind": "Pod",
+      "metadata": {
+        "name": "kindnet-zxjkt",
+        "namespace": "kube-system",
+        "creationTimestamp": "2026-11-16T07:02:15Z",
+        "labels": {
+          "app": "kindnet",
+          "controller-revision-hash": "84bb979f97",
+          "k8s-app": "kindnet",
+          "pod-template-generation": "1",
+          "tier": "node"
+        }
+      },
+      "spec": {
+        "containers": [
+          {
+            "name": "kindnet-cni"
+          }
+        ]
+      },
+      "status": {
+        "phase": "Running",
+        "containerStatuses": [
+          {
+            "name": "kindnet-cni",
+            "ready": true,
+            "restartCount": 0,
+            "state": {
+              "running": {
+                "startedAt": "2026-11-16T07:02:16Z"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "kind": "Pod",
+      "metadata": {
+        "name": "kube-apiserver-e2e-cluster",
+        "namespace": "kube-system",
+        "creationTimestamp": "2026-11-16T07:02:07Z",
+        "labels": {
+          "component": "kube-apiserver",
+          "tier": "control-plane"
+        }
+      },
+      "spec": {
+        "containers": [
+          {
+            "name": "kube-apiserver"
+          }
+        ]
+      },
+      "status": {
+        "phase": "Running",
+        "containerStatuses": [
+          {
+            "name": "kube-apiserver",
+            "ready": true,
+            "restartCount": 0,
+            "state": {
+              "running": {
+                "startedAt": "2026-11-16T07:02:04Z"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "kind": "Pod",
+      "metadata": {
+        "name": "kube-controller-manager-e2e-cluster",
+        "namespace": "kube-system",
+        "creationTimestamp": "2026-11-16T07:02:08Z",
+        "labels": {
+          "component": "kube-controller-manager",
+          "tier": "control-plane"
+        }
+      },
+      "spec": {
+        "containers": [
+          {
+            "name": "kube-controller-manager"
+          }
+        ]
+      },
+      "status": {
+        "phase": "Running",
+        "containerStatuses": [
+          {
+            "name": "kube-controller-manager",
+            "ready": true,
+            "restartCount": 0,
+            "state": {
+              "running": {
+                "startedAt": "2026-11-16T07:02:04Z"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "kind": "Pod",
+      "metadata": {
+        "name": "kube-proxy-b24l9",
+        "namespace": "kube-system",
+        "creationTimestamp": "2026-11-16T07:02:15Z",
+        "labels": {
+          "controller-revision-hash": "74c976587f",
+          "k8s-app": "kube-proxy",
+          "pod-template-generation": "1"
+        }
+      },
+      "spec": {
+        "containers": [
+          {
+            "name": "kube-proxy"
+          }
+        ]
+      },
+      "status": {
+        "phase": "Running",
+        "containerStatuses": [
+          {
+            "name": "kube-proxy",
+            "ready": true,
+            "restartCount": 0,
+            "state": {
+              "running": {
+                "startedAt": "2026-11-16T07:02:15Z"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "kind": "Pod",
+      "metadata": {
+        "name": "kube-proxy-htgql",
+        "namespace": "kube-system",
+        "creationTimestamp": "2026-11-16T07:02:18Z",
+        "labels": {
+          "controller-revision-hash": "74c976587f",
+          "k8s-app": "kube-proxy",
+          "pod-template-generation": "1"
+        }
+      },
+      "spec": {
+        "containers": [
+          {
+            "name": "kube-proxy"
+          }
+        ]
+      },
+      "status": {
+        "phase": "Running",
+        "containerStatuses": [
+          {
+            "name": "kube-proxy",
+            "ready": true,
+            "restartCount": 0,
+            "state": {
+              "running": {
+                "startedAt": "2026-11-16T07:02:20Z"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "kind": "Pod",
+      "metadata": {
+        "name": "kube-scheduler-e2e-cluster",
+        "namespace": "kube-system",
+        "creationTimestamp": "2026-11-16T07:02:07Z",
+        "labels": {
+          "component": "kube-scheduler",
+          "tier": "control-plane"
+        }
+      },
+      "spec": {
+        "containers": [
+          {
+            "name": "kube-scheduler"
+          }
+        ]
+      },
+      "status": {
+        "phase": "Running",
+        "containerStatuses": [
+          {
+            "name": "kube-scheduler",
+            "ready": true,
+            "restartCount": 0,
+            "state": {
+              "running": {
+                "startedAt": "2026-11-16T07:02:04Z"
+              }
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

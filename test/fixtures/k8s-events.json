@@ -1,0 +1,116 @@
+{
+  "items": [
+    {
+      "count": 4,
+      "eventTime": null,
+      "involvedObject": {
+        "kind": "Node",
+        "name": "e2e-cluster-worker-1",
+        "namespace": null
+      },
+      "kind": "Event",
+      "lastTimestamp": "2026-11-16T07:02:18Z",
+      "message": "Node e2e-cluster-worker-1 status is now: NodeHasSufficientMemory",
+      "metadata": {
+        "name": "e2e-cluster-worker-1.18e8747e5d716159",
+        "namespace": "default",
+        "creationTimestamp": "2026-11-16T07:02:18Z"
+      },
+      "reason": "NodeHasSufficientMemory",
+      "type": "Normal"
+    },
+    {
+      "count": 4,
+      "eventTime": null,
+      "involvedObject": {
+        "kind": "Node",
+        "name": "e2e-cluster-worker-1",
+        "namespace": null
+      },
+      "kind": "Event",
+      "lastTimestamp": "2026-11-16T07:02:18Z",
+      "message": "Node e2e-cluster-worker-1 status is now: NodeHasNoDiskPressure",
+      "metadata": {
+        "name": "e2e-cluster-worker-1.18e8747e5d717052",
+        "namespace": "default",
+        "creationTimestamp": "2026-11-16T07:02:18Z"
+      },
+      "reason": "NodeHasNoDiskPressure",
+      "type": "Normal"
+    },
+    {
+      "count": 4,
+      "eventTime": null,
+      "involvedObject": {
+        "kind": "Node",
+        "name": "e2e-cluster-worker-1",
+        "namespace": null
+      },
+      "kind": "Event",
+      "lastTimestamp": "2026-11-16T07:02:18Z",
+      "message": "Node e2e-cluster-worker-1 status is now: NodeHasSufficientPID",
+      "metadata": {
+        "name": "e2e-cluster-worker-1.18e8747e5d717946",
+        "namespace": "default",
+        "creationTimestamp": "2026-11-16T07:02:18Z"
+      },
+      "reason": "NodeHasSufficientPID",
+      "type": "Normal"
+    },
+    {
+      "count": 1,
+      "eventTime": null,
+      "involvedObject": {
+        "kind": "Node",
+        "name": "e2e-cluster-worker-1",
+        "namespace": null
+      },
+      "kind": "Event",
+      "lastTimestamp": "2026-11-16T07:02:17Z",
+      "message": "Updated Node Allocatable limit across pods",
+      "metadata": {
+        "name": "e2e-cluster-worker-1.18e8747e5ee67459",
+        "namespace": "default",
+        "creationTimestamp": "2026-11-16T07:02:17Z"
+      },
+      "reason": "NodeAllocatableEnforced",
+      "type": "Normal"
+    },
+    {
+      "count": 1,
+      "eventTime": null,
+      "involvedObject": {
+        "kind": "Node",
+        "name": "e2e-cluster-worker-1",
+        "namespace": null
+      },
+      "kind": "Event",
+      "lastTimestamp": "2026-11-16T07:02:19Z",
+      "message": "Node e2e-cluster-worker-1 event: Registered Node e2e-cluster-worker-1 in Controller",
+      "metadata": {
+        "name": "e2e-cluster-worker-1.18e8747eb34da10e",
+        "namespace": "default",
+        "creationTimestamp": "2026-11-16T07:02:19Z"
+      },
+      "reason": "RegisteredNode",
+      "type": "Normal"
+    },
+    {
+      "eventTime": "2026-11-16T07:02:20.480732Z",
+      "involvedObject": {
+        "kind": "Node",
+        "name": "e2e-cluster-worker-1",
+        "namespace": null
+      },
+      "kind": "Event",
+      "lastTimestamp": null,
+      "metadata": {
+        "name": "e2e-cluster-worker-1.18e8747f09c55693",
+        "namespace": "default",
+        "creationTimestamp": "2026-11-16T07:02:20Z"
+      },
+      "reason": "Starting",
+      "type": "Normal"
+    }
+  ]
+}

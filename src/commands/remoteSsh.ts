@@ -4,35 +4,61 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 
 import {
+  containerTarget,
   DEFAULT_SSHD,
+  type ExecTarget,
   InstallFailedError,
   type InstallRunner,
   NoPackageManagerError,
+  POD_SSHD_ARGS,
+  PodNotRootError,
+  podHostAlias,
+  type PodRef,
   type PrepareResult,
+  podTarget,
+  proxyCommand,
+  type SshEntry,
   type SshHost,
   SshdMissingError,
   SshUserMissingError,
   ensureClientKey,
   ensureUserConfigIncluded,
-  hostAlias,
   installPackages,
   missingPackages,
   installSshd,
-  prepareContainer,
+  prepareTarget,
   renderConfig,
+  withPrelude,
   writeConfig,
   writeSessionEnvironment,
 } from '../services/remoteSsh';
+import {writeConfigArgs} from '../services/cluster';
 import {describeError} from '../utils/i18n';
 import type {ContainerSummary} from '../models/types';
-import {pickContainerPath} from '../ui/containerPathPicker';
+import {pickTargetPath} from '../ui/containerPathPicker';
 import {StepTerminal} from '../ui/stepTerminal';
 import type {ContainerNode} from '../views/containers';
+import type {K8sItemTreeNode} from '../views/clusters';
 import {CommandContext, register, withProgress} from './common';
 
-/** globalState keys: sshd path and login user per container, last opened folder per user@container */
+/** globalState keys: sshd path and login user per container, last opened folder per user@host, pod hosts */
 const HOSTS_KEY = 'remoteSsh.hosts';
 const FOLDERS_KEY = 'remoteSsh.folders';
+const POD_HOSTS_KEY = 'remoteSsh.podHosts';
+/** Pods come and go; the config keeps the hosts of the most recently opened ones */
+const MAX_POD_HOSTS = 20;
+
+/** A pod host of the managed config, with the pod it reaches (to reuse its alias and drop it with its cluster) */
+interface PodHost extends SshEntry, PodRef {
+  /** When it was last opened, for MAX_POD_HOSTS */
+  time: number;
+}
+
+const samePod = (a: PodRef, b: PodRef) =>
+  a.cluster === b.cluster &&
+  a.namespace === b.namespace &&
+  a.pod === b.pod &&
+  a.container === b.container;
 
 const INSTALL_HINT = [
   'apk add openssh-server',
@@ -50,6 +76,36 @@ export function registerRemoteSshCommands(ctx: CommandContext): void {
       }
     },
   );
+
+  register(
+    ctx,
+    'appleContainer.k8s.openRemoteSsh',
+    async (node?: K8sItemTreeNode) => {
+      const ref = node?.resource;
+      if (!ref || ref.item.resource !== 'pods' || !ref.item.namespace) {
+        return;
+      }
+      const containers = ref.item.containers ?? [];
+      const container =
+        containers.length <= 1
+          ? containers[0]
+          : await vscode.window.showQuickPick(containers, {
+              title: vscode.l10n.t('Open {0} over Remote-SSH', ref.item.name),
+              placeHolder: vscode.l10n.t('Container'),
+            });
+      if (!container) {
+        return;
+      }
+      await openPodOverSsh(ctx, {
+        cluster: ref.cluster,
+        namespace: ref.item.namespace,
+        pod: ref.item.name,
+        container,
+        version: ref.version,
+        multiContainer: containers.length > 1,
+      });
+    },
+  );
 }
 
 export interface SshOpenOptions {
@@ -65,6 +121,12 @@ export interface SshOpenOptions {
   terminal?: StepTerminal;
 }
 
+const configuredUser = () =>
+  vscode.workspace
+    .getConfiguration('appleContainer')
+    .get<string>('sshUser', '')
+    .trim();
+
 /**
  * Makes a running container reachable over SSH (sshd installed if needed, key authorized, host entry written)
  * and opens a folder in it with Remote-SSH in a new window. Resolves false when it stopped early.
@@ -74,63 +136,193 @@ export async function openContainerOverSsh(
   container: Pick<ContainerSummary, 'id' | 'user'>,
   options: SshOpenOptions = {},
 ): Promise<boolean> {
-  const {cli} = ctx;
-  const state = ctx.extension.globalState;
   const id = container.id;
+  // An explicit setting wins; otherwise log in as the container's own process user (image USER or --user)
+  const user = options.user || configuredUser() || container.user || 'root';
+  return openOverSsh(
+    ctx,
+    containerTarget(ctx.cli, id),
+    user,
+    options,
+    async result => {
+      const state = ctx.extension.globalState;
+      await state.update(HOSTS_KEY, {
+        ...state.get<Record<string, SshHost>>(HOSTS_KEY, {}),
+        [id]: {id, sshd: result.sshd, user: result.user},
+      });
+      await writeSshConfig(ctx);
+    },
+  );
+}
+
+/**
+ * Opens one container of a pod of a `container cluster` with Remote-SSH, the same way as a container: sshd runs on
+ * the connection through `kubectl exec`. The pod's container must run as root, since kubectl cannot switch users.
+ */
+export async function openPodOverSsh(
+  ctx: CommandContext,
+  ref: PodRef & {version?: string; multiContainer?: boolean},
+): Promise<boolean> {
+  // Before kubectl, which may have to be downloaded first
   if (!(await ensureRemoteSshExtension())) {
     return false;
   }
-  // An explicit setting wins; otherwise log in as the container's own process user (image USER or --user)
-  const configured = vscode.workspace
-    .getConfiguration('appleContainer')
-    .get<string>('sshUser', '')
-    .trim();
-  const user = options.user || configured || container.user || 'root';
+  const {kubectl, target: kube} = await ctx.k8s.prepare(ref.cluster, {
+    interactive: true,
+    version: ref.version,
+  });
+  // A pod opened before keeps its host, so its Remote-SSH window and recent entry still match
+  const saved = Object.values(
+    ctx.extension.globalState.get<Record<string, PodHost>>(POD_HOSTS_KEY, {}),
+  );
+  const alias =
+    saved.find(host => samePod(host, ref))?.alias ??
+    podHostAlias(ref, {
+      multiContainer: ref.multiContainer,
+      taken: candidate =>
+        saved.some(host => host.alias === candidate && !samePod(host, ref)),
+    });
+  const target = podTarget(kubectl, kube, ref, alias);
+  const cliPath = await ctx.cli.executable();
+  return openOverSsh(
+    ctx,
+    target,
+    configuredUser() || 'root',
+    {},
+    async result => {
+      const state = ctx.extension.globalState;
+      const host: PodHost = {
+        alias: target.alias,
+        hostName: `${ref.pod}.${ref.namespace}`,
+        user: result.user,
+        // The kubeconfig is written again on each connection, so a cluster recreated under the same name (new
+        // certificates) still connects without browsing it first
+        proxyCommand: withPrelude(
+          cliPath,
+          writeConfigArgs(ref.cluster, kube.kubeconfig),
+          proxyCommand(
+            kubectl,
+            (argv, options) => target.exec(argv, options),
+            result.sshd,
+            POD_SSHD_ARGS,
+          ),
+        ),
+        cluster: ref.cluster,
+        namespace: ref.namespace,
+        pod: ref.pod,
+        container: ref.container,
+        time: Date.now(),
+      };
+      await state.update(POD_HOSTS_KEY, {
+        ...state.get<Record<string, PodHost>>(POD_HOSTS_KEY, {}),
+        [host.alias]: host,
+      });
+      await writeSshConfig(ctx);
+    },
+  );
+}
+
+/**
+ * Rewrites the managed SSH config: the running containers (prepared ones with their sshd and user, others with
+ * defaults so they connect once set up) and the most recently opened pods of clusters that still exist.
+ */
+async function writeSshConfig(ctx: CommandContext): Promise<void> {
+  const {cli} = ctx;
+  const state = ctx.extension.globalState;
+
+  const saved = {...state.get<Record<string, SshHost>>(HOSTS_KEY, {})};
+  const containers = (await cli.listContainers()).filter(c => !c.builder);
+  const known = new Set(containers.map(c => c.id));
+  for (const key of Object.keys(saved)) {
+    if (!known.has(key)) {
+      delete saved[key];
+    }
+  }
+  await state.update(HOSTS_KEY, saved);
+  const hosts = containers.map(
+    c =>
+      saved[c.id] ?? {
+        id: c.id,
+        sshd: DEFAULT_SSHD,
+        user: c.user?.split(':')[0] || 'root',
+      },
+  );
+
+  // Pods of deleted clusters go; when the clusters cannot be listed right now, every pod host is kept
+  const clusters = await cli
+    .listClusters()
+    .then(list => new Set(list.map(c => c.name)))
+    .catch(() => undefined);
+  const pods = Object.values(
+    state.get<Record<string, PodHost>>(POD_HOSTS_KEY, {}),
+  )
+    .filter(pod => !clusters || clusters.has(pod.cluster))
+    .sort((a, b) => b.time - a.time)
+    .slice(0, MAX_POD_HOSTS);
+  await state.update(
+    POD_HOSTS_KEY,
+    Object.fromEntries(pods.map(pod => [pod.alias, pod])),
+  );
+
+  await writeConfig(
+    renderConfig(
+      hosts,
+      await cli.executable(),
+      undefined,
+      pods.map(({alias, hostName, user, proxyCommand}) => ({
+        alias,
+        hostName,
+        user,
+        proxyCommand,
+      })),
+    ),
+  );
+}
+
+/**
+ * Prepares `target` for SSH (sshd installed if needed, key authorized), lets `saveHost` write its host entry, and
+ * opens a folder in it with Remote-SSH. Resolves false when it stopped early.
+ */
+async function openOverSsh(
+  ctx: CommandContext,
+  target: ExecTarget,
+  user: string,
+  options: SshOpenOptions,
+  saveHost: (result: PrepareResult) => Promise<void>,
+): Promise<boolean> {
+  const state = ctx.extension.globalState;
+  const name = target.name;
+  if (!(await ensureRemoteSshExtension())) {
+    return false;
+  }
   // Package installs show the package manager's output as steps in a terminal: the caller's, or one opened on first use
   let ownTerminal: StepTerminal | undefined;
-  const install: InstallRunner = async ({args, packages, cancelArgs}) => {
+  const install: InstallRunner = async ({
+    executable,
+    args,
+    packages,
+    cancelArgs,
+  }) => {
     const terminal =
       options.terminal ??
       (ownTerminal ??= await StepTerminal.start(
-        vscode.l10n.t('Prepare {0} for Remote-SSH', id),
+        vscode.l10n.t('Prepare {0} for Remote-SSH', name),
       ));
     return terminal.run(
       vscode.l10n.t('Install {0}', packages.join(' ')),
-      await cli.executable(),
+      executable,
       args,
-      {onCancel: () => cli.run(cancelArgs, {timeoutMs: 15_000})},
+      {onCancel: () => target.run(cancelArgs, {timeoutMs: 15_000})},
     );
   };
 
   const prepare = () =>
     withProgress(
-      vscode.l10n.t('Preparing SSH access to {0}...', id),
+      vscode.l10n.t('Preparing SSH access to {0}...', name),
       async () => {
         const publicKey = await ensureClientKey();
-        const result = await prepareContainer(cli, id, user, publicKey);
-
-        const saved = {
-          ...state.get<Record<string, SshHost>>(HOSTS_KEY, {}),
-          [id]: {id, sshd: result.sshd, user: result.user},
-        };
-        const containers = (await cli.listContainers()).filter(c => !c.builder);
-        const known = new Set(containers.map(c => c.id));
-        for (const key of Object.keys(saved)) {
-          if (!known.has(key)) {
-            delete saved[key];
-          }
-        }
-        await state.update(HOSTS_KEY, saved);
-        // Containers never prepared get defaults; they connect once sshd and the key are set up
-        const hosts = containers.map(
-          c =>
-            saved[c.id] ?? {
-              id: c.id,
-              sshd: DEFAULT_SSHD,
-              user: c.user?.split(':')[0] || 'root',
-            },
-        );
-        await writeConfig(renderConfig(hosts, await cli.executable()));
+        const result = await prepareTarget(target, user, publicKey);
+        await saveHost(result);
         return result;
       },
     );
@@ -146,13 +338,13 @@ export async function openContainerOverSsh(
           throw error;
         }
         try {
-          await installSshd(id, install);
+          await installSshd(target, install);
         } catch (installError) {
           // Stopped by the user in the terminal: no error to report
           if (installError instanceof vscode.CancellationError) {
             throw installError;
           }
-          await reportMissingSshd(id, installError);
+          await reportMissingSshd(target, installError);
           return undefined;
         }
         result = await prepare();
@@ -163,7 +355,17 @@ export async function openContainerOverSsh(
           vscode.l10n.t(
             'User {0} does not exist in container {1}.',
             error.user,
-            id,
+            name,
+          ),
+        );
+        return undefined;
+      }
+      if (error instanceof PodNotRootError) {
+        void vscode.window.showErrorMessage(
+          vscode.l10n.t(
+            'Pod {0} runs as uid {1}. Opening a pod over Remote-SSH sets up sshd as root, and kubectl exec cannot switch to root; use a container that runs as root.',
+            name,
+            error.uid,
           ),
         );
         return undefined;
@@ -174,7 +376,7 @@ export async function openContainerOverSsh(
     const packages = missingPackages(result);
     if (packages.length) {
       try {
-        await installPackages(id, packages, install);
+        await installPackages(target, packages, install);
       } catch (error) {
         if (error instanceof vscode.CancellationError) {
           throw error;
@@ -185,7 +387,7 @@ export async function openContainerOverSsh(
           void vscode.window.showErrorMessage(
             vscode.l10n.t(
               'Remote-SSH needs bash, which container {0} does not have, and installing it failed: {1}. Install bash in the container, or use an image that has it.',
-              id,
+              name,
               reason,
             ),
           );
@@ -195,7 +397,7 @@ export async function openContainerOverSsh(
         void vscode.window.showWarningMessage(
           vscode.l10n.t(
             'Could not install wget in container {0}: {1}. Remote-SSH cannot reconnect while its server is running there; install wget or curl in the container.',
-            id,
+            name,
             reason,
           ),
         );
@@ -219,16 +421,16 @@ export async function openContainerOverSsh(
     return false;
   }
 
-  await writeSessionEnvironment(cli, id, prepared.user, options.remoteEnv);
+  await writeSessionEnvironment(target, prepared.user, options.remoteEnv);
   await ensureIncluded();
 
-  // Remembered per login, since another user starts in another home
-  const folderKey = `${prepared.user}@${id}`;
+  // Remembered per login, since another user starts in another home; containers by id, pods by host alias
+  const folderKey = `${prepared.user}@${target.switchesUser ? name : target.alias}`;
   const folders = state.get<Record<string, string>>(FOLDERS_KEY, {});
   const folder =
     options.folder ??
-    (await pickContainerPath(cli, id, {
-      title: vscode.l10n.t('Open {0} over Remote-SSH', id),
+    (await pickTargetPath(target, {
+      title: vscode.l10n.t('Open {0} over Remote-SSH', name),
       start: folders[folderKey] ?? prepared.home,
       mode: 'directory',
       selectLabel: vscode.l10n.t('Open this folder'),
@@ -241,7 +443,7 @@ export async function openContainerOverSsh(
   await state.update(FOLDERS_KEY, {...folders, [folderKey]: folder});
   const uri = vscode.Uri.from({
     scheme: 'vscode-remote',
-    authority: `ssh-remote+${hostAlias(id)}`,
+    authority: `ssh-remote+${target.alias}`,
     path: folder,
   });
   await vscode.commands.executeCommand(
@@ -288,12 +490,19 @@ function installFailure(error: unknown): string {
 }
 
 /** Automatic installation failed (no package manager, no network, ...): leave it to the user */
-async function reportMissingSshd(id: string, cause: unknown): Promise<void> {
+async function reportMissingSshd(
+  target: ExecTarget,
+  cause: unknown,
+): Promise<void> {
   const copy = vscode.l10n.t('Copy Install Command');
-  const shell = vscode.l10n.t('Attach Shell');
+  // Only a container has the Attach Shell command of the Containers view
+  const shell = target.switchesUser ? vscode.l10n.t('Attach Shell') : undefined;
   const reason = installFailure(cause);
   const answer = await vscode.window.showErrorMessage(
-    vscode.l10n.t('Could not install openssh-server in container {0}.', id),
+    vscode.l10n.t(
+      'Could not install openssh-server in container {0}.',
+      target.name,
+    ),
     {
       modal: true,
       detail: vscode.l10n.t(
@@ -303,13 +512,13 @@ async function reportMissingSshd(id: string, cause: unknown): Promise<void> {
       ),
     },
     copy,
-    shell,
+    ...(shell ? [shell] : []),
   );
   if (answer === copy) {
     await vscode.env.clipboard.writeText(INSTALL_HINT);
-  } else if (answer === shell) {
+  } else if (shell && answer === shell) {
     await vscode.commands.executeCommand('appleContainer.container.exec', {
-      resource: {id},
+      resource: {id: target.name},
     });
   }
 }

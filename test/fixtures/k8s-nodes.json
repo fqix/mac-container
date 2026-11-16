@@ -1,0 +1,82 @@
+{
+  "items": [
+    {
+      "kind": "Node",
+      "metadata": {
+        "name": "e2e-cluster",
+        "creationTimestamp": "2026-11-16T07:02:05Z",
+        "labels": {
+          "beta.kubernetes.io/arch": "arm64",
+          "beta.kubernetes.io/os": "linux",
+          "kubernetes.io/arch": "arm64",
+          "kubernetes.io/hostname": "e2e-cluster",
+          "kubernetes.io/os": "linux",
+          "node-role.kubernetes.io/control-plane": "",
+          "node.kubernetes.io/exclude-from-external-load-balancers": ""
+        }
+      },
+      "spec": {},
+      "status": {
+        "conditions": [
+          {
+            "type": "MemoryPressure",
+            "status": "False"
+          },
+          {
+            "type": "DiskPressure",
+            "status": "False"
+          },
+          {
+            "type": "PIDPressure",
+            "status": "False"
+          },
+          {
+            "type": "Ready",
+            "status": "True"
+          }
+        ],
+        "nodeInfo": {
+          "kubeletVersion": "v1.35.5"
+        }
+      }
+    },
+    {
+      "kind": "Node",
+      "metadata": {
+        "name": "e2e-cluster-worker-1",
+        "creationTimestamp": "2026-11-16T07:02:18Z",
+        "labels": {
+          "beta.kubernetes.io/arch": "arm64",
+          "beta.kubernetes.io/os": "linux",
+          "kubernetes.io/arch": "arm64",
+          "kubernetes.io/hostname": "e2e-cluster-worker-1",
+          "kubernetes.io/os": "linux"
+        }
+      },
+      "spec": {},
+      "status": {
+        "conditions": [
+          {
+            "type": "MemoryPressure",
+            "status": "False"
+          },
+          {
+            "type": "DiskPressure",
+            "status": "False"
+          },
+          {
+            "type": "PIDPressure",
+            "status": "False"
+          },
+          {
+            "type": "Ready",
+            "status": "True"
+          }
+        ],
+        "nodeInfo": {
+          "kubeletVersion": "v1.35.5"
+        }
+      }
+    }
+  ]
+}

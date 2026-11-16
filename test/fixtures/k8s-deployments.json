@@ -1,0 +1,23 @@
+{
+  "items": [
+    {
+      "kind": "Deployment",
+      "metadata": {
+        "name": "coredns",
+        "namespace": "kube-system",
+        "creationTimestamp": "2026-11-16T07:02:08Z",
+        "labels": {
+          "k8s-app": "kube-dns"
+        }
+      },
+      "spec": {
+        "replicas": 2
+      },
+      "status": {
+        "readyReplicas": 2,
+        "updatedReplicas": 2,
+        "replicas": 2
+      }
+    }
+  ]
+}

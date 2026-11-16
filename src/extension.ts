@@ -5,7 +5,9 @@ import type {CommandContext} from './commands/common';
 import {register} from './commands/common';
 import {registerBuilderCommands} from './commands/builder';
 import {registerComposeCommands} from './commands/compose';
+import {registerClusterCommands} from './commands/clusters';
 import {registerContainerCommands} from './commands/containers';
+import {registerK8sCommands} from './commands/k8s';
 import {
   installDevContainerExtensions,
   registerDevContainerCommands,
@@ -26,8 +28,10 @@ import {findConfigFiles} from './services/devcontainer';
 import {ServiceMonitor} from './services/state';
 import {StatsPanel} from './panels/statsPanel';
 import {SystemPanel} from './panels/systemPanel';
+import {K8sAccess} from './ui/kubectl';
 import {ServiceStatusBar} from './ui/statusBar';
 import type {ResourceProvider} from './views/base';
+import {ClustersProvider} from './views/clusters';
 import {ContainersProvider} from './views/containers';
 import {ImagesProvider} from './views/images';
 import {NetworksProvider} from './views/networks';
@@ -39,6 +43,8 @@ export interface ExtensionApi {
   cli: ContainerCli;
   monitor: ServiceMonitor;
   views: CommandContext['views'];
+  /** kubectl for the clusters, e.g. for the demo's Kubernetes resources */
+  k8s: K8sAccess;
   /** Global storage folder, e.g. for the dev container logs */
   storagePath: string;
 }
@@ -67,6 +73,7 @@ export function activate(
   const cli = new ContainerCli(() => config().get<string>('path', 'container'));
   const monitor = new ServiceMonitor(cli);
   const documents = new ReadonlyDocumentProvider();
+  const k8s = new K8sAccess(cli, context.globalStorageUri.fsPath);
 
   const views = {
     containers: new ContainersProvider(monitor, cli),
@@ -74,11 +81,13 @@ export function activate(
     networks: new NetworksProvider(monitor, cli),
     volumes: new VolumesProvider(monitor, cli),
     registries: new RegistriesProvider(monitor, cli),
+    clusters: new ClustersProvider(monitor, cli, k8s, context.globalState),
   };
   const treeViews: [vscode.TreeView<unknown>, ResourceProvider<unknown>][] =
     Object.entries(views).map(([key, provider]) => {
       const p = provider as ResourceProvider<unknown>;
-      // Containers nest compose groups, containers and their Volumes / Ports sections
+      // Containers nest compose groups, containers and their Volumes / Ports sections. The clusters view leaves its
+      // title bar to the cluster name and the switchers.
       const showCollapseAll = key === 'containers';
       return [
         vscode.window.createTreeView(`appleContainer.${key}`, {
@@ -90,7 +99,33 @@ export function activate(
       ];
     });
 
+  // The clusters view lists one cluster at a time; its title shows which, and the title bar switches it
+  const clusterView = treeViews.find(
+    ([, provider]) =>
+      provider === (views.clusters as ResourceProvider<unknown>),
+  )?.[0];
+  context.subscriptions.push(
+    views.clusters.onDidChangeCluster(cluster => {
+      if (clusterView) {
+        // The view is alone in its container, so VS Code titles it "<container>: <view>" ("Kubernetes: dev"), or
+        // just "Kubernetes" while both names match (no cluster)
+        clusterView.title = cluster?.name ?? 'Kubernetes';
+        clusterView.description = cluster
+          ? [
+              cluster.state,
+              cluster.kubernetesVersion,
+              views.clusters.namespace ?? vscode.l10n.t('All Namespaces'),
+            ]
+              .filter(Boolean)
+              .join(' · ')
+          : undefined;
+      }
+    }),
+  );
+
   const refreshAll = async () => {
+    // An explicit refresh reads the clusters again instead of reusing kubectl output
+    views.clusters.clearCache();
     await monitor.check();
     for (const [, provider] of treeViews) {
       provider.refresh();
@@ -131,6 +166,7 @@ export function activate(
     cli,
     monitor,
     documents,
+    k8s,
     views,
     refreshAll,
     start,
@@ -147,6 +183,8 @@ export function activate(
   registerNetworkCommands(ctx);
   registerVolumeCommands(ctx);
   registerRegistryCommands(ctx);
+  registerClusterCommands(ctx);
+  registerK8sCommands(ctx);
   registerSystemCommands(ctx);
 
   // Poll only the visible views so a hidden sidebar costs nothing beyond the status check
@@ -201,7 +239,13 @@ export function activate(
   ) {
     start();
   }
-  return {cli, monitor, views, storagePath: context.globalStorageUri.fsPath};
+  return {
+    cli,
+    monitor,
+    views,
+    k8s,
+    storagePath: context.globalStorageUri.fsPath,
+  };
 }
 
 export function deactivate(): void {}

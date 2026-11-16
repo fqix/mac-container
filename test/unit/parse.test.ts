@@ -5,6 +5,7 @@ import * as path from 'path';
 import {
   formatBytes,
   formatRelativeTime,
+  parseClusters,
   parseContainers,
   parseDiskUsage,
   parseImages,
@@ -106,6 +107,49 @@ describe('parse', () => {
       status.installRoot,
       '/opt/homebrew/Cellar/container/1.6.1/',
     );
+  });
+
+  it('parses clusters', () => {
+    const [cluster] = parseClusters(fixture('clusters.json'));
+    assert.strictEqual(cluster.name, 'e2e-cluster');
+    assert.strictEqual(cluster.state, 'running');
+    assert.strictEqual(cluster.kubernetesVersion, 'v1.35.5');
+    assert.strictEqual(cluster.sharedImageStore, false);
+    assert.strictEqual(cluster.cni, undefined);
+    assert.deepStrictEqual(cluster.nodes, [
+      {
+        name: 'e2e-cluster',
+        roles: ['control-plane'],
+        status: 'running',
+        addresses: ['192.168.64.9'],
+        ports: ['6446->6443'],
+      },
+      {
+        name: 'e2e-cluster-worker-1',
+        roles: ['worker'],
+        status: 'running',
+        addresses: ['192.168.64.10'],
+        ports: [],
+      },
+    ]);
+    // A configured node the status does not list yet has no status
+    const [pending] = parseClusters([
+      {
+        id: 'c',
+        configuration: {
+          name: 'c',
+          nodes: [{name: 'c', roles: ['control-plane']}],
+        },
+        status: {state: 'creating'},
+      },
+    ]);
+    assert.deepStrictEqual(pending.nodes[0], {
+      name: 'c',
+      roles: ['control-plane'],
+      status: undefined,
+      addresses: [],
+      ports: [],
+    });
   });
 
   it('parses disk usage', () => {
