@@ -1,4 +1,4 @@
-// Read-only JSON documents: inspect / stats / system status / df results are shown as virtual documents
+// Read-only documents: inspect results, the raw system overview JSON and dev container logs are shown as virtual documents
 
 import * as vscode from 'vscode';
 

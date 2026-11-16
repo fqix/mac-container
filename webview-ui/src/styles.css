@@ -216,3 +216,108 @@ textarea {
   gap: 6px 16px;
   margin-bottom: 4px;
 }
+
+/* System overview */
+.overview {
+  max-width: 960px;
+}
+
+.overview-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.overview-header h1 {
+  margin: 0;
+}
+
+.spacer {
+  flex: 1;
+}
+
+.badge {
+  font-size: 0.85em;
+  padding: 1px 8px;
+  border-radius: 10px;
+  border: 1px solid currentColor;
+}
+
+.badge.ok {
+  color: var(--vscode-testing-iconPassed, #3fb950);
+}
+
+.badge.off {
+  color: var(--vscode-descriptionForeground);
+}
+
+.card.stopped {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.usage-total {
+  margin-bottom: 10px;
+}
+
+.usage-total strong {
+  color: var(--vscode-foreground);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.usage-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.usage-title {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.bar {
+  height: 6px;
+  margin: 10px 0 8px;
+  border-radius: 3px;
+  overflow: hidden;
+  background: var(--vscode-editorWidget-border, rgba(128, 128, 128, 0.3));
+}
+
+.bar-fill {
+  height: 100%;
+  background: var(--vscode-progressBar-background, #0e70c0);
+}
+
+.usage-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.details {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 6px 16px;
+  margin: 0;
+}
+
+.details dd {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.details code {
+  font-family: var(--vscode-editor-font-family);
+}

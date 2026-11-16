@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 
+import {SystemPanel} from '../panels/systemPanel';
 import {openCliTerminal, runCliTask} from '../ui/terminal';
 import {CommandContext, confirm, register, withProgress} from './common';
 
@@ -32,17 +33,16 @@ export function registerSystemCommands(ctx: CommandContext): void {
     await ctx.refreshAll();
   });
 
-  register(ctx, 'appleContainer.system.status', async () => {
-    await ctx.documents.open('/system/status.json', async () =>
-      JSON.stringify(await cli.json(['system', 'status']), null, 2),
-    );
-  });
-
-  register(ctx, 'appleContainer.system.df', async () => {
-    await ctx.documents.open('/system/df.json', async () =>
-      JSON.stringify(await cli.systemDf(), null, 2),
-    );
-  });
+  // Both open the overview panel: it shows the service status and the disk usage together
+  const showOverview = () =>
+    SystemPanel.show({
+      extensionUri: ctx.extension.extensionUri,
+      cli,
+      monitor: ctx.monitor,
+      documents: ctx.documents,
+    });
+  register(ctx, 'appleContainer.system.status', showOverview);
+  register(ctx, 'appleContainer.system.df', showOverview);
 
   register(ctx, 'appleContainer.system.logs', async () => {
     await openCliTerminal(cli, vscode.l10n.t('container system logs'), [
@@ -65,12 +65,8 @@ export function registerSystemCommands(ctx: CommandContext): void {
             command: 'appleContainer.system.start',
           },
       {
-        label: `$(info) ${vscode.l10n.t('Show System Status')}`,
+        label: `$(dashboard) ${vscode.l10n.t('Show System Overview')}`,
         command: 'appleContainer.system.status',
-      },
-      {
-        label: `$(database) ${vscode.l10n.t('Show Disk Usage')}`,
-        command: 'appleContainer.system.df',
       },
       {
         label: `$(output) ${vscode.l10n.t('Show System Logs')}`,

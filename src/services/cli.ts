@@ -7,6 +7,7 @@ import * as path from 'path';
 
 import {
   parseContainers,
+  parseDiskUsage,
   parseImages,
   parseJson,
   parseNetworks,
@@ -18,6 +19,7 @@ import {
 import type {
   ContainerStats,
   ContainerSummary,
+  DiskUsage,
   ImageSummary,
   NetworkSummary,
   RegistrySummary,
@@ -242,8 +244,8 @@ export class ContainerCli {
     }
   }
 
-  async systemDf(): Promise<unknown> {
-    return this.json(['system', 'df']);
+  async systemDf(): Promise<DiskUsage> {
+    return parseDiskUsage(await this.json(['system', 'df']));
   }
 }
 

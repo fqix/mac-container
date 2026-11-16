@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- **Show System Overview** (the status bar menu and the Command Palette, also under **Show Disk Usage**) opens a panel with the service version, host and paths, and the disk usage of images, containers and volumes with how much can be reclaimed and a **Prune** button for each, instead of raw JSON; **Show JSON** still opens the CLI output
+
 ## 0.7.1
 
 - Tested with Apple `container` 1.7.1, which refuses more CPUs than the Mac has cores: a dev container whose `hostRequirements.cpus` asks for more gets all cores with a warning in its terminal instead of failing to start, and the run and edit form reports the limit before recreating the container

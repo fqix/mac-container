@@ -6,6 +6,7 @@ import {
   formatBytes,
   formatRelativeTime,
   parseContainers,
+  parseDiskUsage,
   parseImages,
   parseJson,
   parseNetworks,
@@ -100,6 +101,29 @@ describe('parse', () => {
     assert.strictEqual(status.serverVersion, '1.6.1');
     assert.strictEqual(typeof status.containersRunning, 'number');
     assert.strictEqual(parseSystemStatus({status: 'stopped'}).running, false);
+    assert.strictEqual(status.hostCpus, 10);
+    assert.strictEqual(
+      status.installRoot,
+      '/opt/homebrew/Cellar/container/1.6.1/',
+    );
+  });
+
+  it('parses disk usage', () => {
+    const usage = parseDiskUsage(fixture('df.json'));
+    assert.deepStrictEqual(usage.images, {
+      total: 3,
+      active: 1,
+      sizeBytes: 329625600,
+      reclaimableBytes: 282136576,
+    });
+    assert.strictEqual(usage.volumes.sizeBytes, 39882752);
+    // Missing sections and bad numbers read as zero
+    assert.deepStrictEqual(parseDiskUsage({images: {total: 'x'}}).images, {
+      total: 0,
+      active: 0,
+      sizeBytes: 0,
+      reclaimableBytes: 0,
+    });
   });
 
   it('treats empty output and non-arrays as empty lists', () => {

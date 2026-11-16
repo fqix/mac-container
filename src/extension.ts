@@ -25,6 +25,7 @@ import {ContainerFormPanel} from './panels/containerFormPanel';
 import {findConfigFiles} from './services/devcontainer';
 import {ServiceMonitor} from './services/state';
 import {StatsPanel} from './panels/statsPanel';
+import {SystemPanel} from './panels/systemPanel';
 import {ServiceStatusBar} from './ui/statusBar';
 import type {ResourceProvider} from './views/base';
 import {ContainersProvider} from './views/containers';
@@ -98,6 +99,7 @@ export function activate(
 
   context.subscriptions.push(
     {dispose: () => StatsPanel.disposeAll()},
+    {dispose: () => SystemPanel.disposeAll()},
     {dispose: () => ContainerFormPanel.disposeAll()},
     {dispose: () => BuildFormPanel.disposeAll()},
     monitor,

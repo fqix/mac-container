@@ -77,7 +77,7 @@
 - **Builder**: the BuildKit container `container build` starts is listed among the containers, with start, stop, restart, logs and **Delete Builder...** to reset it and free its cache.
 - **Networks**, **volumes** and **registry logins**.
 - **container-compose**: containers are grouped by project, with start, stop, restart and delete for the whole project, and **Compose Up** / **Compose Down** from the project or a compose file.
-- **Status bar**: whether the service runs and how many containers are up; click it to start or stop the service, or to view status, disk usage and logs.
+- **Status bar**: whether the service runs and how many containers are up; click it to start or stop the service, or to open the system overview (version, paths and disk usage with prune) and the logs.
 
 ## Open a container over Remote-SSH
 
