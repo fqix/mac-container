@@ -165,6 +165,20 @@ class Recorder {
         await mouse('mouseReleased', to);
         return;
       }
+      case 'pick':
+        // A quick pick item by its label, e.g. a namespace in Switch Namespace
+        await waitFor(
+          `quick pick ${payload.label}`,
+          () =>
+            this.page.evaluate<boolean | undefined>(`(() => {
+            const row = [...document.querySelectorAll('.quick-input-list .monaco-list-row')].find((r) => r.querySelector('.label-name')?.textContent.trim() === ${JSON.stringify(payload.label)});
+            if (!row) return undefined;
+            row.click();
+            return true;
+          })()`),
+          10_000,
+        );
+        return;
       case 'click-dialog':
         await waitFor(
           'dialog',
