@@ -1,0 +1,53 @@
+[
+  {
+    "configuration": {
+      "cni": null,
+      "creationDate": "2026-11-16T07:01:58Z",
+      "fqdn": null,
+      "kubernetesVersion": "v1.35.5",
+      "labels": {},
+      "name": "e2e-cluster",
+      "nodes": [
+        {
+          "kind": "linux",
+          "name": "e2e-cluster",
+          "roles": [
+            "control-plane"
+          ]
+        },
+        {
+          "kind": "linux",
+          "name": "e2e-cluster-worker-1",
+          "roles": [
+            "worker"
+          ]
+        }
+      ],
+      "remove": false,
+      "sharedImageStore": false
+    },
+    "id": "e2e-cluster",
+    "status": {
+      "nodes": [
+        {
+          "addresses": [
+            "192.168.64.9"
+          ],
+          "name": "e2e-cluster",
+          "ports": [
+            "6446->6443"
+          ],
+          "status": "running"
+        },
+        {
+          "addresses": [
+            "192.168.64.10"
+          ],
+          "name": "e2e-cluster-worker-1",
+          "status": "running"
+        }
+      ],
+      "state": "running"
+    }
+  }
+]

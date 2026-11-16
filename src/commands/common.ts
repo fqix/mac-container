@@ -2,9 +2,11 @@ import * as vscode from 'vscode';
 
 import type {ContainerCli} from '../services/cli';
 import type {ReadonlyDocumentProvider} from '../ui/documents';
+import type {K8sAccess} from '../ui/kubectl';
 import {showError} from '../utils/i18n';
 import type {ServiceMonitor} from '../services/state';
 import type {ResourceNode} from '../views/base';
+import type {ClustersProvider} from '../views/clusters';
 import type {ContainersProvider} from '../views/containers';
 import type {ImagesProvider} from '../views/images';
 import type {NetworksProvider} from '../views/networks';
@@ -16,12 +18,15 @@ export interface CommandContext {
   cli: ContainerCli;
   monitor: ServiceMonitor;
   documents: ReadonlyDocumentProvider;
+  /** kubectl and the per-cluster kubeconfigs for browsing clusters */
+  k8s: K8sAccess;
   views: {
     containers: ContainersProvider;
     images: ImagesProvider;
     networks: NetworksProvider;
     volumes: VolumesProvider;
     registries: RegistriesProvider;
+    clusters: ClustersProvider;
   };
   refreshAll(): Promise<void>;
   /** Shows the status bar item and starts polling the service, once; until then the extension is idle */

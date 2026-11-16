@@ -3,9 +3,18 @@ import * as fs from 'fs/promises';
 import * as os from 'os';
 import * as path from 'path';
 
+import type {ContainerCli} from '../../src/services/cli';
 import {parseContainers} from '../../src/utils/parse';
 import {
   containerOfAuthority,
+  containerTarget,
+  POD_SSHD_ARGS,
+  PodNotRootError,
+  podHostAlias,
+  podTarget,
+  prepareTarget,
+  proxyCommand,
+  withPrelude,
   ensureUserConfigIncluded,
   hostAlias,
   type InstallCommand,
@@ -272,6 +281,19 @@ describe('automatic SSH config inclusion', () => {
   });
 });
 
+/** A container target whose CLI records what it is asked to run */
+function fakeContainer(id: string, outputs: string[] = []) {
+  const runs: {args: string[]; input?: string}[] = [];
+  const cli = {
+    executable: async () => '/opt/homebrew/bin/container',
+    run: async (args: string[], options?: {input?: string}) => {
+      runs.push({args, input: options?.input});
+      return outputs.shift() ?? '';
+    },
+  } as unknown as ContainerCli;
+  return {target: containerTarget(cli, id), runs};
+}
+
 describe('package installs in the container', () => {
   it('runs the package manager as root and maps its exit code', async () => {
     const calls: InstallCommand[] = [];
@@ -280,8 +302,10 @@ describe('package installs in the container', () => {
         calls.push(command);
         return code;
       };
+    const {target} = fakeContainer('dev');
 
-    await installPackages('dev', ['wget', 'ca-certificates'], runner(0));
+    await installPackages(target, ['wget', 'ca-certificates'], runner(0));
+    assert.strictEqual(calls[0].executable, '/opt/homebrew/bin/container');
     assert.deepStrictEqual(calls[0].packages, ['wget', 'ca-certificates']);
     assert.deepStrictEqual(calls[0].args.slice(0, 6), [
       'exec',
@@ -308,18 +332,150 @@ describe('package installs in the container', () => {
     ]);
 
     await assert.rejects(
-      installPackages('dev', ['bash'], runner(5)),
+      installPackages(target, ['bash'], runner(5)),
       NoPackageManagerError,
     );
     await assert.rejects(
-      installPackages('dev', ['bash'], runner(100)),
+      installPackages(target, ['bash'], runner(100)),
       (error: unknown) =>
         error instanceof InstallFailedError && error.exitCode === 100,
     );
     // A task that ended without an exit code (e.g. terminated) is a failure too
     await assert.rejects(
-      installPackages('dev', ['bash'], runner(undefined)),
+      installPackages(target, ['bash'], runner(undefined)),
       InstallFailedError,
     );
+  });
+
+  it('prepares a container as root with the key on stdin', async () => {
+    const {target, runs} = fakeContainer('dev', [
+      'sshd=/usr/sbin/sshd\nuser=ubuntu\nhome=/home/ubuntu\n',
+    ]);
+    const result = await prepareTarget(target, '1000', 'ssh-ed25519 AAAA k');
+    assert.strictEqual(result.user, 'ubuntu');
+    assert.deepStrictEqual(runs[0].args.slice(0, 5), [
+      'exec',
+      '-i',
+      '-u',
+      '0',
+      'dev',
+    ]);
+    assert.strictEqual(runs[0].args.at(-1), '1000');
+    assert.strictEqual(runs[0].input, 'ssh-ed25519 AAAA k\n');
+  });
+});
+
+describe('pods over Remote-SSH', () => {
+  const kube = {
+    kubeconfig: '/Users/dev/Library/Application Support/Code/kube/dev.yaml',
+    context: 'dev',
+  };
+  const ref = {
+    cluster: 'dev',
+    namespace: 'web',
+    pod: 'Api-0',
+    container: 'app',
+  };
+
+  it('names pod hosts briefly, adding what tells them apart only when needed', () => {
+    assert.strictEqual(podHostAlias(ref), 'pod.api-0');
+    assert.strictEqual(
+      podHostAlias(ref, {multiContainer: true}),
+      'pod.api-0.app',
+    );
+    // The same pod name in another namespace or cluster already has the short host
+    assert.strictEqual(
+      podHostAlias(ref, {taken: alias => alias === 'pod.api-0'}),
+      'pod.api-0.web.dev',
+    );
+  });
+
+  it('runs commands with kubectl exec in the pod container, without switching users', () => {
+    const target = podTarget(
+      '/opt/homebrew/bin/kubectl',
+      kube,
+      ref,
+      'pod.api-0',
+    );
+    assert.strictEqual(target.name, 'web/Api-0');
+    assert.strictEqual(target.alias, 'pod.api-0');
+    assert.strictEqual(target.switchesUser, false);
+    assert.deepStrictEqual(target.exec(['env'], {stdin: true, root: true}), [
+      '--kubeconfig',
+      kube.kubeconfig,
+      '--context',
+      'dev',
+      'exec',
+      '-i',
+      '--namespace',
+      'web',
+      'Api-0',
+      '--container',
+      'app',
+      '--',
+      'env',
+    ]);
+  });
+
+  it('quotes the kubeconfig path in the ProxyCommand', () => {
+    const target = podTarget(
+      '/opt/homebrew/bin/kubectl',
+      kube,
+      ref,
+      'pod.api-0',
+    );
+    const command = proxyCommand(
+      '/opt/homebrew/bin/kubectl',
+      target.exec,
+      '/usr/sbin/sshd',
+      POD_SSHD_ARGS,
+    );
+    assert.ok(
+      command.startsWith(
+        '"/opt/homebrew/bin/kubectl" --kubeconfig "/Users/dev/Library/Application Support/Code/kube/dev.yaml" --context dev exec -i --namespace web Api-0 --container app -- /usr/sbin/sshd -i -E /dev/null -o ',
+      ),
+      command,
+    );
+    const text = renderConfig([], '/x/container', '/k', [
+      {
+        alias: target.alias,
+        hostName: 'Api-0.web',
+        user: 'root',
+        proxyCommand: command,
+      },
+    ]);
+    assert.match(text, /^Host pod\.api-0$/m);
+    assert.match(text, /^ {2}ProxyCommand "\/opt\/homebrew\/bin\/kubectl" /m);
+  });
+
+  it('runs a prelude in its own shell before the ProxyCommand', () => {
+    const command = withPrelude(
+      '/opt/homebrew/bin/container',
+      ['cluster', 'write-config', '--name', 'dev', '--kubeconfig', "/a b/it's"],
+      '"/k" exec -i x',
+    );
+    assert.strictEqual(
+      command,
+      `/bin/sh -c '"/opt/homebrew/bin/container" cluster write-config --name dev --kubeconfig "/a b/it'\\''s" >/dev/null 2>&1; exec "/k" exec -i x'`,
+    );
+  });
+
+  it('refuses a pod that does not run as root', async () => {
+    const runs: string[][] = [];
+    const target = {
+      ...podTarget('/k', kube, ref, 'pod.api-0'),
+      run: async (args: string[]) => {
+        runs.push(args);
+        return '1000\n';
+      },
+    };
+    await assert.rejects(
+      prepareTarget(target, 'root', 'key'),
+      (error: unknown) =>
+        error instanceof PodNotRootError && error.uid === '1000',
+    );
+    // Only the uid check ran
+    assert.strictEqual(runs.length, 1);
+    assert.deepStrictEqual(runs[0].slice(-3), ['--', 'id', '-u']);
   });
 });

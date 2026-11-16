@@ -1,5 +1,6 @@
-// Remote-SSH support: ssh reaches a container through `ProxyCommand container exec -i <id> sshd -i`,
-// so no container IP, published port or long-running sshd is needed. Everything here is free of the vscode API for unit tests.
+// Remote-SSH support: ssh reaches a container through `ProxyCommand container exec -i <id> sshd -i`, and a pod of a
+// `container cluster` through `ProxyCommand kubectl exec -i <pod> -- sshd -i`, so no IP, published port or long-running
+// sshd is needed. Everything here is free of the vscode API for unit tests.
 
 import {execFile} from 'child_process';
 import {mkdir, readFile, writeFile, chmod, access, realpath} from 'fs/promises';
@@ -8,6 +9,7 @@ import * as path from 'path';
 
 import {parseEnvOutput, sessionEnvironment} from '../utils/env';
 import type {ContainerCli} from './cli';
+import {kubectlArgs, KubeTarget, runProcess} from './kubectl';
 
 const DEFAULT_SSH_DIR = path.join(os.homedir(), '.ssh', 'apple-container');
 /** APPLE_CONTAINER_SSH_DIR lets the e2e tests keep everything out of the real ~/.ssh */
@@ -68,34 +70,231 @@ export function containerOfAuthority(
   return containerIds.find(id => hostAlias(id) === host);
 }
 
+/**
+ * Where Remote-SSH runs its setup and sshd: a container through `container exec`, or one container of a pod through
+ * `kubectl exec`. `exec` builds the arguments for `executable()`, `run` runs them and rejects with an error that has
+ * the exit code and stderr.
+ */
+export interface ExecTarget {
+  /** For messages: the container id or namespace/pod */
+  name: string;
+  /** Host of the managed SSH config */
+  alias: string;
+  executable(): Promise<string>;
+  /**
+   * Arguments that run `argv` in the target: with stdin when `stdin`, as uid 0 when `root`, or as `user`. A pod cannot
+   * switch users and runs as its own (see switchesUser).
+   */
+  exec(
+    argv: string[],
+    options?: {stdin?: boolean; root?: boolean; user?: string},
+  ): string[];
+  /** Whether exec honours root and user: `kubectl exec` has no user option */
+  switchesUser: boolean;
+  run(
+    args: string[],
+    options?: {input?: string; timeoutMs?: number},
+  ): Promise<string>;
+}
+
+/** `container exec` arguments running argv in container `id` */
+function containerExec(
+  id: string,
+  argv: string[],
+  options: {stdin?: boolean; root?: boolean; user?: string} = {},
+): string[] {
+  return [
+    'exec',
+    ...(options.stdin ? ['-i'] : []),
+    ...(options.root ? ['-u', '0'] : options.user ? ['-u', options.user] : []),
+    id,
+    ...argv,
+  ];
+}
+
+export function containerTarget(cli: ContainerCli, id: string): ExecTarget {
+  return {
+    name: id,
+    alias: hostAlias(id),
+    executable: () => cli.executable(),
+    exec: (argv, options) => containerExec(id, argv, options),
+    switchesUser: true,
+    run: (args, options) => cli.run(args, options),
+  };
+}
+
+/** One container of a pod in a cluster of `container cluster` */
+export interface PodRef {
+  cluster: string;
+  namespace: string;
+  pod: string;
+  container: string;
+}
+
+/**
+ * Host of a pod's container, short since Remote-SSH shows it in the window: pod.<pod>, plus .<container> for a pod with
+ * several containers. When `taken` says another pod already has it (same name in another namespace or cluster), the
+ * namespace and cluster are added. Lowercase like hostAlias.
+ */
+export function podHostAlias(
+  ref: PodRef,
+  options: {multiContainer?: boolean; taken?: (alias: string) => boolean} = {},
+): string {
+  const short = [
+    'pod',
+    ref.pod,
+    ...(options.multiContainer ? [ref.container] : []),
+  ]
+    .join('.')
+    .toLowerCase();
+  return options.taken?.(short)
+    ? `${short}.${ref.namespace}.${ref.cluster}`.toLowerCase()
+    : short;
+}
+
+/** `alias` is the pod's host, from podHostAlias */
+export function podTarget(
+  kubectl: string,
+  kube: KubeTarget,
+  ref: PodRef,
+  alias: string,
+): ExecTarget {
+  return {
+    name: `${ref.namespace}/${ref.pod}`,
+    alias,
+    executable: async () => kubectl,
+    exec: (argv, options = {}) =>
+      kubectlArgs(kube, [
+        'exec',
+        ...(options.stdin ? ['-i'] : []),
+        '--namespace',
+        ref.namespace,
+        ref.pod,
+        '--container',
+        ref.container,
+        '--',
+        ...argv,
+      ]),
+    switchesUser: false,
+    run: (args, options) => runProcess(kubectl, args, options),
+  };
+}
+
+/** Quotes an argument for ProxyCommand, which ssh runs with /bin/sh after expanding % tokens */
+function proxyArg(arg: string): string {
+  const escaped = arg.replace(/%/g, '%%');
+  return /^[\w@%+=:,./-]+$/.test(escaped)
+    ? escaped
+    : `"${escaped.replace(/(["\\$`])/g, '\\$1')}"`;
+}
+
+/**
+ * sshd in inetd mode on the connection's stdin/stdout, as root, with key login only. `sshdArgs` go before the options,
+ * e.g. podSshdArgs.
+ */
+export function proxyCommand(
+  executable: string,
+  exec: ExecTarget['exec'],
+  sshd: string,
+  sshdArgs: string[] = [],
+): string {
+  const argv = exec(
+    [
+      sshd,
+      '-i',
+      ...sshdArgs,
+      '-o',
+      'PermitRootLogin=prohibit-password',
+      '-o',
+      'PasswordAuthentication=no',
+      '-o',
+      'AuthorizedKeysFile=.ssh/authorized_keys',
+      '-o',
+      'PermitUserEnvironment=yes',
+    ],
+    {stdin: true, root: true},
+  );
+  return [`"${executable.replace(/%/g, '%%')}"`, ...argv.map(proxyArg)].join(
+    ' ',
+  );
+}
+
+/**
+ * A ProxyCommand that first runs `executable before...` (output discarded, failure ignored), then `command`. ssh starts
+ * ProxyCommand with `exec`, so the sequence runs in its own shell.
+ */
+export function withPrelude(
+  executable: string,
+  before: string[],
+  command: string,
+): string {
+  const first = [
+    `"${executable.replace(/%/g, '%%')}"`,
+    ...before.map(proxyArg),
+  ];
+  const script = `${first.join(' ')} >/dev/null 2>&1; exec ${command}`;
+  return `/bin/sh -c '${script.replace(/'/g, `'\\''`)}'`;
+}
+
+/**
+ * Over `kubectl exec`, sshd -i logging to syslog (pods have no /dev/log) exits with 255 during key exchange
+ * (OpenSSH 10.2 in an ubuntu pod), while logging to stderr or a file works; /dev/null keeps the connection quiet.
+ */
+export const POD_SSHD_ARGS = ['-E', '/dev/null'];
+
 export interface SshHost {
   id: string;
   sshd: string;
   user: string;
 }
 
-/** Renders the whole managed ssh config; it is regenerated on every open so removed containers disappear */
+/** A host block of the managed config */
+export interface SshEntry {
+  alias: string;
+  hostName: string;
+  user: string;
+  proxyCommand: string;
+}
+
+/**
+ * Renders the whole managed ssh config; it is regenerated on every open so removed containers disappear. `extra`
+ * holds the hosts of pods.
+ */
 export function renderConfig(
   hosts: SshHost[],
   cliPath: string,
   keyFile = KEY_FILE,
+  extra: SshEntry[] = [],
 ): string {
   const lines = [
     '# Generated by the Apple Container Tools extension. Changes will be overwritten.',
     '',
   ];
-  for (const host of hosts) {
+  const entries: SshEntry[] = [
+    ...hosts.map(host => ({
+      alias: hostAlias(host.id),
+      hostName: host.id,
+      user: host.user,
+      proxyCommand: proxyCommand(
+        cliPath,
+        (argv, options) => containerExec(host.id, argv, options),
+        host.sshd,
+      ),
+    })),
+    ...extra,
+  ];
+  for (const entry of entries) {
     lines.push(
-      `Host ${hostAlias(host.id)}`,
-      `  HostName ${host.id}`,
-      `  User ${host.user}`,
+      `Host ${entry.alias}`,
+      `  HostName ${entry.hostName}`,
+      `  User ${entry.user}`,
       `  IdentityFile "${keyFile}"`,
       '  IdentitiesOnly yes',
       // Host keys change whenever the container is recreated, and the transport is a local exec anyway
       '  StrictHostKeyChecking no',
       '  UserKnownHostsFile /dev/null',
       '  LogLevel ERROR',
-      `  ProxyCommand "${cliPath}" exec -i -u 0 ${host.id} ${host.sshd} -i -o PermitRootLogin=prohibit-password -o PasswordAuthentication=no -o AuthorizedKeysFile=.ssh/authorized_keys -o PermitUserEnvironment=yes`,
+      `  ProxyCommand ${entry.proxyCommand}`,
       '',
     );
   }
@@ -257,26 +456,48 @@ if wget --version >/dev/null 2>&1 || curl --version >/dev/null 2>&1; then echo "
 if command -v bash >/dev/null 2>&1; then echo "bash=yes"; else echo "bash=no"; fi
 `;
 
-/** Resolves the user spec inside the container, so a uid from the image maps to its login name */
-export async function prepareContainer(
-  cli: ContainerCli,
-  id: string,
+/** A pod whose container does not run as root: `kubectl exec` cannot switch to root to set up sshd */
+export class PodNotRootError extends Error {
+  constructor(
+    readonly target: string,
+    readonly uid: string,
+  ) {
+    super(`${target} runs as uid ${uid}, not root`);
+    this.name = 'PodNotRootError';
+  }
+}
+
+/**
+ * Sets up sshd login in the target as root and resolves the user spec there, so a uid from the image maps to its
+ * login name. A target that cannot switch to root (a pod) must already run as root.
+ */
+export async function prepareTarget(
+  target: ExecTarget,
   user: string,
   publicKey: string,
 ): Promise<PrepareResult> {
+  if (!target.switchesUser) {
+    const uid = (await target.run(target.exec(['id', '-u']))).trim();
+    if (uid !== '0') {
+      throw new PodNotRootError(target.name, uid);
+    }
+  }
   try {
-    const out = await cli.run(
-      ['exec', '-i', '-u', '0', id, 'sh', '-c', PREPARE_SCRIPT, 'sh', user],
+    const out = await target.run(
+      target.exec(['sh', '-c', PREPARE_SCRIPT, 'sh', user], {
+        stdin: true,
+        root: true,
+      }),
       {input: publicKey.trim() + '\n'},
     );
     return parsePrepareOutput(out);
   } catch (error) {
     const {exitCode, stderr} = error as {exitCode?: unknown; stderr?: string};
     if (exitCode === EXIT_NO_SSHD || stderr?.includes('sshd not found')) {
-      throw new SshdMissingError(id);
+      throw new SshdMissingError(target.name);
     }
     if (exitCode === EXIT_NO_USER || /^user .* not found/m.test(stderr ?? '')) {
-      throw new SshUserMissingError(id, user);
+      throw new SshUserMissingError(target.name, user);
     }
     throw error;
   }
@@ -319,17 +540,18 @@ rm -f ${INSTALL_PID_FILE}
 `;
 
 export interface InstallCommand {
-  /** `container` arguments that install the packages */
+  /** The target's exec program: the container CLI or kubectl */
+  executable: string;
+  /** Its arguments that install the packages */
   args: string[];
   /** What they install, for the terminal's step line */
   packages: string[];
-  /** `container` arguments that stop the install when the user cancels it */
+  /** Its arguments that stop the install when the user cancels it */
   cancelArgs: string[];
 }
 
 /**
- * Runs `container` with the install arguments where the user can follow the output (a terminal) and resolves with
- * its exit code
+ * Runs the install command where the user can follow the output (a terminal) and resolves with its exit code
  */
 export type InstallRunner = (
   command: InstallCommand,
@@ -348,28 +570,29 @@ export class InstallFailedError extends Error {
   }
 }
 
-/** The `container exec` commands that install packages as root with the image's package manager, or stop that */
-export function installCommand(id: string, packages: string[]): InstallCommand {
+/** The exec commands that install packages as root with the image's package manager, or stop that */
+export async function installCommand(
+  target: ExecTarget,
+  packages: string[],
+): Promise<InstallCommand> {
   return {
-    args: [
-      'exec',
-      '-u',
-      '0',
-      id,
-      'sh',
-      '-c',
-      INSTALL_SCRIPT,
-      'sh',
-      ...packages,
-    ],
+    executable: await target.executable(),
+    args: target.exec(['sh', '-c', INSTALL_SCRIPT, 'sh', ...packages], {
+      root: true,
+    }),
     packages,
-    cancelArgs: ['exec', '-u', '0', id, 'sh', '-c', CANCEL_INSTALL_SCRIPT],
+    cancelArgs: target.exec(['sh', '-c', CANCEL_INSTALL_SCRIPT], {
+      root: true,
+    }),
   };
 }
 
-/** Installs openssh-server inside the container; downloading packages needs network access from the container */
-export function installSshd(id: string, run: InstallRunner): Promise<void> {
-  return installPackages(id, ['openssh-server'], run);
+/** Installs openssh-server inside the target; downloading packages needs network access from it */
+export function installSshd(
+  target: ExecTarget,
+  run: InstallRunner,
+): Promise<void> {
+  return installPackages(target, ['openssh-server'], run);
 }
 
 /**
@@ -379,16 +602,16 @@ export function installSshd(id: string, run: InstallRunner): Promise<void> {
  * `run` shows the package manager's output, which can take minutes, instead of hiding it behind a progress bar.
  */
 export async function installPackages(
-  id: string,
+  target: ExecTarget,
   packages: string[],
   run: InstallRunner,
 ): Promise<void> {
-  const code = await run(installCommand(id, packages));
+  const code = await run(await installCommand(target, packages));
   if (code === EXIT_NO_PACKAGE_MANAGER) {
-    throw new NoPackageManagerError(id);
+    throw new NoPackageManagerError(target.name);
   }
   if (code !== 0) {
-    throw new InstallFailedError(id, packages, code);
+    throw new InstallFailedError(target.name, packages, code);
   }
 }
 
@@ -410,17 +633,17 @@ chown "$uid:$gid" "$home/.ssh/environment"
  * ~/.ssh/environment together with the extra variables; sshd runs with PermitUserEnvironment=yes to read it.
  */
 export async function writeSessionEnvironment(
-  cli: ContainerCli,
-  id: string,
+  target: ExecTarget,
   user: string,
   extra: Record<string, string> = {},
 ): Promise<void> {
-  const containerEnv = parseEnvOutput(await cli.run(['exec', id, 'env']));
-  await cli.run(
-    ['exec', '-i', '-u', '0', id, 'sh', '-c', SESSION_ENV_SCRIPT, 'sh', user],
-    {
-      input: sessionEnvironment(containerEnv, extra),
-    },
+  const containerEnv = parseEnvOutput(await target.run(target.exec(['env'])));
+  await target.run(
+    target.exec(['sh', '-c', SESSION_ENV_SCRIPT, 'sh', user], {
+      stdin: true,
+      root: true,
+    }),
+    {input: sessionEnvironment(containerEnv, extra)},
   );
 }
 

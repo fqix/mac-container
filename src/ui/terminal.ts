@@ -12,11 +12,21 @@ export async function openCliTerminal(
   name: string,
   args: string[],
 ): Promise<vscode.Terminal> {
+  return openTerminal(name, await cli.executable(), args, 'vm');
+}
+
+/** Opens a terminal running `executable` directly, e.g. kubectl logs or exec */
+export function openTerminal(
+  name: string,
+  executable: string,
+  args: string[],
+  icon: string,
+): vscode.Terminal {
   const terminal = vscode.window.createTerminal({
     name,
-    shellPath: await cli.executable(),
+    shellPath: executable,
     shellArgs: args,
-    iconPath: new vscode.ThemeIcon('vm'),
+    iconPath: new vscode.ThemeIcon(icon),
   });
   terminal.show();
   return terminal;

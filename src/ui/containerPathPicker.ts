@@ -3,6 +3,7 @@
 import * as vscode from 'vscode';
 
 import type {ContainerCli} from '../services/cli';
+import {containerTarget, type ExecTarget} from '../services/remoteSsh';
 import {
   joinContainerPath,
   parentContainerPath,
@@ -12,29 +13,27 @@ import {
 
 type Mode = 'directory' | 'any';
 
+interface PickOptions {
+  title: string;
+  start: string;
+  mode: Mode;
+  selectLabel: string;
+  user?: string;
+}
+
 interface PickItem extends vscode.QuickPickItem {
   action: 'select' | 'up' | 'open' | 'pick';
   path: string;
 }
 
 async function list(
-  cli: ContainerCli,
-  id: string,
+  target: ExecTarget,
   dir: string,
   user: string | undefined,
 ): Promise<ContainerEntry[]> {
   // $1 keeps the path out of the script, so spaces and quotes need no escaping
-  const out = await cli.run(
-    [
-      'exec',
-      ...(user ? ['-u', user] : []),
-      id,
-      'sh',
-      '-c',
-      'cd -- "$1" && ls -1Ap',
-      'sh',
-      dir,
-    ],
+  const out = await target.run(
+    target.exec(['sh', '-c', 'cd -- "$1" && ls -1Ap', 'sh', dir], {user}),
     {timeoutMs: 15_000},
   );
   return parseListing(out);
@@ -46,19 +45,21 @@ async function list(
  * Typing an absolute path and pressing Enter jumps there. Falls back to an input box when the image has no shell.
  * `user` lists as that user (exec -u), so only what they can open shows; by default the container's own user.
  */
-export async function pickContainerPath(
+export function pickContainerPath(
   cli: ContainerCli,
   id: string,
-  options: {
-    title: string;
-    start: string;
-    mode: Mode;
-    selectLabel: string;
-    user?: string;
-  },
+  options: PickOptions,
+): Promise<string | undefined> {
+  return pickTargetPath(containerTarget(cli, id), options);
+}
+
+/** pickContainerPath for any exec target, e.g. a pod's container (which lists as its own user) */
+export async function pickTargetPath(
+  target: ExecTarget,
+  options: PickOptions,
 ): Promise<string | undefined> {
   try {
-    await list(cli, id, options.start, options.user);
+    await list(target, options.start, options.user);
   } catch {
     const typed = await vscode.window.showInputBox({
       title: options.title,
@@ -82,7 +83,7 @@ export async function pickContainerPath(
     qp.title = `${options.title} — ${dir}`;
     qp.value = '';
     try {
-      const entries = await list(cli, id, dir, options.user);
+      const entries = await list(target, dir, options.user);
       const items: PickItem[] = [
         {
           label: `$(check) ${options.selectLabel}`,

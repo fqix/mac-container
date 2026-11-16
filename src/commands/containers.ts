@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 
 import {ContainerFormPanel} from '../panels/containerFormPanel';
 import {StatsPanel} from '../panels/statsPanel';
+import type {ContainerCli} from '../services/cli';
 import {openCliTerminal} from '../ui/terminal';
 import type {ContainerSummary} from '../models/types';
 import type {ContainerNode} from '../views/containers';
@@ -124,23 +125,9 @@ export function registerContainerCommands(ctx: CommandContext): void {
     ctx,
     'appleContainer.container.logs',
     async (node?: ContainerNode) => {
-      if (!node) {
-        return;
+      if (node) {
+        await followLogs(cli, node.resource.id);
       }
-      const tail = vscode.workspace
-        .getConfiguration('appleContainer')
-        .get<number>('logTail', 200);
-      const args = [
-        'logs',
-        '--follow',
-        ...(tail > 0 ? ['-n', String(tail)] : []),
-        node.resource.id,
-      ];
-      await openCliTerminal(
-        cli,
-        vscode.l10n.t('Logs: {0}', node.resource.id),
-        args,
-      );
     },
   );
 
@@ -162,19 +149,9 @@ export function registerContainerCommands(ctx: CommandContext): void {
     ctx,
     'appleContainer.container.exec',
     async (node?: ContainerNode) => {
-      if (!node) {
-        return;
+      if (node) {
+        await openShell(cli, node.resource.id);
       }
-      const shell = vscode.workspace
-        .getConfiguration('appleContainer')
-        .get<string>('execShell', '/bin/sh');
-      await openCliTerminal(cli, `${node.resource.id}: ${shell}`, [
-        'exec',
-        '--interactive',
-        '--tty',
-        node.resource.id,
-        shell,
-      ]);
     },
   );
 
@@ -250,6 +227,38 @@ export function registerContainerCommands(ctx: CommandContext): void {
     showOutput(out, vscode.l10n.t('Stopped containers removed.'));
     await refresh();
   });
+}
+
+/** appleContainer.logTail: lines of log history to show first; 0 shows all */
+export function logTail(): number {
+  return vscode.workspace
+    .getConfiguration('appleContainer')
+    .get<number>('logTail', 200);
+}
+
+/** `container logs --follow` in a terminal, starting with the last appleContainer.logTail lines */
+export async function followLogs(cli: ContainerCli, id: string): Promise<void> {
+  const tail = logTail();
+  await openCliTerminal(cli, vscode.l10n.t('Logs: {0}', id), [
+    'logs',
+    '--follow',
+    ...(tail > 0 ? ['-n', String(tail)] : []),
+    id,
+  ]);
+}
+
+/** An interactive appleContainer.execShell in the container */
+export async function openShell(cli: ContainerCli, id: string): Promise<void> {
+  const shell = vscode.workspace
+    .getConfiguration('appleContainer')
+    .get<string>('execShell', '/bin/sh');
+  await openCliTerminal(cli, `${id}: ${shell}`, [
+    'exec',
+    '--interactive',
+    '--tty',
+    id,
+    shell,
+  ]);
 }
 
 function names(items: ContainerSummary[]): string {

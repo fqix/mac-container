@@ -48,6 +48,11 @@
           "id": "appleContainer",
           "title": "%viewsContainer.title%",
           "icon": "resources/container.svg"
+        },
+        {
+          "id": "appleContainerClusters",
+          "title": "%viewsContainer.clusters%",
+          "icon": "resources/cluster.svg"
         }
       ]
     },
@@ -81,6 +86,13 @@
           "visibility": "collapsed",
           "when": "!remoteName"
         }
+      ],
+      "appleContainerClusters": [
+        {
+          "id": "appleContainer.clusters",
+          "name": "%view.clusters%",
+          "when": "!remoteName && (!appleContainer.clustersUnsupported)"
+        }
       ]
     },
     "viewsWelcome": [
@@ -112,6 +124,11 @@
       {
         "view": "appleContainer.registries",
         "contents": "%welcome.noRegistries%",
+        "when": "!appleContainer.cliMissing && !appleContainer.serviceStopped"
+      },
+      {
+        "view": "appleContainer.clusters",
+        "contents": "%welcome.noClusters%",
         "when": "!appleContainer.cliMissing && !appleContainer.serviceStopped"
       }
     ],
@@ -395,6 +412,134 @@
       {
         "command": "appleContainer.registry.copyHostname",
         "title": "%command.registry.copyHostname%",
+        "category": "%category%"
+      },
+      {
+        "command": "appleContainer.cluster.create",
+        "title": "%command.cluster.create%",
+        "category": "%category%",
+        "icon": "$(add)"
+      },
+      {
+        "command": "appleContainer.cluster.switch",
+        "title": "%command.cluster.switch%",
+        "category": "%category%",
+        "icon": "$(arrow-swap)"
+      },
+      {
+        "command": "appleContainer.cluster.delete",
+        "title": "%command.cluster.delete%",
+        "category": "%category%",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "appleContainer.cluster.writeConfig",
+        "title": "%command.cluster.writeConfig%",
+        "category": "%category%"
+      },
+      {
+        "command": "appleContainer.cluster.copyContext",
+        "title": "%command.cluster.copyContext%",
+        "category": "%category%"
+      },
+      {
+        "command": "appleContainer.cluster.inspect",
+        "title": "%command.cluster.inspect%",
+        "category": "%category%"
+      },
+      {
+        "command": "appleContainer.clusterNode.exec",
+        "title": "%command.clusterNode.exec%",
+        "category": "%category%",
+        "icon": "$(terminal)"
+      },
+      {
+        "command": "appleContainer.clusterNode.logs",
+        "title": "%command.clusterNode.logs%",
+        "category": "%category%",
+        "icon": "$(output)"
+      },
+      {
+        "command": "appleContainer.clusterNode.stats",
+        "title": "%command.clusterNode.stats%",
+        "category": "%category%"
+      },
+      {
+        "command": "appleContainer.clusterNode.inspect",
+        "title": "%command.clusterNode.inspect%",
+        "category": "%category%"
+      },
+      {
+        "command": "appleContainer.clusterNode.copyIp",
+        "title": "%command.clusterNode.copyIp%",
+        "category": "%category%"
+      },
+      {
+        "command": "appleContainer.k8s.switchNamespace",
+        "title": "%command.k8s.switchNamespace%",
+        "category": "%category%",
+        "icon": "$(symbol-namespace)"
+      },
+      {
+        "command": "appleContainer.k8s.create",
+        "title": "%command.k8s.create%",
+        "category": "%category%",
+        "icon": "$(new-file)"
+      },
+      {
+        "command": "appleContainer.k8s.apply",
+        "title": "%command.k8s.apply%",
+        "category": "%category%",
+        "icon": "$(cloud-upload)"
+      },
+      {
+        "command": "appleContainer.k8s.yaml",
+        "title": "%command.k8s.yaml%",
+        "category": "%category%"
+      },
+      {
+        "command": "appleContainer.k8s.describe",
+        "title": "%command.k8s.describe%",
+        "category": "%category%"
+      },
+      {
+        "command": "appleContainer.k8s.logs",
+        "title": "%command.k8s.logs%",
+        "category": "%category%",
+        "icon": "$(output)"
+      },
+      {
+        "command": "appleContainer.k8s.shell",
+        "title": "%command.k8s.shell%",
+        "category": "%category%",
+        "icon": "$(terminal)"
+      },
+      {
+        "command": "appleContainer.k8s.openRemoteSsh",
+        "title": "%command.k8s.openRemoteSsh%",
+        "category": "%category%",
+        "icon": "$(remote-explorer)"
+      },
+      {
+        "command": "appleContainer.k8s.restart",
+        "title": "%command.k8s.restart%",
+        "category": "%category%",
+        "icon": "$(debug-restart)"
+      },
+      {
+        "command": "appleContainer.k8s.scale",
+        "title": "%command.k8s.scale%",
+        "category": "%category%"
+      },
+      {
+        "command": "appleContainer.k8s.delete",
+        "title": "%command.k8s.delete%",
+        "category": "%category%",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "appleContainer.kubectl.download",
+        "title": "%command.kubectl.download%",
         "category": "%category%"
       },
       {
@@ -738,6 +883,98 @@
           "when": "!remoteName"
         },
         {
+          "command": "appleContainer.cluster.create",
+          "when": "!remoteName"
+        },
+        {
+          "command": "appleContainer.cluster.switch",
+          "when": "!remoteName"
+        },
+        {
+          "command": "appleContainer.cluster.delete",
+          "when": "!remoteName && (appleContainer.hasCluster)"
+        },
+        {
+          "command": "appleContainer.cluster.writeConfig",
+          "when": "!remoteName && (appleContainer.hasCluster)"
+        },
+        {
+          "command": "appleContainer.cluster.copyContext",
+          "when": "!remoteName && (appleContainer.hasCluster)"
+        },
+        {
+          "command": "appleContainer.cluster.inspect",
+          "when": "!remoteName && (appleContainer.hasCluster)"
+        },
+        {
+          "command": "appleContainer.clusterNode.exec",
+          "when": "false"
+        },
+        {
+          "command": "appleContainer.clusterNode.logs",
+          "when": "false"
+        },
+        {
+          "command": "appleContainer.clusterNode.stats",
+          "when": "false"
+        },
+        {
+          "command": "appleContainer.clusterNode.inspect",
+          "when": "false"
+        },
+        {
+          "command": "appleContainer.clusterNode.copyIp",
+          "when": "false"
+        },
+        {
+          "command": "appleContainer.k8s.switchNamespace",
+          "when": "!remoteName && (appleContainer.hasCluster)"
+        },
+        {
+          "command": "appleContainer.k8s.create",
+          "when": "!remoteName && (appleContainer.hasCluster)"
+        },
+        {
+          "command": "appleContainer.k8s.apply",
+          "when": "!remoteName && (appleContainer.hasCluster && editorLangId == yaml)"
+        },
+        {
+          "command": "appleContainer.k8s.openRemoteSsh",
+          "when": "false"
+        },
+        {
+          "command": "appleContainer.k8s.yaml",
+          "when": "false"
+        },
+        {
+          "command": "appleContainer.k8s.describe",
+          "when": "false"
+        },
+        {
+          "command": "appleContainer.k8s.logs",
+          "when": "false"
+        },
+        {
+          "command": "appleContainer.k8s.shell",
+          "when": "false"
+        },
+        {
+          "command": "appleContainer.k8s.restart",
+          "when": "false"
+        },
+        {
+          "command": "appleContainer.k8s.scale",
+          "when": "false"
+        },
+        {
+          "command": "appleContainer.k8s.delete",
+          "when": "false"
+        },
+        {
+          "command": "appleContainer.kubectl.download",
+          "when": "!remoteName"
+        },
+        {
           "command": "appleContainer.compose.up",
           "when": "!remoteName"
         },
@@ -825,6 +1062,46 @@
           "command": "appleContainer.image.load",
           "when": "view == appleContainer.images",
           "group": "navigation@3"
+        },
+        {
+          "command": "appleContainer.cluster.switch",
+          "when": "view == appleContainer.clusters",
+          "group": "navigation@0"
+        },
+        {
+          "command": "appleContainer.k8s.switchNamespace",
+          "when": "view == appleContainer.clusters && appleContainer.hasCluster",
+          "group": "navigation@1"
+        },
+        {
+          "command": "appleContainer.k8s.create",
+          "when": "view == appleContainer.clusters && appleContainer.hasCluster",
+          "group": "0_create@1"
+        },
+        {
+          "command": "appleContainer.cluster.create",
+          "when": "view == appleContainer.clusters",
+          "group": "0_create@2"
+        },
+        {
+          "command": "appleContainer.cluster.writeConfig",
+          "when": "view == appleContainer.clusters && appleContainer.hasCluster",
+          "group": "1_cluster@1"
+        },
+        {
+          "command": "appleContainer.cluster.copyContext",
+          "when": "view == appleContainer.clusters && appleContainer.hasCluster",
+          "group": "1_cluster@2"
+        },
+        {
+          "command": "appleContainer.cluster.inspect",
+          "when": "view == appleContainer.clusters && appleContainer.hasCluster",
+          "group": "1_cluster@3"
+        },
+        {
+          "command": "appleContainer.cluster.delete",
+          "when": "view == appleContainer.clusters && appleContainer.hasCluster",
+          "group": "9_delete@1"
         }
       ],
       "view/item/context": [
@@ -1107,6 +1384,101 @@
           "command": "appleContainer.builder.delete",
           "when": "viewItem =~ /^builder\\./",
           "group": "9_delete@1"
+        },
+        {
+          "command": "appleContainer.clusterNode.exec",
+          "when": "viewItem == clusterNode.running",
+          "group": "inline@2"
+        },
+        {
+          "command": "appleContainer.clusterNode.exec",
+          "when": "viewItem == clusterNode.running",
+          "group": "2_view@1"
+        },
+        {
+          "command": "appleContainer.clusterNode.logs",
+          "when": "viewItem =~ /^clusterNode/",
+          "group": "2_view@2"
+        },
+        {
+          "command": "appleContainer.clusterNode.stats",
+          "when": "viewItem == clusterNode.running",
+          "group": "2_view@4"
+        },
+        {
+          "command": "appleContainer.clusterNode.inspect",
+          "when": "viewItem =~ /^clusterNode/",
+          "group": "2_view@5"
+        },
+        {
+          "command": "appleContainer.clusterNode.copyIp",
+          "when": "viewItem == clusterNode.running",
+          "group": "3_copy@2"
+        },
+        {
+          "command": "appleContainer.k8s.logs",
+          "when": "viewItem == k8s.item.pods",
+          "group": "inline@1"
+        },
+        {
+          "command": "appleContainer.k8s.shell",
+          "when": "viewItem == k8s.item.pods",
+          "group": "inline@2"
+        },
+        {
+          "command": "appleContainer.k8s.openRemoteSsh",
+          "when": "viewItem == k8s.item.pods",
+          "group": "inline@3"
+        },
+        {
+          "command": "appleContainer.k8s.openRemoteSsh",
+          "when": "viewItem == k8s.item.pods",
+          "group": "1_pod@0"
+        },
+        {
+          "command": "appleContainer.k8s.logs",
+          "when": "viewItem == k8s.item.pods",
+          "group": "1_pod@1"
+        },
+        {
+          "command": "appleContainer.k8s.shell",
+          "when": "viewItem == k8s.item.pods",
+          "group": "1_pod@2"
+        },
+        {
+          "command": "appleContainer.k8s.restart",
+          "when": "viewItem =~ /^k8s\\.item\\.(deployments|statefulsets|daemonsets)$/",
+          "group": "1_workload@1"
+        },
+        {
+          "command": "appleContainer.k8s.scale",
+          "when": "viewItem =~ /^k8s\\.item\\.(deployments|statefulsets|replicasets)$/",
+          "group": "1_workload@2"
+        },
+        {
+          "command": "appleContainer.k8s.yaml",
+          "when": "viewItem =~ /^k8s\\.item\\./ || viewItem =~ /^clusterNode/",
+          "group": "2_view@6"
+        },
+        {
+          "command": "appleContainer.k8s.describe",
+          "when": "viewItem =~ /^k8s\\.item\\./ || viewItem =~ /^clusterNode/",
+          "group": "2_view@7"
+        },
+        {
+          "command": "appleContainer.k8s.delete",
+          "when": "viewItem =~ /^k8s\\.item\\./ && viewItem != k8s.item.events",
+          "group": "9_delete@1"
+        },
+        {
+          "command": "appleContainer.k8s.create",
+          "when": "viewItem == k8s.kind || viewItem == k8s.section.namespaces",
+          "group": "inline@1"
+        },
+        {
+          "command": "appleContainer.k8s.create",
+          "when": "viewItem == k8s.kind || viewItem == k8s.section.namespaces",
+          "group": "1_create@1"
         }
       ],
       "explorer/context": [
@@ -1144,6 +1516,13 @@
           "command": "appleContainer.devcontainer.rebuild",
           "when": "!remoteName && (resourceFilename == devcontainer.json || resourceFilename == .devcontainer.json)",
           "group": "apple-container@7"
+        }
+      ],
+      "editor/title": [
+        {
+          "command": "appleContainer.k8s.apply",
+          "when": "!remoteName && (appleContainer.hasCluster && resourceLangId == yaml)",
+          "group": "navigation"
         }
       ],
       "editor/title/context": [
@@ -1245,6 +1624,18 @@
           "default": 2,
           "minimum": 1,
           "markdownDescription": "%config.statsInterval%"
+        },
+        "appleContainer.cluster.kubeconfig": {
+          "type": "string",
+          "default": "",
+          "scope": "machine",
+          "markdownDescription": "%config.clusterKubeconfig%"
+        },
+        "appleContainer.kubectlPath": {
+          "type": "string",
+          "default": "",
+          "scope": "machine",
+          "markdownDescription": "%config.kubectlPath%"
         }
       }
     }

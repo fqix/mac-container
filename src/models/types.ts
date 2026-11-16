@@ -99,6 +99,28 @@ export interface SystemStatus {
   installRoot?: string;
 }
 
+/** A node of a `container cluster`; the node is a container with the same name */
+export interface ClusterNode {
+  name: string;
+  /** control-plane / worker */
+  roles: string[];
+  /** e.g. running; missing when the cluster status does not list the node */
+  status?: string;
+  addresses: string[];
+  /** host->container, e.g. 6446->6443 for the API server */
+  ports: string[];
+}
+
+export interface ClusterSummary {
+  name: string;
+  state: string;
+  kubernetesVersion?: string;
+  createdAt?: string;
+  sharedImageStore: boolean;
+  cni?: string;
+  nodes: ClusterNode[];
+}
+
 /** One row of `container system df` */
 export interface DiskUsageEntry {
   total: number;

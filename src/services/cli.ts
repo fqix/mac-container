@@ -6,6 +6,7 @@ import {access} from 'fs/promises';
 import * as path from 'path';
 
 import {
+  parseClusters,
   parseContainers,
   parseDiskUsage,
   parseImages,
@@ -17,6 +18,7 @@ import {
   parseVolumes,
 } from '../utils/parse';
 import type {
+  ClusterSummary,
   ContainerStats,
   ContainerSummary,
   DiskUsage,
@@ -109,6 +111,8 @@ export interface RunOptions {
   timeoutMs?: number;
   /** Written to the process stdin, e.g. a password for --password-stdin */
   input?: string;
+  /** Added to the environment, e.g. KUBECONFIG for the cluster commands */
+  env?: Record<string, string>;
 }
 
 export class ContainerCli {
@@ -140,7 +144,7 @@ export class ContainerCli {
         {
           timeout: options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
           maxBuffer: MAX_BUFFER,
-          env: {...process.env, NO_COLOR: '1'},
+          env: {...process.env, ...options.env, NO_COLOR: '1'},
         },
         (error, stdout, stderr) => {
           if (error) {
@@ -211,6 +215,10 @@ export class ContainerCli {
 
   async listVolumes(): Promise<VolumeSummary[]> {
     return parseVolumes(await this.json(['volume', 'list']));
+  }
+
+  async listClusters(): Promise<ClusterSummary[]> {
+    return parseClusters(await this.json(['cluster', 'list']));
   }
 
   async listRegistries(): Promise<RegistrySummary[]> {

@@ -131,12 +131,105 @@ async function setup(api: ExtensionApi): Promise<void> {
   await api.cli.run(['create', '--name', 'cache', IMAGE, 'sleep', 'infinity']);
 }
 
+/** The demo's Kubernetes objects, in their own namespace */
+const CLUSTER_MANIFEST = `apiVersion: v1
+kind: Namespace
+metadata:
+  name: demo
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web
+  namespace: demo
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: web
+  template:
+    metadata:
+      labels:
+        app: web
+    spec:
+      containers:
+        - name: web
+          image: nginx:stable
+          ports:
+            - containerPort: 80
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: web
+  namespace: demo
+spec:
+  selector:
+    app: web
+  ports:
+    - port: 80
+`;
+
+/** Puts the demo objects into the first running cluster and waits for them; resolves its name, if there is one */
+async function setupCluster(api: ExtensionApi): Promise<string | undefined> {
+  const [cluster] = (await api.cli.listClusters()).filter(
+    c => c.state === 'running',
+  );
+  if (!cluster) {
+    return undefined;
+  }
+  const kubectl = (args: string[], input?: string) =>
+    api.k8s.run(cluster.name, args, {
+      interactive: true,
+      version: cluster.kubernetesVersion,
+      input,
+    });
+  await kubectl(['apply', '-f', '-'], CLUSTER_MANIFEST);
+  for (let i = 0; i < 120; i++) {
+    const ready = await kubectl([
+      'get',
+      'deployment',
+      'web',
+      '--namespace',
+      'demo',
+      '-o',
+      'jsonpath={.status.readyReplicas}',
+    ]);
+    if (ready.trim() === '2') {
+      break;
+    }
+    await sleep(1000);
+  }
+  return cluster.name;
+}
+
+/** A row under a section of the clusters view, e.g. the Deployments folder or one deployment */
+async function clusterNode(
+  api: ExtensionApi,
+  path: string[],
+): Promise<vscode.TreeItem | undefined> {
+  let nodes = await api.views.clusters.getChildren();
+  let found: vscode.TreeItem | undefined;
+  for (const id of path) {
+    found = nodes.find(n => n.id === id);
+    if (!found) {
+      return undefined;
+    }
+    nodes = await api.views.clusters.getChildren(found);
+  }
+  return found;
+}
+
 export async function run_(): Promise<void> {
   const extension = vscode.extensions.all.find(
     e => e.packageJSON.name === 'apple-container-tools',
   )!;
   const api = (await extension.activate()) as ExtensionApi;
   await setup(api);
+  const cluster =
+    !only.length || only.includes('clusters')
+      ? await setupCluster(api)
+      : undefined;
   await run('workbench.action.closeAuxiliaryBar');
   await run('workbench.action.closePanel');
   await run('workbench.view.extension.appleContainer');
@@ -255,8 +348,85 @@ export async function run_(): Promise<void> {
       );
       await sleep(2500);
     });
+
+    // Needs a running `container cluster`; the scene is left out without one
+    if (cluster) {
+      const prefix = `cluster:${cluster}`;
+      // Shown and loaded before the scene starts: its first listing runs kubectl, and an expand sent while the tree
+      // is still empty does nothing
+      await run('workbench.view.extension.appleContainerClusters');
+      await clusterNode(api, [`${prefix}:workloads`, `${prefix}:kind:pods`]);
+      await sleep(2500);
+      await scene('clusters', async () => {
+        await run('appleContainer.clusters.focus');
+        await sleep(1000);
+        // Workloads -> Pods of all namespaces
+        await treeSteps(
+          [
+            'list.focusFirst',
+            'list.focusDown',
+            'list.expand',
+            'list.focusDown',
+            'list.expand',
+          ],
+          900,
+        );
+        await sleep(2000);
+        // Only the demo namespace from now on
+        void run('appleContainer.k8s.switchNamespace');
+        await sleep(1500);
+        await action('pick', {label: 'demo'});
+        await sleep(2500);
+        await run(
+          'appleContainer.k8s.yaml',
+          await clusterNode(api, [
+            `${prefix}:workloads`,
+            `${prefix}:kind:deployments`,
+            `${prefix}:deployments:demo/web`,
+          ]),
+        );
+        await sleep(3000);
+        await run('workbench.action.closeAllEditors');
+        // A ConfigMap from its template, applied from the editor title
+        await run(
+          'appleContainer.k8s.create',
+          await clusterNode(api, [
+            `${prefix}:config`,
+            `${prefix}:kind:configmaps`,
+          ]),
+        );
+        await sleep(2500);
+        await run('appleContainer.k8s.apply');
+        await sleep(2000);
+        await run('workbench.action.revertAndCloseActiveEditor');
+        // Apply refreshes the tree; expand only once it has settled
+        await sleep(2500);
+        await run('appleContainer.clusters.focus');
+        await run('list.collapseAll');
+        await sleep(800);
+        // Config -> ConfigMaps
+        await treeSteps(
+          [
+            'list.focusFirst',
+            'list.focusDown',
+            'list.focusDown',
+            'list.expand',
+            'list.focusDown',
+            'list.expand',
+          ],
+          600,
+        );
+        await sleep(2500);
+      });
+    }
   } finally {
     await cleanup(api);
+    if (cluster) {
+      await api.k8s
+        .run(cluster, ['delete', 'namespace', 'demo', '--wait=false'])
+        .catch(() => undefined);
+      await api.views.clusters.selectNamespace(undefined);
+    }
   }
 }
 

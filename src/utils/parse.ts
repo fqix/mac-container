@@ -3,6 +3,8 @@
 // to the stats output.
 
 import type {
+  ClusterNode,
+  ClusterSummary,
   ContainerMount,
   ContainerStats,
   ContainerSummary,
@@ -234,6 +236,49 @@ export function parseSystemStatus(data: unknown): SystemStatus {
     appRoot: item.paths?.appRoot,
     installRoot: item.paths?.installRoot,
   };
+}
+
+const strings = (value: unknown): string[] =>
+  Array.isArray(value) ? value.filter(v => typeof v === 'string') : [];
+
+/**
+ * `container cluster list --format json` (container 1.7.1). Node roles come from the configuration, addresses and
+ * ports from the status; a configured node missing from the status has no status.
+ */
+export function parseClusters(data: unknown): ClusterSummary[] {
+  return asArray(data).map(item => {
+    const config = (item.configuration ?? {}) as Json;
+    const status = (item.status ?? {}) as Json;
+    const live = new Map(
+      asArray(status.nodes).map(n => [String(n.name), n] as const),
+    );
+    const names = [
+      ...asArray(config.nodes).map(n => String(n.name)),
+      ...[...live.keys()].filter(
+        name => !asArray(config.nodes).some(n => n.name === name),
+      ),
+    ];
+    const nodes: ClusterNode[] = names.map(name => {
+      const configured = asArray(config.nodes).find(n => n.name === name);
+      const current = live.get(name);
+      return {
+        name,
+        roles: strings(configured?.roles),
+        status: current?.status,
+        addresses: strings(current?.addresses),
+        ports: strings(current?.ports),
+      };
+    });
+    return {
+      name: config.name ?? item.id,
+      state: status.state ?? 'unknown',
+      kubernetesVersion: config.kubernetesVersion ?? undefined,
+      createdAt: toIsoDate(config.creationDate),
+      sharedImageStore: config.sharedImageStore === true,
+      cni: config.cni ?? undefined,
+      nodes,
+    };
+  });
 }
 
 function parseDiskUsageEntry(item: Json | undefined): DiskUsageEntry {
