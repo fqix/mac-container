@@ -9,6 +9,8 @@ import {
   type ExecTarget,
   InstallFailedError,
   type InstallRunner,
+  machineHostAlias,
+  machineTarget,
   NoPackageManagerError,
   POD_SSHD_ARGS,
   PodNotRootError,
@@ -33,16 +35,19 @@ import {
   writeSessionEnvironment,
 } from '../services/remoteSsh';
 import {writeConfigArgs} from '../services/cluster';
+import {machineRunArgs} from '../services/machine';
 import {describeError} from '../utils/i18n';
-import type {ContainerSummary} from '../models/types';
+import type {ContainerSummary, MachineSummary} from '../models/types';
 import {pickTargetPath} from '../ui/containerPathPicker';
 import {StepTerminal} from '../ui/stepTerminal';
 import type {ContainerNode} from '../views/containers';
 import type {K8sItemTreeNode} from '../views/clusters';
+import type {MachineNode} from '../views/machines';
 import {CommandContext, register, withProgress} from './common';
 
-/** globalState keys: sshd path and login user per container, last opened folder per user@host, pod hosts */
+/** globalState keys: sshd path and login user per container and machine, last opened folder per user@host, pod hosts */
 const HOSTS_KEY = 'remoteSsh.hosts';
+const MACHINE_HOSTS_KEY = 'remoteSsh.machineHosts';
 const FOLDERS_KEY = 'remoteSsh.folders';
 const POD_HOSTS_KEY = 'remoteSsh.podHosts';
 /** Pods come and go; the config keeps the hosts of the most recently opened ones */
@@ -73,6 +78,16 @@ export function registerRemoteSshCommands(ctx: CommandContext): void {
     async (node?: ContainerNode) => {
       if (node) {
         await openContainerOverSsh(ctx, node.resource);
+      }
+    },
+  );
+
+  register(
+    ctx,
+    'appleContainer.machine.openRemoteSsh',
+    async (node?: MachineNode) => {
+      if (node) {
+        await openMachineOverSsh(ctx, node.resource);
       }
     },
   );
@@ -156,6 +171,36 @@ export async function openContainerOverSsh(
 }
 
 /**
+ * Opens a `container machine` with Remote-SSH, the same way as a container: sshd runs on the connection through
+ * `container machine run`, which boots the machine first if it is stopped. The login user is the machine's account,
+ * which matches the Mac user unless the machine was created with another one.
+ */
+export async function openMachineOverSsh(
+  ctx: CommandContext,
+  machine: Pick<MachineSummary, 'id'>,
+): Promise<boolean> {
+  const id = machine.id;
+  const user =
+    configuredUser() ||
+    (await ctx.cli.inspectMachine(id).catch(() => undefined))?.username ||
+    os.userInfo().username;
+  return openOverSsh(
+    ctx,
+    machineTarget(ctx.cli, id),
+    user,
+    {},
+    async result => {
+      const state = ctx.extension.globalState;
+      await state.update(MACHINE_HOSTS_KEY, {
+        ...state.get<Record<string, SshHost>>(MACHINE_HOSTS_KEY, {}),
+        [id]: {id, sshd: result.sshd, user: result.user},
+      });
+      await writeSshConfig(ctx);
+    },
+  );
+}
+
+/**
  * Opens one container of a pod of a `container cluster` with Remote-SSH, the same way as a container: sshd runs on
  * the connection through `kubectl exec`. The pod's container must run as root, since kubectl cannot switch users.
  */
@@ -224,7 +269,8 @@ export async function openPodOverSsh(
 
 /**
  * Rewrites the managed SSH config: the running containers (prepared ones with their sshd and user, others with
- * defaults so they connect once set up) and the most recently opened pods of clusters that still exist.
+ * defaults so they connect once set up), the machines opened before that still exist and the most recently opened
+ * pods of clusters that still exist.
  */
 async function writeSshConfig(ctx: CommandContext): Promise<void> {
   const {cli} = ctx;
@@ -264,18 +310,39 @@ async function writeSshConfig(ctx: CommandContext): Promise<void> {
     Object.fromEntries(pods.map(pod => [pod.alias, pod])),
   );
 
+  // Machines opened before, while they exist; when they cannot be listed right now, every machine host is kept
+  const cliPath = await cli.executable();
+  const machineIds = await cli
+    .listMachines()
+    .then(list => new Set(list.map(m => m.id)))
+    .catch(() => undefined);
+  const machines = Object.values(
+    state.get<Record<string, SshHost>>(MACHINE_HOSTS_KEY, {}),
+  ).filter(host => !machineIds || machineIds.has(host.id));
+  await state.update(
+    MACHINE_HOSTS_KEY,
+    Object.fromEntries(machines.map(host => [host.id, host])),
+  );
+
   await writeConfig(
-    renderConfig(
-      hosts,
-      await cli.executable(),
-      undefined,
-      pods.map(({alias, hostName, user, proxyCommand}) => ({
+    renderConfig(hosts, cliPath, undefined, [
+      ...machines.map(host => ({
+        alias: machineHostAlias(host.id),
+        hostName: host.id,
+        user: host.user,
+        proxyCommand: proxyCommand(
+          cliPath,
+          (argv, options) => machineRunArgs(host.id, argv, options),
+          host.sshd,
+        ),
+      })),
+      ...pods.map(({alias, hostName, user, proxyCommand}) => ({
         alias,
         hostName,
         user,
         proxyCommand,
       })),
-    ),
+    ]),
   );
 }
 
@@ -495,7 +562,7 @@ async function reportMissingSshd(
   cause: unknown,
 ): Promise<void> {
   const copy = vscode.l10n.t('Copy Install Command');
-  // Only a container has the Attach Shell command of the Containers view
+  // Only containers and machines have a shell command; pods leave it to kubectl
   const shell = target.switchesUser ? vscode.l10n.t('Attach Shell') : undefined;
   const reason = installFailure(cause);
   const answer = await vscode.window.showErrorMessage(
@@ -517,9 +584,13 @@ async function reportMissingSshd(
   if (answer === copy) {
     await vscode.env.clipboard.writeText(INSTALL_HINT);
   } else if (shell && answer === shell) {
-    await vscode.commands.executeCommand('appleContainer.container.exec', {
-      resource: {id: target.name},
-    });
+    // A machine's root shell, since installing packages needs root there
+    await vscode.commands.executeCommand(
+      target.machine
+        ? 'appleContainer.machine.rootShell'
+        : 'appleContainer.container.exec',
+      {resource: {id: target.name}},
+    );
   }
 }
 

@@ -99,6 +99,38 @@ export interface SystemStatus {
   installRoot?: string;
 }
 
+/** A `container machine`: a persistent Linux environment with the Mac user and home directory, from `machine list` */
+export interface MachineSummary {
+  id: string;
+  /** running / stopped / stopping / unknown */
+  status: string;
+  /** The machine `container machine run` uses without -n */
+  isDefault: boolean;
+  /** Only while running */
+  ipv4?: string;
+  cpus?: number;
+  memoryBytes?: number;
+  /** Space used by the machine's persistent storage */
+  diskBytes?: number;
+  createdAt?: string;
+}
+
+/** What `machine inspect` adds to the list output */
+export interface MachineDetails extends MachineSummary {
+  image?: string;
+  platform?: string;
+  /** The machine's account, matching the Mac user unless set at creation */
+  username?: string;
+  uid?: number;
+  /** The account's Linux home; the Mac home is mounted at its own path */
+  home?: string;
+  /** rw / ro / none */
+  homeMount?: string;
+  /** The container backing the machine; changes on every boot */
+  containerId?: string;
+  startedAt?: string;
+}
+
 /** A node of a `container cluster`; the node is a container with the same name */
 export interface ClusterNode {
   name: string;

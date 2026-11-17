@@ -9,6 +9,7 @@ import type {ResourceNode} from '../views/base';
 import type {ClustersProvider} from '../views/clusters';
 import type {ContainersProvider} from '../views/containers';
 import type {ImagesProvider} from '../views/images';
+import type {MachinesProvider} from '../views/machines';
 import type {NetworksProvider} from '../views/networks';
 import type {RegistriesProvider} from '../views/registries';
 import type {VolumesProvider} from '../views/volumes';
@@ -23,6 +24,7 @@ export interface CommandContext {
   views: {
     containers: ContainersProvider;
     images: ImagesProvider;
+    machines: MachinesProvider;
     networks: NetworksProvider;
     volumes: VolumesProvider;
     registries: RegistriesProvider;
