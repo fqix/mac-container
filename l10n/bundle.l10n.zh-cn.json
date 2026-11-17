@@ -409,5 +409,7 @@
   "kubectl apply creates or updates the objects in the manifest.": "kubectl apply 会创建或更新清单中的对象。",
   "Applying to {0}...": "正在应用到 {0}...",
   "Applied to {0}.": "已应用到 {0}。",
-  "Pod {0} runs as uid {1}. Opening a pod over Remote-SSH sets up sshd as root, and kubectl exec cannot switch to root; use a container that runs as root.": "Pod {0} 以 uid {1} 运行。通过 Remote-SSH 打开 Pod 需要以 root 配置 sshd，而 kubectl exec 无法切换到 root；请使用以 root 运行的容器。"
+  "Pod {0} runs as uid {1}. Opening a pod over Remote-SSH sets up sshd as root, and kubectl exec cannot switch to root; use a container that runs as root.": "Pod {0} 以 uid {1} 运行。通过 Remote-SSH 打开 Pod 需要以 root 配置 sshd，而 kubectl exec 无法切换到 root；请使用以 root 运行的容器。",
+  "1 tag": "1 个标签",
+  "{0} tags": "{0} 个标签"
 }

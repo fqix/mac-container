@@ -5,6 +5,7 @@ import * as path from 'path';
 import {
   formatBytes,
   formatRelativeTime,
+  groupImagesByRepository,
   parseClusters,
   parseContainers,
   parseDiskUsage,
@@ -15,6 +16,7 @@ import {
   parseSystemStatus,
   parseVolumes,
   shortImageName,
+  splitImageName,
 } from '../../src/utils/parse';
 
 // Compiled to out/test/unit, fixtures stay in the source tree
@@ -79,6 +81,90 @@ describe('parse', () => {
     assert.ok(alpine.digest.startsWith('sha256:'));
     assert.ok(alpine.sizeBytes > 0);
     assert.ok(alpine.platforms.includes('linux/arm64/v8'));
+    assert.ok(alpine.createdAt && Date.parse(alpine.createdAt) > 0);
+  });
+
+  it('falls back from an epoch image creation date to the arm64 variant', () => {
+    const variant = (architecture: string, created: string) => ({
+      platform: {os: 'linux', architecture},
+      size: 1,
+      config: {
+        created: '1970-01-01T00:00:00Z',
+        config: {Labels: {'org.opencontainers.image.created': created}},
+        history: [{created}],
+      },
+    });
+    const [image] = parseImages([
+      {
+        id: 'd66b',
+        configuration: {
+          name: 'docker.io/library/ubuntu:latest',
+          creationDate: '1970-01-01T00:00:00Z',
+        },
+        variants: [
+          variant('amd64', '2026-11-06T10:28:50+00:00'),
+          {platform: {os: 'unknown', architecture: 'unknown'}, config: {}},
+          variant('arm64', '2026-11-06T10:31:00+00:00'),
+        ],
+      },
+    ]);
+    assert.strictEqual(image.createdAt, '2026-11-06T10:31:00+00:00');
+
+    const [unknown] = parseImages([
+      {
+        id: 'x',
+        configuration: {name: 'x', creationDate: '1970-01-01T00:00:00Z'},
+        variants: [],
+      },
+    ]);
+    assert.strictEqual(unknown.createdAt, undefined);
+  });
+
+  it('splits image names into repository and tag', () => {
+    assert.deepStrictEqual(splitImageName('ubuntu:22.04'), {
+      repository: 'ubuntu',
+      tag: '22.04',
+    });
+    assert.deepStrictEqual(splitImageName('localhost:5000/app:v1'), {
+      repository: 'localhost:5000/app',
+      tag: 'v1',
+    });
+    assert.deepStrictEqual(splitImageName('localhost:5000/app'), {
+      repository: 'localhost:5000/app',
+      tag: 'latest',
+    });
+    assert.deepStrictEqual(
+      splitImageName(
+        'kindest/node@sha256:ce977ae6d65918d0b58a5f8b5e940429c2ce42fa3a5619ec2bbc60b949c0ac95',
+      ),
+      {repository: 'kindest/node', tag: '@sha256:ce977ae6d659'},
+    );
+    assert.deepStrictEqual(
+      splitImageName('localhost:5000/app:v1@sha256:0123456789abcdef'),
+      {repository: 'localhost:5000/app', tag: '@sha256:0123456789ab'},
+    );
+  });
+
+  it('groups images by repository', () => {
+    const image = (displayName: string) => ({
+      reference: `docker.io/library/${displayName}`,
+      displayName,
+      digest: '',
+      sizeBytes: 0,
+      platforms: [],
+    });
+    const groups = groupImagesByRepository([
+      image('ubuntu:latest'),
+      image('alpine:latest'),
+      image('ubuntu:22.04'),
+    ]);
+    assert.deepStrictEqual(
+      groups.map(g => [g.name, g.images.map(i => i.displayName)]),
+      [
+        ['alpine', ['alpine:latest']],
+        ['ubuntu', ['ubuntu:22.04', 'ubuntu:latest']],
+      ],
+    );
   });
 
   it('parses networks and flags the built-in one', () => {
