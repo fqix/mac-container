@@ -11,6 +11,8 @@ import {
   parseDiskUsage,
   parseImages,
   parseJson,
+  parseMachineInspect,
+  parseMachines,
   parseNetworks,
   parseRegistries,
   parseStats,
@@ -23,6 +25,8 @@ import type {
   ContainerSummary,
   DiskUsage,
   ImageSummary,
+  MachineDetails,
+  MachineSummary,
   NetworkSummary,
   RegistrySummary,
   SystemStatus,
@@ -219,6 +223,17 @@ export class ContainerCli {
 
   async listClusters(): Promise<ClusterSummary[]> {
     return parseClusters(await this.json(['cluster', 'list']));
+  }
+
+  async listMachines(): Promise<MachineSummary[]> {
+    return parseMachines(await this.json(['machine', 'list']));
+  }
+
+  /** `machine inspect` prints JSON natively and has no --format option */
+  async inspectMachine(id: string): Promise<MachineDetails | undefined> {
+    return parseMachineInspect(
+      parseJson(await this.run(['machine', 'inspect', id])),
+    );
   }
 
   async listRegistries(): Promise<RegistrySummary[]> {

@@ -11,6 +11,8 @@ import type {
   DiskUsage,
   DiskUsageEntry,
   ImageSummary,
+  MachineDetails,
+  MachineSummary,
   NetworkSummary,
   PortMapping,
   RegistrySummary,
@@ -331,6 +333,48 @@ const strings = (value: unknown): string[] =>
  * `container cluster list --format json` (container 1.7.1). Node roles come from the configuration, addresses and
  * ports from the status; a configured node missing from the status has no status.
  */
+function parseMachine(item: Json): MachineSummary {
+  return {
+    id: String(item.id),
+    status: item.status ?? 'unknown',
+    isDefault: item.default === true,
+    ipv4: item.ipAddress ?? undefined,
+    cpus: typeof item.cpus === 'number' ? item.cpus : undefined,
+    memoryBytes: typeof item.memory === 'number' ? item.memory : undefined,
+    diskBytes: typeof item.diskSize === 'number' ? item.diskSize : undefined,
+    createdAt: toIsoDate(item.createdDate),
+  };
+}
+
+/** `container machine list --format json` (container 1.7.1) */
+export function parseMachines(data: unknown): MachineSummary[] {
+  return asArray(data).map(parseMachine);
+}
+
+/** `container machine inspect`, which prints an array of one; it has no `default` field */
+export function parseMachineInspect(data: unknown): MachineDetails | undefined {
+  const [item] = asArray(data);
+  if (!item) {
+    return undefined;
+  }
+  const user = (item.userSetup ?? {}) as Json;
+  const platform = (item.platform ?? {}) as Json;
+  return {
+    ...parseMachine(item),
+    image: item.image?.reference,
+    platform:
+      platform.os && platform.architecture
+        ? `${platform.os}/${platform.architecture}`
+        : undefined,
+    username: user.username,
+    uid: typeof user.uid === 'number' ? user.uid : undefined,
+    home: user.home,
+    homeMount: item.homeMount,
+    containerId: item.containerId ?? undefined,
+    startedAt: toIsoDate(item.startedDate),
+  };
+}
+
 export function parseClusters(data: unknown): ClusterSummary[] {
   return asArray(data).map(item => {
     const config = (item.configuration ?? {}) as Json;

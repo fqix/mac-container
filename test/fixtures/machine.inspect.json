@@ -1,0 +1,32 @@
+[
+  {
+    "containerId": "dev-2a02a8",
+    "cpus": 2,
+    "createdDate": "2026-11-17T09:38:47Z",
+    "diskSize": 43433984,
+    "homeMount": "rw",
+    "id": "dev",
+    "image": {
+      "descriptor": {
+        "digest": "sha256:f59abe656b692d901e184be3445e084786602108599d2a51d229c0f5a48c71bf",
+        "mediaType": "application\/vnd.oci.image.index.v1+json",
+        "size": 9218
+      },
+      "reference": "docker.io\/library\/alpine:latest"
+    },
+    "ipAddress": "192.168.64.2",
+    "memory": 1073741824,
+    "platform": {
+      "architecture": "arm64",
+      "os": "linux"
+    },
+    "startedDate": "2026-11-17T09:38:48Z",
+    "status": "running",
+    "userSetup": {
+      "gid": 20,
+      "home": "\/home\/alice",
+      "uid": 501,
+      "username": "alice"
+    }
+  }
+]

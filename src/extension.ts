@@ -8,6 +8,7 @@ import {registerComposeCommands} from './commands/compose';
 import {registerClusterCommands} from './commands/clusters';
 import {registerContainerCommands} from './commands/containers';
 import {registerK8sCommands} from './commands/k8s';
+import {registerMachineCommands} from './commands/machines';
 import {
   installDevContainerExtensions,
   registerDevContainerCommands,
@@ -34,6 +35,7 @@ import type {ResourceProvider} from './views/base';
 import {ClustersProvider} from './views/clusters';
 import {ContainersProvider} from './views/containers';
 import {ImagesProvider} from './views/images';
+import {MachinesProvider} from './views/machines';
 import {NetworksProvider} from './views/networks';
 import {RegistriesProvider} from './views/registries';
 import {VolumesProvider} from './views/volumes';
@@ -78,6 +80,7 @@ export function activate(
   const views = {
     containers: new ContainersProvider(monitor, cli),
     images: new ImagesProvider(monitor, cli),
+    machines: new MachinesProvider(monitor, cli),
     networks: new NetworksProvider(monitor, cli),
     volumes: new VolumesProvider(monitor, cli),
     registries: new RegistriesProvider(monitor, cli),
@@ -179,6 +182,7 @@ export function activate(
   registerComposeCommands(ctx);
   registerPortAndMountCommands(ctx);
   registerImageCommands(ctx);
+  registerMachineCommands(ctx);
   registerBuilderCommands(ctx);
   registerNetworkCommands(ctx);
   registerVolumeCommands(ctx);

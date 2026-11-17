@@ -69,6 +69,12 @@
           "when": "!remoteName"
         },
         {
+          "id": "appleContainer.machines",
+          "name": "%view.machines%",
+          "visibility": "collapsed",
+          "when": "!remoteName && (!appleContainer.machinesUnsupported)"
+        },
+        {
           "id": "appleContainer.networks",
           "name": "%view.networks%",
           "visibility": "collapsed",
@@ -114,6 +120,11 @@
       {
         "view": "appleContainer.images",
         "contents": "%welcome.noImages%",
+        "when": "!appleContainer.cliMissing && !appleContainer.serviceStopped"
+      },
+      {
+        "view": "appleContainer.machines",
+        "contents": "%welcome.noMachines%",
         "when": "!appleContainer.cliMissing && !appleContainer.serviceStopped"
       },
       {
@@ -296,6 +307,85 @@
         "title": "%command.image.prune%",
         "category": "%category%",
         "icon": "$(clear-all)"
+      },
+      {
+        "command": "appleContainer.machine.create",
+        "title": "%command.machine.create%",
+        "category": "%category%",
+        "icon": "$(add)"
+      },
+      {
+        "command": "appleContainer.machine.shell",
+        "title": "%command.machine.shell%",
+        "category": "%category%",
+        "icon": "$(terminal)"
+      },
+      {
+        "command": "appleContainer.machine.rootShell",
+        "title": "%command.machine.rootShell%",
+        "category": "%category%"
+      },
+      {
+        "command": "appleContainer.machine.start",
+        "title": "%command.machine.start%",
+        "category": "%category%",
+        "icon": "$(debug-start)"
+      },
+      {
+        "command": "appleContainer.machine.stop",
+        "title": "%command.machine.stop%",
+        "category": "%category%",
+        "icon": "$(debug-stop)"
+      },
+      {
+        "command": "appleContainer.machine.restart",
+        "title": "%command.machine.restart%",
+        "category": "%category%",
+        "icon": "$(debug-restart)"
+      },
+      {
+        "command": "appleContainer.machine.edit",
+        "title": "%command.machine.edit%",
+        "category": "%category%",
+        "icon": "$(edit)"
+      },
+      {
+        "command": "appleContainer.machine.setDefault",
+        "title": "%command.machine.setDefault%",
+        "category": "%category%"
+      },
+      {
+        "command": "appleContainer.machine.openRemoteSsh",
+        "title": "%command.machine.openRemoteSsh%",
+        "category": "%category%",
+        "icon": "$(remote-explorer)"
+      },
+      {
+        "command": "appleContainer.machine.logs",
+        "title": "%command.machine.logs%",
+        "category": "%category%",
+        "icon": "$(output)"
+      },
+      {
+        "command": "appleContainer.machine.bootLogs",
+        "title": "%command.machine.bootLogs%",
+        "category": "%category%"
+      },
+      {
+        "command": "appleContainer.machine.inspect",
+        "title": "%command.machine.inspect%",
+        "category": "%category%"
+      },
+      {
+        "command": "appleContainer.machine.copyIp",
+        "title": "%command.machine.copyIp%",
+        "category": "%category%"
+      },
+      {
+        "command": "appleContainer.machine.delete",
+        "title": "%command.machine.delete%",
+        "category": "%category%",
+        "icon": "$(trash)"
       },
       {
         "command": "appleContainer.builder.start",
@@ -823,6 +913,62 @@
           "when": "!remoteName"
         },
         {
+          "command": "appleContainer.machine.create",
+          "when": "!remoteName"
+        },
+        {
+          "command": "appleContainer.machine.shell",
+          "when": "false"
+        },
+        {
+          "command": "appleContainer.machine.rootShell",
+          "when": "false"
+        },
+        {
+          "command": "appleContainer.machine.start",
+          "when": "false"
+        },
+        {
+          "command": "appleContainer.machine.stop",
+          "when": "false"
+        },
+        {
+          "command": "appleContainer.machine.restart",
+          "when": "false"
+        },
+        {
+          "command": "appleContainer.machine.edit",
+          "when": "false"
+        },
+        {
+          "command": "appleContainer.machine.setDefault",
+          "when": "false"
+        },
+        {
+          "command": "appleContainer.machine.openRemoteSsh",
+          "when": "false"
+        },
+        {
+          "command": "appleContainer.machine.logs",
+          "when": "false"
+        },
+        {
+          "command": "appleContainer.machine.bootLogs",
+          "when": "false"
+        },
+        {
+          "command": "appleContainer.machine.inspect",
+          "when": "false"
+        },
+        {
+          "command": "appleContainer.machine.copyIp",
+          "when": "false"
+        },
+        {
+          "command": "appleContainer.machine.delete",
+          "when": "false"
+        },
+        {
           "command": "appleContainer.builder.start",
           "when": "!remoteName"
         },
@@ -1044,6 +1190,11 @@
           "group": "navigation@2"
         },
         {
+          "command": "appleContainer.machine.create",
+          "when": "view == appleContainer.machines",
+          "group": "navigation@1"
+        },
+        {
           "command": "appleContainer.volume.create",
           "when": "view == appleContainer.volumes",
           "group": "navigation@1"
@@ -1223,6 +1374,86 @@
         {
           "command": "appleContainer.network.delete",
           "when": "viewItem == network",
+          "group": "9_delete@1"
+        },
+        {
+          "command": "appleContainer.machine.start",
+          "when": "viewItem =~ /^machine\\.stopped/",
+          "group": "inline@1"
+        },
+        {
+          "command": "appleContainer.machine.stop",
+          "when": "viewItem =~ /^machine\\.running/",
+          "group": "inline@1"
+        },
+        {
+          "command": "appleContainer.machine.shell",
+          "when": "viewItem =~ /^machine\\./",
+          "group": "inline@2"
+        },
+        {
+          "command": "appleContainer.machine.start",
+          "when": "viewItem =~ /^machine\\.stopped/",
+          "group": "1_lifecycle@1"
+        },
+        {
+          "command": "appleContainer.machine.stop",
+          "when": "viewItem =~ /^machine\\.running/",
+          "group": "1_lifecycle@1"
+        },
+        {
+          "command": "appleContainer.machine.restart",
+          "when": "viewItem =~ /^machine\\.running/",
+          "group": "1_lifecycle@2"
+        },
+        {
+          "command": "appleContainer.machine.edit",
+          "when": "viewItem =~ /^machine\\./",
+          "group": "1_lifecycle@9"
+        },
+        {
+          "command": "appleContainer.machine.openRemoteSsh",
+          "when": "viewItem =~ /^machine\\./",
+          "group": "2_view@0"
+        },
+        {
+          "command": "appleContainer.machine.shell",
+          "when": "viewItem =~ /^machine\\./",
+          "group": "2_view@1"
+        },
+        {
+          "command": "appleContainer.machine.rootShell",
+          "when": "viewItem =~ /^machine\\./",
+          "group": "2_view@2"
+        },
+        {
+          "command": "appleContainer.machine.logs",
+          "when": "viewItem =~ /^machine\\./",
+          "group": "2_view@3"
+        },
+        {
+          "command": "appleContainer.machine.bootLogs",
+          "when": "viewItem =~ /^machine\\./",
+          "group": "2_view@4"
+        },
+        {
+          "command": "appleContainer.machine.inspect",
+          "when": "viewItem =~ /^machine\\./",
+          "group": "2_view@5"
+        },
+        {
+          "command": "appleContainer.machine.setDefault",
+          "when": "viewItem =~ /^machine\\.(running|stopped)$/",
+          "group": "3_default@1"
+        },
+        {
+          "command": "appleContainer.machine.copyIp",
+          "when": "viewItem =~ /^machine\\.running/",
+          "group": "4_copy@1"
+        },
+        {
+          "command": "appleContainer.machine.delete",
+          "when": "viewItem =~ /^machine\\./",
           "group": "9_delete@1"
         },
         {

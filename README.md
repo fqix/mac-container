@@ -22,7 +22,8 @@
 
 - 🧭 **One sidebar** for containers, images, networks, volumes, registries, container-compose projects and the `container` service.
 - ☸️ **Kubernetes clusters** of `container cluster`, browsed like Lens.
-- 🖥️ **Containers and pods as remote workspaces** over Remote-SSH, with no published port or running SSH daemon.
+- 🐧 **Machines** of `container machine`: persistent Linux environments with your Mac user and home directory.
+- 🖥️ **Containers, machines and pods as remote workspaces** over Remote-SSH, with no published port or running SSH daemon.
 - 📦 **`devcontainer.json` without Docker**, features and lifecycle commands included.
 - 📝 **Forms** to run, edit and build, and **English and Simplified Chinese**.
 
@@ -64,6 +65,14 @@ Then open **Apple Container** in the activity bar; if the service is stopped, st
 - container-compose projects are grouped, with start, stop, delete and **Compose Up** / **Compose Down**.
 - The status bar starts or stops the service and opens the **System Overview** (versions, paths, disk usage with prune).
 
+### Machines
+
+A machine of `container machine` (container 1.7.1) is a persistent Linux environment that boots the image's `/sbin/init`, with an account matching your Mac user and your Mac home directory mounted at the same path. The **Machines** view lists them.
+
+- **New Machine...** picks an image (it must have `/sbin/init`, such as `alpine:latest`; type a reference to pull it), a name, CPUs, memory and how the home directory is mounted.
+- **Open Shell** / **Open Root Shell** open a login shell, in the terminal's folder when it is under your home directory; a stopped machine boots first.
+- Start, stop, restart, **Edit...** (CPUs, memory, home mount; applied on the next boot), **Set as Default**, logs, boot logs and delete.
+
 ### Kubernetes clusters
 
 Clusters created with `container cluster` (container 1.7.1) have their own Activity Bar icon.
@@ -77,7 +86,7 @@ Clusters created with `container cluster` (container 1.7.1) have their own Activ
 
 ## Remote-SSH
 
-Right-click a running container, or a pod, → **Open in Remote-SSH** and pick a folder. The window connects through `container exec` (`kubectl exec` for pods), so no port or IP route is needed.
+Right-click a running container, a machine or a pod → **Open in Remote-SSH** and pick a folder. The window connects through `container exec` (`container machine run` for machines, which boots a stopped one; `kubectl exec` for pods), so no port or IP route is needed. A machine logs in as its own account, which matches your Mac user.
 
 - Missing `openssh-server`, `bash` or `wget` is installed with the image's package manager (needs network access); a pod's container must run as root.
 - `~/.ssh/config` gets one `Include ~/.ssh/apple-container/config` line; host entries and the key pair stay in `~/.ssh/apple-container/`.

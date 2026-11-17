@@ -4,6 +4,7 @@
 import * as assert from 'assert';
 import {execFile} from 'child_process';
 import * as fs from 'fs';
+import * as os from 'os';
 import * as path from 'path';
 import {promisify} from 'util';
 
@@ -22,6 +23,8 @@ const manifest = JSON.parse(
 );
 const EXTENSION_ID = `${manifest.publisher}.${manifest.name}`;
 const IMAGE = 'docker.io/library/ubuntu:latest';
+/** A machine boots the image's /sbin/init, which ubuntu:latest lacks; Alpine has BusyBox init */
+const MACHINE_IMAGE = 'docker.io/library/alpine:latest';
 const suffix = Date.now().toString(36);
 const names = {
   container: `e2e-${suffix}`,
@@ -37,6 +40,7 @@ const names = {
   registry: `e2e-registry-${suffix}`,
   files: `e2e-files-${suffix}`,
   ports: `e2e-ports-${suffix}`,
+  machine: `e2e-machine-${suffix}`,
   pushed: `localhost:15095/e2e/ubuntu:${suffix}`,
 };
 
@@ -110,6 +114,8 @@ function scriptQuickPick(...steps: string[]): Promise<void> {
       busy: false,
       onDidAccept: accept.event,
       onDidHide: hide.event,
+      // Typing is not scripted; pickers that offer the typed value still subscribe
+      onDidChangeValue: new vscode.EventEmitter<string>().event,
       show: () => undefined,
       dispose: () => undefined,
       hide: () => hide.fire(),
@@ -298,6 +304,7 @@ describe('Apple Container e2e', function () {
       .catch(ignore);
     await api?.cli.run(['image', 'delete', names.pushed]).catch(ignore);
     await api?.cli.run(['delete', '--force', names.registry]).catch(ignore);
+    await api?.cli.run(['machine', 'delete', names.machine]).catch(ignore);
   });
 
   it('registers every command declared in package.json', async () => {
@@ -1339,6 +1346,126 @@ describe('Apple Container e2e', function () {
     assert.ok(
       (await api.cli.listVolumes()).some(v => v.name === names.volume),
       'volume deleted without confirmation',
+    );
+  });
+
+  it('creates, edits, restarts, opens over Remote-SSH and deletes a machine', async function () {
+    // container before 1.7 has no machines
+    if (
+      !(await api.cli.listMachines().then(
+        () => true,
+        () => false,
+      ))
+    ) {
+      this.skip();
+    }
+    this.timeout(10 * 60_000);
+    if (
+      !(await api.cli.listImages()).some(i => i.reference === MACHINE_IMAGE)
+    ) {
+      await api.cli.run(['image', 'pull', MACHINE_IMAGE], {
+        timeoutMs: 5 * 60_000,
+      });
+    }
+    const machineNode = (status: string) =>
+      waitFor(`machine ${status}`, async () =>
+        (await children(api.views.machines)).find(
+          n => n.resource.id === names.machine && n.resource.status === status,
+        ),
+      );
+
+    // New Machine: image, name, CPUs, memory, no home mount (the test machine keeps out of the real home directory),
+    // and not the default, which would change the user's `container machine run`
+    const picked = scriptQuickPick('alpine:latest');
+    answerInputs(names.machine, '2', '1G');
+    const pickMount = (mount: string) =>
+      stub(
+        'showQuickPick',
+        async (items: readonly (string | {description?: string})[]) =>
+          typeof items[0] === 'string'
+            ? items[1]
+            : items.find(i => typeof i !== 'string' && i.description === mount),
+      );
+    pickMount('none');
+    stub('showInformationMessage', async () => undefined);
+    await vscode.commands.executeCommand('appleContainer.machine.create');
+    await picked;
+    let node = await machineNode('running');
+    assert.strictEqual(node.resource.cpus, 2);
+    assert.strictEqual(node.resource.memoryBytes, 1024 ** 3);
+    assert.match(node.contextValue ?? '', /^machine\.running/);
+    const created = await api.cli.inspectMachine(names.machine);
+    assert.strictEqual(created?.homeMount, 'none');
+    assert.strictEqual(created?.image, MACHINE_IMAGE);
+
+    // Edit: new CPUs and memory apply after the offered restart
+    answerInputs('3', '1536M');
+    pickMount('none');
+    stub(
+      'showInformationMessage',
+      async (_message: string, ...items: string[]) =>
+        items.find(i => i === 'Restart'),
+    );
+    await vscode.commands.executeCommand('appleContainer.machine.edit', node);
+    const edited = await api.cli.inspectMachine(names.machine);
+    assert.strictEqual(edited?.status, 'running');
+    assert.strictEqual(edited?.cpus, 3);
+    assert.strictEqual(edited?.memoryBytes, 1536 * 1024 ** 2);
+    assert.notStrictEqual(edited?.containerId, created?.containerId);
+
+    // Stop and start
+    await vscode.commands.executeCommand('appleContainer.machine.stop', node);
+    node = await machineNode('stopped');
+    assert.match(node.contextValue ?? '', /^machine\.stopped/);
+    await vscode.commands.executeCommand('appleContainer.machine.start', node);
+    node = await machineNode('running');
+
+    // Remote-SSH: Alpine has no sshd, so it is installed with apk; the login user is the machine's account
+    const sshDir = process.env.APPLE_CONTAINER_SSH_DIR;
+    const userSshConfig = process.env.E2E_USER_SSH_CONFIG;
+    if (sshDir && userSshConfig) {
+      const alias = `machine.${names.machine}`;
+      stubRemoteSshExtension();
+      const opened = captureOpenFolder();
+      stub(
+        'showInputBox',
+        async (options: vscode.InputBoxOptions) => options.value,
+      );
+      const browsed = scriptQuickPick('Open this folder');
+      await vscode.commands.executeCommand(
+        'appleContainer.machine.openRemoteSsh',
+        node,
+      );
+      await browsed;
+      assert.strictEqual(opened.length, 1);
+      assert.strictEqual(opened[0].authority, `ssh-remote+${alias}`);
+      assert.strictEqual(opened[0].path, edited?.home);
+      assert.match(
+        fs.readFileSync(path.join(sshDir, 'config'), 'utf8'),
+        new RegExp(`^Host ${alias.replace(/\./g, '\\.')}$`, 'm'),
+      );
+      const {stdout} = await promisify(execFile)(
+        '/usr/bin/ssh',
+        [
+          '-F',
+          userSshConfig,
+          '-o',
+          'BatchMode=yes',
+          alias,
+          'id -un; echo $HOME',
+        ],
+        {timeout: 60_000},
+      );
+      assert.strictEqual(
+        stdout.trim(),
+        `${edited?.username ?? os.userInfo().username}\n${edited?.home}`,
+      );
+    }
+
+    confirmAll();
+    await vscode.commands.executeCommand('appleContainer.machine.delete', node);
+    assert.ok(
+      !(await api.cli.listMachines()).some(m => m.id === names.machine),
     );
   });
 

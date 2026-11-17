@@ -1,0 +1,21 @@
+[
+  {
+    "status": "running",
+    "ipAddress": "192.168.64.3",
+    "diskSize": 44072960,
+    "id": "dev",
+    "cpus": 2,
+    "createdDate": "2026-11-17T09:38:47Z",
+    "memory": 1073741824,
+    "default": true
+  },
+  {
+    "diskSize": 43925504,
+    "default": false,
+    "status": "stopped",
+    "id": "alpine-latest",
+    "cpus": 4,
+    "memory": 8589934592,
+    "createdDate": "2026-11-16T08:00:00Z"
+  }
+]

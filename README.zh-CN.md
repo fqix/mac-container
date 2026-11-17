@@ -22,7 +22,8 @@
 
 - 🧭 **一个侧边栏** 管理容器、镜像、网络、卷、镜像仓库、container-compose 项目和 `container` 服务。
 - ☸️ **Kubernetes 集群**：像 Lens 一样浏览 `container cluster` 创建的集群。
-- 🖥️ **把容器和 Pod 作为远程工作区打开**：通过 Remote-SSH 连接，不需要端口映射，也不需要常驻 SSH 服务。
+- 🐧 **Machine**：管理 `container machine` 创建的持久 Linux 环境，使用你在 Mac 上的用户和主目录。
+- 🖥️ **把容器、Machine 和 Pod 作为远程工作区打开**：通过 Remote-SSH 连接，不需要端口映射，也不需要常驻 SSH 服务。
 - 📦 **不依赖 Docker 的 `devcontainer.json`**，支持 features 和生命周期命令。
 - 📝 用 **表单** 运行、编辑和构建，**中英双语**。
 
@@ -64,6 +65,14 @@
 - container-compose 项目自动分组，可整体启动、停止、删除，或 **Compose 启动** / **Compose 停止**。
 - 状态栏可启动或停止服务，并打开 **系统概览**（版本、路径、磁盘占用，可直接清理）。
 
+### Machine
+
+`container machine`（container 1.7.1）创建的 machine 是一个持久的 Linux 环境：启动镜像自带的 `/sbin/init`，账户与你的 Mac 用户一致，Mac 主目录挂载到相同路径。**Machine** 视图列出所有 machine。
+
+- **新建 Machine...** 依次选择镜像（必须带有 `/sbin/init`，例如 `alpine:latest`；输入镜像引用可直接拉取）、名称、CPU、内存和主目录挂载方式。
+- **打开 Shell** / **以 root 打开 Shell** 打开登录 shell；终端所在文件夹在主目录下时，从同一路径开始。已停止的 machine 会先启动。
+- 启动、停止、重启、**编辑...**（CPU、内存、主目录挂载，下次启动生效）、**设为默认**、日志、启动日志和删除。
+
 ### Kubernetes 集群
 
 用 `container cluster`（container 1.7.1）创建的集群在 Activity Bar 上有单独的图标。
@@ -77,7 +86,7 @@
 
 ## Remote-SSH
 
-右键运行中的容器或 Pod → **在 Remote-SSH 中打开**，选择要打开的文件夹。新窗口经 `container exec`（Pod 为 `kubectl exec`）连接，不需要端口或 IP 路由。
+右键运行中的容器、Machine 或 Pod → **在 Remote-SSH 中打开**，选择要打开的文件夹。新窗口经 `container exec` 连接（Machine 为 `container machine run`，会先启动已停止的 machine；Pod 为 `kubectl exec`），不需要端口或 IP 路由。Machine 以它自己的账户登录，与你的 Mac 用户一致。
 
 - 缺少的 `openssh-server`、`bash`、`wget` 会用镜像自带的包管理器安装（需要访问外网）；Pod 的容器需以 root 运行。
 - `~/.ssh/config` 只多一行 `Include ~/.ssh/apple-container/config`；主机条目和密钥对放在 `~/.ssh/apple-container/`。

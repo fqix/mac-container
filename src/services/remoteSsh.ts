@@ -1,6 +1,6 @@
-// Remote-SSH support: ssh reaches a container through `ProxyCommand container exec -i <id> sshd -i`, and a pod of a
-// `container cluster` through `ProxyCommand kubectl exec -i <pod> -- sshd -i`, so no IP, published port or long-running
-// sshd is needed. Everything here is free of the vscode API for unit tests.
+// Remote-SSH support: ssh reaches a container through `ProxyCommand container exec -i <id> sshd -i`, a pod of a
+// `container cluster` through `ProxyCommand kubectl exec -i <pod> -- sshd -i` and a `container machine` through
+// `ProxyCommand container machine run -i --root -- sshd -i`, so no IP, published port or long-running sshd is needed. Everything here is free of the vscode API for unit tests.
 
 import {execFile} from 'child_process';
 import {mkdir, readFile, writeFile, chmod, access, realpath} from 'fs/promises';
@@ -10,6 +10,7 @@ import * as path from 'path';
 import {parseEnvOutput, sessionEnvironment} from '../utils/env';
 import type {ContainerCli} from './cli';
 import {kubectlArgs, KubeTarget, runProcess} from './kubectl';
+import {machineRunArgs} from './machine';
 
 const DEFAULT_SSH_DIR = path.join(os.homedir(), '.ssh', 'apple-container');
 /** APPLE_CONTAINER_SSH_DIR lets the e2e tests keep everything out of the real ~/.ssh */
@@ -91,6 +92,8 @@ export interface ExecTarget {
   ): string[];
   /** Whether exec honours root and user: `kubectl exec` has no user option */
   switchesUser: boolean;
+  /** A `container machine`, reached through `container machine run` */
+  machine?: boolean;
   run(
     args: string[],
     options?: {input?: string; timeoutMs?: number},
@@ -119,6 +122,27 @@ export function containerTarget(cli: ContainerCli, id: string): ExecTarget {
     executable: () => cli.executable(),
     exec: (argv, options) => containerExec(id, argv, options),
     switchesUser: true,
+    run: (args, options) => cli.run(args, options),
+  };
+}
+
+/** Host of a `container machine`; lowercase like hostAlias */
+export function machineHostAlias(id: string): string {
+  return `machine.${id.toLowerCase()}`;
+}
+
+/**
+ * A `container machine`, through `container machine run`: its backing container gets a new id on every boot, and
+ * `machine run` boots a stopped machine first, so the host keeps working across restarts.
+ */
+export function machineTarget(cli: ContainerCli, id: string): ExecTarget {
+  return {
+    name: id,
+    alias: machineHostAlias(id),
+    executable: () => cli.executable(),
+    exec: (argv, options) => machineRunArgs(id, argv, options),
+    switchesUser: true,
+    machine: true,
     run: (args, options) => cli.run(args, options),
   };
 }
