@@ -79,6 +79,43 @@ describe('parse', () => {
     assert.ok(alpine.digest.startsWith('sha256:'));
     assert.ok(alpine.sizeBytes > 0);
     assert.ok(alpine.platforms.includes('linux/arm64/v8'));
+    assert.ok(alpine.createdAt && Date.parse(alpine.createdAt) > 0);
+  });
+
+  it('falls back from an epoch image creation date to the arm64 variant', () => {
+    const variant = (architecture: string, created: string) => ({
+      platform: {os: 'linux', architecture},
+      size: 1,
+      config: {
+        created: '1970-01-01T00:00:00Z',
+        config: {Labels: {'org.opencontainers.image.created': created}},
+        history: [{created}],
+      },
+    });
+    const [image] = parseImages([
+      {
+        id: 'd66b',
+        configuration: {
+          name: 'docker.io/library/ubuntu:latest',
+          creationDate: '1970-01-01T00:00:00Z',
+        },
+        variants: [
+          variant('amd64', '2026-11-06T10:28:50+00:00'),
+          {platform: {os: 'unknown', architecture: 'unknown'}, config: {}},
+          variant('arm64', '2026-11-06T10:31:00+00:00'),
+        ],
+      },
+    ]);
+    assert.strictEqual(image.createdAt, '2026-11-06T10:31:00+00:00');
+
+    const [unknown] = parseImages([
+      {
+        id: 'x',
+        configuration: {name: 'x', creationDate: '1970-01-01T00:00:00Z'},
+        variants: [],
+      },
+    ]);
+    assert.strictEqual(unknown.createdAt, undefined);
   });
 
   it('parses networks and flags the built-in one', () => {

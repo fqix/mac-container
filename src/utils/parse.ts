@@ -149,6 +149,44 @@ export function parseContainers(data: unknown): ContainerSummary[] {
   });
 }
 
+/**
+ * Reproducible builds (SOURCE_DATE_EPOCH=0, e.g. Ubuntu 26.04's rockcraft images) set the image creation time to the
+ * Unix epoch. Then fall back to the variant's `org.opencontainers.image.created` label or its last history entry,
+ * preferring linux/arm64, the platform that runs on the Mac.
+ */
+function imageCreatedAt(
+  creationDate: unknown,
+  variants: Json[],
+): string | undefined {
+  if (typeof creationDate === 'string' && !isEpoch(creationDate)) {
+    return creationDate;
+  }
+  const ordered = [
+    ...variants.filter(v => v.platform?.architecture === 'arm64'),
+    ...variants.filter(v => v.platform?.architecture !== 'arm64'),
+  ];
+  for (const variant of ordered) {
+    const config: Json = variant.config ?? {};
+    const candidates = [
+      config.config?.Labels?.['org.opencontainers.image.created'],
+      asArray(config.history).at(-1)?.created,
+      config.created,
+    ];
+    const found = candidates.find(
+      (c): c is string => typeof c === 'string' && !isEpoch(c),
+    );
+    if (found) {
+      return found;
+    }
+  }
+  return undefined;
+}
+
+function isEpoch(iso: string): boolean {
+  const time = Date.parse(iso);
+  return Number.isNaN(time) || time <= 0;
+}
+
 export function parseImages(data: unknown): ImageSummary[] {
   return asArray(data).map(item => {
     const config: Json = item.configuration ?? {};
@@ -158,7 +196,7 @@ export function parseImages(data: unknown): ImageSummary[] {
       reference,
       displayName: shortImageName(reference),
       digest: config.descriptor?.digest ?? item.id ?? '',
-      createdAt: config.creationDate,
+      createdAt: imageCreatedAt(config.creationDate, variants),
       sizeBytes: variants.reduce(
         (sum, v) => sum + (typeof v.size === 'number' ? v.size : 0),
         0,

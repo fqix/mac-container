@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Images built reproducibly with their creation time set to 1970 (such as `ubuntu:latest`, Ubuntu 26.04) show the time from their `org.opencontainers.image.created` label or history instead of "57 years ago"
+
 ## 0.8.0
 
 - **Show System Overview** (the status bar menu and the Command Palette, also under **Show Disk Usage**) opens a panel with the service version, host and paths, and the disk usage of images, containers and volumes with how much can be reclaimed and a **Prune** button for each, instead of raw JSON; **Show JSON** still opens the CLI output
