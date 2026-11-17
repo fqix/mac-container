@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.9.0
 
 - The Images view groups tags under their repository, like `docker images`: `ubuntu` lists `22.04` and `latest`
 - Images built reproducibly with their creation time set to 1970 (such as `ubuntu:latest`, Ubuntu 26.04) show the time from their `org.opencontainers.image.created` label or history instead of "57 years ago"

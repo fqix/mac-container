@@ -39,7 +39,7 @@
 
 - **VS Code**：[Marketplace](https://marketplace.visualstudio.com/items?itemName=fqix.apple-container-tools)，或在快速打开（`⌘P`）中执行 `ext install fqix.apple-container-tools`。
 - **Cursor 及其他 Open VSX 编辑器**：[Open VSX](https://open-vsx.org/extension/fqix/apple-container-tools)。
-- **VSIX**：从 [GitHub Releases](https://github.com/fqix/mac-container/releases) 下载后执行 `code --install-extension apple-container-tools-darwin-arm64-0.8.0.vsix`
+- **VSIX**：从 [GitHub Releases](https://github.com/fqix/mac-container/releases) 下载后执行 `code --install-extension apple-container-tools-darwin-arm64-0.9.0.vsix`
 
 安装后打开活动栏中的 **Apple Container**；服务未运行时可在视图或状态栏中启动。
 
