@@ -42,6 +42,54 @@ export function shortImageName(reference: string): string {
   return reference;
 }
 
+/**
+ * Splits a short image name into repository and tag: `ubuntu:22.04` -> `ubuntu` / `22.04`. A digest reference keeps
+ * a shortened digest as its tag (`@sha256:ce977ae6d659`); a colon before the last slash is a registry port.
+ */
+export function splitImageName(name: string): {
+  repository: string;
+  tag: string;
+} {
+  const at = name.indexOf('@');
+  const named = at >= 0 ? name.slice(0, at) : name;
+  const colon = named.lastIndexOf(':');
+  const tagged = colon > named.lastIndexOf('/');
+  const repository = tagged ? named.slice(0, colon) : named;
+  if (at >= 0) {
+    return {
+      repository,
+      tag: name.slice(at, at + 1 + 'sha256:'.length + 12),
+    };
+  }
+  return {repository, tag: tagged ? named.slice(colon + 1) : 'latest'};
+}
+
+export interface ImageRepository {
+  name: string;
+  images: ImageSummary[];
+}
+
+/** Groups images by repository like `docker images`, both sorted by name */
+export function groupImagesByRepository(
+  images: ImageSummary[],
+): ImageRepository[] {
+  const groups = new Map<string, ImageSummary[]>();
+  for (const image of images) {
+    const {repository} = splitImageName(image.displayName);
+    groups.set(repository, [...(groups.get(repository) ?? []), image]);
+  }
+  return [...groups.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([name, list]) => ({
+      name,
+      images: list.sort((a, b) =>
+        splitImageName(a.displayName).tag.localeCompare(
+          splitImageName(b.displayName).tag,
+        ),
+      ),
+    }));
+}
+
 export const COMPOSE_PROJECT_LABEL = 'com.docker.compose.project';
 export const COMPOSE_SERVICE_LABEL = 'com.docker.compose.service';
 /** Set by Apple container on resources it manages: builtin for the default network, builder for the BuildKit container */

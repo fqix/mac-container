@@ -166,7 +166,10 @@ async function children<T>(
 ): Promise<ResourceNode<T>[]> {
   const result: ResourceNode<T>[] = [];
   for (const node of await provider.getChildren()) {
-    if (node.contextValue === 'composeProject') {
+    if (
+      node.contextValue === 'composeProject' ||
+      node.contextValue === 'imageRepository'
+    ) {
       result.push(...((await provider.getChildren(node)) as ResourceNode<T>[]));
     } else {
       // MessageNode carries an error instead of a resource
