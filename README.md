@@ -40,7 +40,7 @@
 
 - **VS Code**: [Marketplace](https://marketplace.visualstudio.com/items?itemName=fqix.apple-container-tools), or `ext install fqix.apple-container-tools` in Quick Open (`⌘P`).
 - **Cursor and other Open VSX editors**: [Open VSX](https://open-vsx.org/extension/fqix/apple-container-tools).
-- **VSIX** from [GitHub Releases](https://github.com/fqix/mac-container/releases): `code --install-extension apple-container-tools-darwin-arm64-0.9.0.vsix`
+- **VSIX** from [GitHub Releases](https://github.com/fqix/mac-container/releases): `code --install-extension apple-container-tools-darwin-arm64-0.10.0.vsix`
 
 Then open **Apple Container** in the activity bar; if the service is stopped, start it from there or the status bar.
 

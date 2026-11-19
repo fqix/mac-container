@@ -1,10 +1,10 @@
 # Changelog
 
-## Unreleased
+## 0.10.0
 
-- Fix **Build Image** from a Dockerfile's context menu in the explorer starting a build right away with default options instead of opening the build form
-- **Add Dev Container Configuration...** (Command Palette, a folder's context menu, or the button when no `devcontainer.json` is found) writes a `devcontainer.json` from an official [Dev Container Template](https://containers.dev/templates), asking for its options and Features. The 21 Templates Apple container can run ship with the extension and are applied without network access; those that need Docker Compose or a Docker daemon, and Features that need Docker or a GPU, are left out. Claude Code, Codex and opencode can be installed by `postCreateCommand` with their official install scripts and are put on `PATH` for bash and zsh. An existing configuration is only replaced after asking
 - **Machines** view for the machines of `container machine` (container 1.7.1), persistent Linux environments with your Mac user and home directory: **New Machine...** picks an image with `/sbin/init`, a name, CPUs, memory and the home mount; each machine has **Open Shell** / **Open Root Shell**, start, stop, restart, **Edit...** (applied on the next boot), **Set as Default**, logs, boot logs, delete and **Open in Remote-SSH**, which connects through `container machine run` and logs in as the machine's account. The view is hidden for a `container` without machines
+- **Add Dev Container Configuration...** (Command Palette, a folder's context menu, or the button when no `devcontainer.json` is found) writes a `devcontainer.json` from an official [Dev Container Template](https://containers.dev/templates), asking for its options and Features. The 21 Templates Apple container can run ship with the extension and are applied without network access; those that need Docker Compose or a Docker daemon, and Features that need Docker or a GPU, are left out. Claude Code, Codex and opencode can be installed by `postCreateCommand` with their official install scripts and are put on `PATH` for bash and zsh. An existing configuration is only replaced after asking
+- Fix **Build Image** from a Dockerfile's context menu in the explorer starting a build right away with default options instead of opening the build form
 
 ## 0.9.0
 
