@@ -13,6 +13,7 @@ import {
   installDevContainerExtensions,
   registerDevContainerCommands,
 } from './commands/devcontainer';
+import {registerDevContainerTemplateCommands} from './commands/devcontainerTemplates';
 import {registerFileCommands} from './commands/files';
 import {registerRemoteSshCommands} from './commands/remoteSsh';
 import {registerRemoteWindowCommands} from './commands/remoteWindow';
@@ -179,6 +180,7 @@ export function activate(
   registerRemoteSshCommands(ctx);
   registerFileCommands(ctx);
   registerDevContainerCommands(ctx);
+  registerDevContainerTemplateCommands(ctx);
   registerComposeCommands(ctx);
   registerPortAndMountCommands(ctx);
   registerImageCommands(ctx);

@@ -1,0 +1,710 @@
+{
+  "source": "https://containers.dev/static/devcontainer-index.json",
+  "templates": [
+    {
+      "id": "ghcr.io/devcontainers/templates/alpine",
+      "version": "3.5.0",
+      "name": "Alpine",
+      "description": "Simple Alpine container with Git installed.",
+      "documentationURL": "https://github.com/devcontainers/templates/tree/main/src/alpine",
+      "type": "image",
+      "options": {
+        "imageVariant": {
+          "type": "string",
+          "description": "Alpine version:",
+          "proposals": [
+            "3.23",
+            "3.22",
+            "3.21"
+          ],
+          "default": "3.23"
+        }
+      },
+      "optionalPaths": [
+        ".github/dependabot.yml"
+      ],
+      "files": [
+        ".devcontainer/devcontainer.json",
+        ".github/dependabot.yml"
+      ]
+    },
+    {
+      "id": "ghcr.io/devcontainers/templates/anaconda",
+      "version": "2.0.2",
+      "name": "Anaconda (Python 3)",
+      "description": "Develop Anaconda applications in Python3. Installs dependencies from your environment.yml file and the Python extension.",
+      "documentationURL": "https://github.com/devcontainers/templates/tree/main/src/anaconda",
+      "type": "dockerfile",
+      "options": {},
+      "optionalPaths": [
+        ".github/dependabot.yml"
+      ],
+      "files": [
+        ".devcontainer/Dockerfile",
+        ".devcontainer/devcontainer.json",
+        ".devcontainer/noop.txt",
+        ".github/dependabot.yml"
+      ]
+    },
+    {
+      "id": "ghcr.io/devcontainers/templates/dotnet",
+      "version": "3.6.1",
+      "name": "C# (.NET)",
+      "description": "Develop C# and .NET based applications. Includes all needed SDKs, extensions, and dependencies.",
+      "documentationURL": "https://github.com/devcontainers/templates/tree/main/src/dotnet",
+      "type": "image",
+      "options": {
+        "imageVariant": {
+          "type": "string",
+          "description": ".NET version:",
+          "proposals": [
+            "11.0",
+            "11.0-resolute",
+            "10.0",
+            "9.0",
+            "8.0",
+            "9.0-bookworm",
+            "8.0-bookworm",
+            "10.0-noble",
+            "9.0-noble",
+            "8.0-noble",
+            "8.0-jammy"
+          ],
+          "default": "10.0-noble"
+        }
+      },
+      "optionalPaths": [
+        ".github/dependabot.yml"
+      ],
+      "files": [
+        ".devcontainer/devcontainer.json",
+        ".github/dependabot.yml"
+      ]
+    },
+    {
+      "id": "ghcr.io/devcontainers/templates/cpp",
+      "version": "4.1.2",
+      "name": "C++",
+      "description": "Develop C++ applications on Linux. Includes Debian C++ build tools.",
+      "documentationURL": "https://github.com/devcontainers/templates/tree/main/src/cpp",
+      "type": "dockerfile",
+      "options": {
+        "imageVariant": {
+          "type": "string",
+          "description": "Debian / Ubuntu version (use debian13, debian12, ubuntu26.04, ubuntu24.04, and ubuntu22.04 on local arm64/Apple Silicon):",
+          "proposals": [
+            "debian13",
+            "debian12",
+            "ubuntu26.04",
+            "ubuntu24.04",
+            "ubuntu22.04"
+          ],
+          "default": "debian13"
+        },
+        "reinstallCmakeVersionFromSource": {
+          "type": "string",
+          "description": "Install CMake version different from what base image has already installed.",
+          "proposals": [
+            "none",
+            "3.21.5",
+            "3.22.2"
+          ],
+          "default": "none"
+        }
+      },
+      "optionalPaths": [
+        ".github/dependabot.yml"
+      ],
+      "files": [
+        ".devcontainer/Dockerfile",
+        ".devcontainer/devcontainer.json",
+        ".devcontainer/reinstall-cmake.sh",
+        ".github/dependabot.yml"
+      ]
+    },
+    {
+      "id": "ghcr.io/devcontainers/templates/debian",
+      "version": "4.0.2",
+      "name": "Debian",
+      "description": "Simple Debian container with Git installed.",
+      "documentationURL": "https://github.com/devcontainers/templates/tree/main/src/debian",
+      "type": "image",
+      "options": {
+        "imageVariant": {
+          "type": "string",
+          "description": "Debian version (use trixie or bookworm on local arm64/Apple Silicon):",
+          "proposals": [
+            "trixie",
+            "bookworm"
+          ],
+          "default": "trixie"
+        }
+      },
+      "optionalPaths": [
+        ".github/dependabot.yml"
+      ],
+      "files": [
+        ".devcontainer/devcontainer.json",
+        ".github/dependabot.yml"
+      ]
+    },
+    {
+      "id": "ghcr.io/devcontainers/templates/universal",
+      "version": "2.0.1",
+      "name": "Default Linux Universal",
+      "description": "Use or extend the new Ubuntu-based default, large, multi-language universal container for GitHub Codespaces.",
+      "documentationURL": "https://github.com/devcontainers/templates/tree/main/src/universal",
+      "type": "image",
+      "options": {},
+      "optionalPaths": [
+        ".github/dependabot.yml"
+      ],
+      "files": [
+        ".devcontainer/devcontainer.json",
+        ".github/dependabot.yml"
+      ]
+    },
+    {
+      "id": "ghcr.io/devcontainers/templates/docker-existing-dockerfile",
+      "version": "1.3.2",
+      "name": "Existing Dockerfile",
+      "description": "Sample illustrating reuse of an existing Dockefile.",
+      "documentationURL": "https://github.com/devcontainers/templates/tree/main/src/docker-existing-dockerfile",
+      "type": "dockerfile",
+      "options": {},
+      "optionalPaths": [
+        ".github/dependabot.yml"
+      ],
+      "files": [
+        ".devcontainer/devcontainer.json",
+        ".github/dependabot.yml"
+      ]
+    },
+    {
+      "id": "ghcr.io/devcontainers/templates/dotnet-fsharp",
+      "version": "3.2.0",
+      "name": "F# (.NET)",
+      "description": "Develop F# and .NET based applications. Includes all needed SDKs, extensions, and dependencies.",
+      "documentationURL": "https://github.com/devcontainers/templates/tree/main/src/dotnet-fsharp",
+      "type": "image",
+      "options": {},
+      "optionalPaths": [
+        ".github/dependabot.yml"
+      ],
+      "files": [
+        ".devcontainer/devcontainer.json",
+        ".github/dependabot.yml"
+      ]
+    },
+    {
+      "id": "ghcr.io/devcontainers/templates/go",
+      "version": "6.0.1",
+      "name": "Go",
+      "description": "Develop Go based applications. Includes appropriate runtime args, Go, common tools, extensions, and dependencies.",
+      "documentationURL": "https://github.com/devcontainers/templates/tree/main/src/go",
+      "type": "image",
+      "options": {
+        "imageVariant": {
+          "type": "string",
+          "description": "Go version:",
+          "proposals": [
+            "1.27-trixie",
+            "1.26-trixie",
+            "1.25-trixie",
+            "1.27-bookworm",
+            "1.26-bookworm",
+            "1.25-bookworm"
+          ],
+          "default": "1.27-trixie"
+        }
+      },
+      "optionalPaths": [
+        ".github/dependabot.yml"
+      ],
+      "files": [
+        ".devcontainer/devcontainer.json",
+        ".github/dependabot.yml"
+      ]
+    },
+    {
+      "id": "ghcr.io/devcontainers/templates/java",
+      "version": "5.0.0",
+      "name": "Java",
+      "description": "Develop Java applications. Includes the JDK and Java extensions.",
+      "documentationURL": "https://github.com/devcontainers/templates/tree/main/src/java",
+      "type": "image",
+      "options": {
+        "imageVariant": {
+          "type": "string",
+          "description": "Java version (use -trixie, or -bookworm variants on local arm64/Apple Silicon):",
+          "proposals": [
+            "25-trixie",
+            "21-trixie",
+            "17-trixie",
+            "11-trixie",
+            "8-trixie",
+            "25-bookworm",
+            "21-bookworm",
+            "17-bookworm",
+            "11-bookworm",
+            "8-bookworm"
+          ],
+          "default": "25-trixie"
+        },
+        "installMaven": {
+          "type": "boolean",
+          "description": "Install Maven, a management tool for Java",
+          "default": "false"
+        },
+        "installGradle": {
+          "type": "boolean",
+          "description": "Install Gradle, a build automation tool for multi-language software development",
+          "default": "false"
+        }
+      },
+      "optionalPaths": [
+        ".github/dependabot.yml"
+      ],
+      "files": [
+        ".devcontainer/devcontainer.json",
+        ".github/dependabot.yml"
+      ]
+    },
+    {
+      "id": "ghcr.io/devcontainers/templates/jekyll",
+      "version": "2.2.4",
+      "name": "Jekyll",
+      "description": "Develop static sites with Jekyll, includes everything you need to get up and running.",
+      "documentationURL": "https://github.com/devcontainers/templates/tree/main/src/jekyll",
+      "type": "image",
+      "options": {
+        "imageVariant": {
+          "type": "string",
+          "description": "Debian OS version (use bookworm on local arm64/Apple Silicon):",
+          "proposals": [
+            "bookworm"
+          ],
+          "default": "bookworm"
+        }
+      },
+      "optionalPaths": [
+        ".github/dependabot.yml"
+      ],
+      "files": [
+        ".devcontainer/devcontainer.json",
+        ".github/dependabot.yml"
+      ]
+    },
+    {
+      "id": "ghcr.io/devcontainers/templates/markdown",
+      "version": "1.1.3",
+      "name": "Markdown",
+      "description": "A simple container for editing markdown.",
+      "documentationURL": "https://github.com/devcontainers/templates/tree/main/src/markdown",
+      "type": "image",
+      "options": {},
+      "optionalPaths": [
+        ".github/dependabot.yml"
+      ],
+      "files": [
+        ".devcontainer/devcontainer.json",
+        ".github/dependabot.yml"
+      ]
+    },
+    {
+      "id": "ghcr.io/devcontainers/templates/miniconda",
+      "version": "2.0.2",
+      "name": "Miniconda (Python 3)",
+      "description": "Develop Miniconda applications in Python 3. Installs dependencies from your environment.yml file and the Python extension.",
+      "documentationURL": "https://github.com/devcontainers/templates/tree/main/src/miniconda",
+      "type": "dockerfile",
+      "options": {},
+      "optionalPaths": [
+        ".github/dependabot.yml"
+      ],
+      "files": [
+        ".devcontainer/Dockerfile",
+        ".devcontainer/devcontainer.json",
+        ".devcontainer/noop.txt",
+        ".github/dependabot.yml"
+      ]
+    },
+    {
+      "id": "ghcr.io/devcontainers/templates/javascript-node",
+      "version": "6.0.3",
+      "name": "Node.js & JavaScript",
+      "description": "Develop Node.js based applications. Includes Node.js, eslint, nvm, and yarn.",
+      "documentationURL": "https://github.com/devcontainers/templates/tree/main/src/javascript-node",
+      "type": "image",
+      "options": {
+        "imageVariant": {
+          "type": "string",
+          "description": "Node.js version (use -trixie or -bookworm variants on local arm64/Apple Silicon):",
+          "proposals": [
+            "26-trixie",
+            "24-trixie",
+            "22-trixie",
+            "26-bookworm",
+            "24-bookworm",
+            "22-bookworm"
+          ],
+          "default": "26-trixie"
+        }
+      },
+      "optionalPaths": [
+        ".github/dependabot.yml"
+      ],
+      "files": [
+        ".devcontainer/devcontainer.json",
+        ".github/dependabot.yml"
+      ]
+    },
+    {
+      "id": "ghcr.io/devcontainers/templates/typescript-node",
+      "version": "6.0.3",
+      "name": "Node.js & TypeScript",
+      "description": "Develop Node.js based applications in TypeScript. Includes Node.js, eslint, nvm, yarn, and the TypeScript compiler.",
+      "documentationURL": "https://github.com/devcontainers/templates/tree/main/src/typescript-node",
+      "type": "image",
+      "options": {
+        "imageVariant": {
+          "type": "string",
+          "description": "Node.js version (use -trixie or -bookworm variants on local arm64/Apple Silicon):",
+          "proposals": [
+            "26-trixie",
+            "24-trixie",
+            "22-trixie",
+            "26-bookworm",
+            "24-bookworm",
+            "22-bookworm"
+          ],
+          "default": "26-trixie"
+        }
+      },
+      "optionalPaths": [
+        ".github/dependabot.yml"
+      ],
+      "files": [
+        ".devcontainer/devcontainer.json",
+        ".github/dependabot.yml"
+      ]
+    },
+    {
+      "id": "ghcr.io/devcontainers/templates/php",
+      "version": "4.4.1",
+      "name": "PHP",
+      "description": "Develop PHP based applications. Includes needed tools, extensions, and dependencies.",
+      "documentationURL": "https://github.com/devcontainers/templates/tree/main/src/php",
+      "type": "image",
+      "options": {
+        "imageVariant": {
+          "type": "string",
+          "description": "PHP version (use -trixie or -bookworm variants on local arm64/Apple Silicon):",
+          "proposals": [
+            "8.5-trixie",
+            "8.5-bookworm",
+            "8.4-trixie",
+            "8.4-bookworm",
+            "8.3-trixie",
+            "8.3-bookworm",
+            "8-bookworm"
+          ],
+          "default": "8.5-trixie"
+        }
+      },
+      "optionalPaths": [
+        ".github/dependabot.yml"
+      ],
+      "files": [
+        ".devcontainer/devcontainer.json",
+        ".github/dependabot.yml"
+      ]
+    },
+    {
+      "id": "ghcr.io/devcontainers/templates/powershell",
+      "version": "1.2.3",
+      "name": "Powershell",
+      "description": "Develop PowerShell scripts without installing anything locally.",
+      "documentationURL": "https://github.com/devcontainers/templates/tree/main/src/powershell",
+      "type": "image",
+      "options": {},
+      "optionalPaths": [
+        ".github/dependabot.yml"
+      ],
+      "files": [
+        ".devcontainer/devcontainer.json",
+        ".github/dependabot.yml"
+      ]
+    },
+    {
+      "id": "ghcr.io/devcontainers/templates/python",
+      "version": "6.0.1",
+      "name": "Python 3",
+      "description": "Develop Python 3 applications.",
+      "documentationURL": "https://github.com/devcontainers/templates/tree/main/src/python",
+      "type": "image",
+      "options": {
+        "imageVariant": {
+          "type": "string",
+          "description": "Python version (use -trixie, or -bookworm variants on local arm64/Apple Silicon):",
+          "proposals": [
+            "3-trixie",
+            "3.15-trixie",
+            "3.14-trixie",
+            "3.13-trixie",
+            "3.12-trixie",
+            "3.11-trixie",
+            "3.10-trixie",
+            "3-bookworm",
+            "3.15-bookworm",
+            "3.14-bookworm",
+            "3.13-bookworm",
+            "3.12-bookworm",
+            "3.11-bookworm",
+            "3.10-bookworm"
+          ],
+          "default": "3.15-trixie"
+        }
+      },
+      "optionalPaths": [
+        ".github/dependabot.yml"
+      ],
+      "files": [
+        ".devcontainer/devcontainer.json",
+        ".github/dependabot.yml"
+      ]
+    },
+    {
+      "id": "ghcr.io/devcontainers/templates/ruby",
+      "version": "6.0.4",
+      "name": "Ruby",
+      "description": "Develop Ruby based applications. includes everything you need to get up and running.",
+      "documentationURL": "https://github.com/devcontainers/templates/tree/main/src/ruby",
+      "type": "image",
+      "options": {
+        "imageVariant": {
+          "type": "string",
+          "description": "Ruby version (use -trixie or -bookworm variants on local arm64/Apple Silicon):",
+          "proposals": [
+            "4.0-trixie",
+            "3.4-trixie",
+            "3.3-trixie",
+            "4.0-bookworm",
+            "3.4-bookworm",
+            "3.3-bookworm"
+          ],
+          "default": "4.0-trixie"
+        }
+      },
+      "optionalPaths": [
+        ".github/dependabot.yml"
+      ],
+      "files": [
+        ".devcontainer/devcontainer.json",
+        ".github/dependabot.yml"
+      ]
+    },
+    {
+      "id": "ghcr.io/devcontainers/templates/rust",
+      "version": "5.0.2",
+      "name": "Rust",
+      "description": "Develop Rust based applications. Includes appropriate runtime args and everything you need to get up and running.",
+      "documentationURL": "https://github.com/devcontainers/templates/tree/main/src/rust",
+      "type": "image",
+      "options": {
+        "imageVariant": {
+          "type": "string",
+          "description": "Debian OS version (use trixie or bookworm on local arm64/Apple Silicon):",
+          "proposals": [
+            "trixie",
+            "bookworm"
+          ],
+          "default": "trixie"
+        }
+      },
+      "optionalPaths": [
+        ".github/dependabot.yml"
+      ],
+      "files": [
+        ".devcontainer/devcontainer.json",
+        ".github/dependabot.yml"
+      ]
+    },
+    {
+      "id": "ghcr.io/devcontainers/templates/ubuntu",
+      "version": "3.0.0",
+      "name": "Ubuntu",
+      "description": "A simple Ubuntu container with Git and other common utilities installed.",
+      "documentationURL": "https://github.com/devcontainers/templates/tree/main/src/ubuntu",
+      "type": "image",
+      "options": {
+        "imageVariant": {
+          "type": "string",
+          "description": "Ubuntu version (use ubuntu-26.04 or ubuntu-24.04 or ubuntu-22.04 on local arm64/Apple Silicon):",
+          "proposals": [
+            "resolute",
+            "noble",
+            "jammy"
+          ],
+          "default": "resolute"
+        }
+      },
+      "optionalPaths": [
+        ".github/dependabot.yml"
+      ],
+      "files": [
+        ".devcontainer/devcontainer.json",
+        ".github/dependabot.yml"
+      ]
+    }
+  ],
+  "features": [
+    {
+      "id": "ghcr.io/devcontainers/features/anaconda",
+      "version": "1.1.0",
+      "name": "Anaconda"
+    },
+    {
+      "id": "ghcr.io/devcontainers/features/aws-cli",
+      "version": "1.2.0",
+      "name": "AWS CLI",
+      "description": "Installs the AWS CLI along with needed dependencies. Useful for base Dockerfiles that often are missing required install dependencies like gpg."
+    },
+    {
+      "id": "ghcr.io/devcontainers/features/azure-cli",
+      "version": "1.3.0",
+      "name": "Azure CLI",
+      "description": "Installs the Azure CLI along with needed dependencies. Useful for base Dockerfiles that often are missing required install dependencies like gpg."
+    },
+    {
+      "id": "ghcr.io/devcontainers/features/common-utils",
+      "version": "2.7.1",
+      "name": "Common Utilities",
+      "description": "Installs a set of common command line utilities, Oh My Zsh!, and sets up a non-root user."
+    },
+    {
+      "id": "ghcr.io/devcontainers/features/conda",
+      "version": "2.0.2",
+      "name": "Conda",
+      "description": "A cross-platform, language-agnostic binary package manager"
+    },
+    {
+      "id": "ghcr.io/devcontainers/features/dotnet",
+      "version": "2.5.0",
+      "name": "Dotnet CLI",
+      "description": "This Feature installs the latest .NET SDK, which includes the .NET CLI and the shared runtime. Options are provided to choose a different version or additional versions."
+    },
+    {
+      "id": "ghcr.io/devcontainers/features/git",
+      "version": "1.3.8",
+      "name": "Git (from source)",
+      "description": "Install an up-to-date version of Git, built from source as needed. Useful for when you want the latest and greatest features. Auto-detects latest stable version and installs needed dependencies."
+    },
+    {
+      "id": "ghcr.io/devcontainers/features/git-lfs",
+      "version": "1.2.6",
+      "name": "Git Large File Support (LFS)",
+      "description": "Installs Git Large File Support (Git LFS) along with needed dependencies. Useful for base Dockerfiles that often are missing required install dependencies like git and curl."
+    },
+    {
+      "id": "ghcr.io/devcontainers/features/github-cli",
+      "version": "1.1.3",
+      "name": "GitHub CLI",
+      "description": "Installs the GitHub CLI. Auto-detects latest version and installs needed dependencies."
+    },
+    {
+      "id": "ghcr.io/devcontainers/features/copilot-cli",
+      "version": "1.1.4",
+      "name": "GitHub Copilot CLI",
+      "description": "Installs the GitHub Copilot CLI."
+    },
+    {
+      "id": "ghcr.io/devcontainers/features/go",
+      "version": "1.4.1",
+      "name": "Go",
+      "description": "Installs Go and common Go utilities. Auto-detects latest version and installs needed dependencies."
+    },
+    {
+      "id": "ghcr.io/devcontainers/features/hugo",
+      "version": "1.1.3",
+      "name": "Hugo"
+    },
+    {
+      "id": "ghcr.io/devcontainers/features/java",
+      "version": "1.8.3",
+      "name": "Java (via SDKMAN!)",
+      "description": "Installs Java, SDKMAN! (if not installed), and needed dependencies."
+    },
+    {
+      "id": "ghcr.io/devcontainers/features/kubectl-helm-minikube",
+      "version": "1.3.2",
+      "name": "Kubectl, Helm, and Minikube",
+      "description": "Installs latest version of kubectl, Helm, and optionally minikube. Auto-detects latest versions and installs needed dependencies."
+    },
+    {
+      "id": "ghcr.io/devcontainers/features/desktop-lite",
+      "version": "1.2.10",
+      "name": "Light-weight Desktop",
+      "description": "Adds a lightweight Fluxbox based desktop to the container that can be accessed using a VNC viewer or the web. GUI-based commands executed from the built-in VS code terminal will open on the desktop automatically."
+    },
+    {
+      "id": "ghcr.io/devcontainers/features/nix",
+      "version": "1.4.1",
+      "name": "Nix Package Manager",
+      "description": "Installs the Nix package manager and optionally a set of packages."
+    },
+    {
+      "id": "ghcr.io/devcontainers/features/node",
+      "version": "2.1.2",
+      "name": "Node.js (via nvm), yarn and pnpm.",
+      "description": "Installs Node.js, nvm, yarn, pnpm, and needed dependencies."
+    },
+    {
+      "id": "ghcr.io/devcontainers/features/oryx",
+      "version": "2.0.3",
+      "name": "Oryx",
+      "description": "Installs the oryx CLI"
+    },
+    {
+      "id": "ghcr.io/devcontainers/features/php",
+      "version": "1.1.6",
+      "name": "PHP"
+    },
+    {
+      "id": "ghcr.io/devcontainers/features/powershell",
+      "version": "2.0.4",
+      "name": "PowerShell",
+      "description": "Installs PowerShell along with needed dependencies. Useful for base Dockerfiles that often are missing required install dependencies like gpg."
+    },
+    {
+      "id": "ghcr.io/devcontainers/features/python",
+      "version": "1.8.1",
+      "name": "Python",
+      "description": "Installs the provided version of Python, as well as PIPX, and other common Python utilities.  JupyterLab is conditionally installed with the python feature. Note: May require source code compilation."
+    },
+    {
+      "id": "ghcr.io/devcontainers/features/ruby",
+      "version": "2.0.0",
+      "name": "Ruby (via ruby-build)",
+      "description": "Installs Ruby using ruby-build, with optional rbenv or rvm for version management."
+    },
+    {
+      "id": "ghcr.io/devcontainers/features/rust",
+      "version": "1.6.1",
+      "name": "Rust",
+      "description": "Installs Rust, common Rust utilities, and their required dependencies"
+    },
+    {
+      "id": "ghcr.io/devcontainers/features/sshd",
+      "version": "1.1.0",
+      "name": "SSH server",
+      "description": "Adds a SSH server into a container so that you can use an external terminal, sftp, or SSHFS to interact with it."
+    },
+    {
+      "id": "ghcr.io/devcontainers/features/terraform",
+      "version": "1.5.1",
+      "name": "Terraform, tflint, and TFGrunt",
+      "description": "Installs the Terraform CLI and optionally TFLint and Terragrunt. Auto-detects latest version and installs needed dependencies."
+    }
+  ]
+}
