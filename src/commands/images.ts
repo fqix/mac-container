@@ -4,7 +4,12 @@ import * as vscode from 'vscode';
 
 import {BuildFormPanel, defaultOptionsFor} from '../panels/buildFormPanel';
 import {ContainerFormPanel} from '../panels/containerFormPanel';
-import {buildImageArgs, type BuildOptions} from '../services/build';
+import {
+  BUILD_OPTION_KEYS,
+  buildImageArgs,
+  type BuildOptions,
+} from '../services/build';
+import {optionsArgument} from '../utils/args';
 import {
   buildRunArgs,
   EMPTY_SETTINGS,
@@ -60,7 +65,9 @@ export function registerImageCommands(ctx: CommandContext): void {
   register(
     ctx,
     'appleContainer.image.build',
-    async (uri?: vscode.Uri, direct?: Partial<BuildOptions>) => {
+    async (uri?: vscode.Uri, second?: unknown) => {
+      // From the explorer the second argument is the selection, which must still open the form
+      const direct = optionsArgument<BuildOptions>(second, BUILD_OPTION_KEYS);
       const file = uri instanceof vscode.Uri ? uri : await pickDockerfile();
       if (!file) {
         return;

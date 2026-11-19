@@ -40,6 +40,7 @@ import {containerOfAuthority} from '../services/remoteSsh';
 import {parseEnvOutput, resolveContainerEnv} from '../utils/env';
 import {describeError, showError} from '../utils/i18n';
 import {StepTerminal} from '../ui/stepTerminal';
+import {optionsArgument} from '../utils/args';
 import {CommandContext, isLocal, register} from './common';
 import {openContainerOverSsh} from './remoteSsh';
 import {readPendingAction, writePendingAction} from './remoteWindow';
@@ -67,10 +68,19 @@ export function registerDevContainerCommands(ctx: CommandContext): void {
   register(
     ctx,
     'appleContainer.devcontainer.open',
-    async (uri?: vscode.Uri, options?: DevContainerOptions) => {
+    // From the explorer and the editor title the second argument is the selection, not options
+    async (uri?: vscode.Uri, second?: unknown) => {
       const configFile = await resolveConfigFile(uri);
       if (configFile) {
-        await openDevContainer(ctx, configFile, options ?? {});
+        await openDevContainer(
+          ctx,
+          configFile,
+          optionsArgument<DevContainerOptions>(second, [
+            'rebuild',
+            'noCache',
+            'reuseWindow',
+          ]) ?? {},
+        );
       }
     },
   );

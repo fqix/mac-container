@@ -23,6 +23,20 @@ export interface BuildOptions {
   ssh: boolean;
 }
 
+/** Every field of BuildOptions, to recognize options passed to the build command */
+export const BUILD_OPTION_KEYS: readonly (keyof BuildOptions)[] = [
+  'tag',
+  'context',
+  'target',
+  'platforms',
+  'buildArgs',
+  'secrets',
+  'labels',
+  'noCache',
+  'pull',
+  'ssh',
+];
+
 /** Platforms offered in the form; amd64 is built with Rosetta, or QEMU when the build.rosetta property is off */
 export const BUILD_PLATFORMS = ['linux/arm64', 'linux/amd64'];
 

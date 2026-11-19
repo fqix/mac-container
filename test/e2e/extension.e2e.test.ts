@@ -1609,6 +1609,28 @@ describe('Apple Container e2e', function () {
     fs.rmSync(archive);
   });
 
+  it('opens the build form for a Dockerfile picked in the explorer', async () => {
+    const dockerfile = vscode.Uri.joinPath(
+      vscode.workspace.workspaceFolders![0].uri,
+      'Dockerfile',
+    );
+    const running = vscode.tasks.taskExecutions.length;
+    // The explorer passes the selection as the second argument
+    await vscode.commands.executeCommand(
+      'appleContainer.image.build',
+      dockerfile,
+      [dockerfile],
+    );
+    await waitFor('build form', async () =>
+      webviewTabOpen('appleContainer.build', 'Build: Dockerfile')
+        ? true
+        : undefined,
+    );
+    // Nothing was built without the form
+    assert.strictEqual(vscode.tasks.taskExecutions.length, running);
+    await vscode.commands.executeCommand('workbench.action.closeActiveEditor');
+  });
+
   it('builds an image from the workspace Dockerfile', async function () {
     if (process.env.E2E_SKIP_BUILD) {
       this.skip();
