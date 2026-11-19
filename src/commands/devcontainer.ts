@@ -324,11 +324,21 @@ async function resolveConfigFile(
   );
   const files = folders.flatMap(f => findConfigFiles(f.uri.fsPath));
   if (!files.length) {
-    void vscode.window.showWarningMessage(
-      vscode.l10n.t(
-        'No devcontainer.json was found. Add .devcontainer/devcontainer.json to a local workspace folder.',
-      ),
-    );
+    const add = vscode.l10n.t('Add Dev Container Configuration...');
+    void vscode.window
+      .showWarningMessage(
+        vscode.l10n.t(
+          'No devcontainer.json was found. Add .devcontainer/devcontainer.json to a local workspace folder.',
+        ),
+        add,
+      )
+      .then(answer =>
+        answer === add
+          ? vscode.commands.executeCommand(
+              'appleContainer.devcontainer.addConfig',
+            )
+          : undefined,
+      );
     return undefined;
   }
   if (files.length === 1) {

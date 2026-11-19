@@ -95,6 +95,8 @@ Right-click a running container, a machine or a pod → **Open in Remote-SSH** a
 
 **Open Folder in Dev Container** creates the container from `devcontainer.json` with the bundled [Dev Containers CLI](https://github.com/devcontainers/cli) and opens it over Remote-SSH. The next open reuses it and asks to rebuild when the configuration changed; the window's Remote menu offers **Rebuild Container** and **Reopen Folder Locally**.
 
+No configuration yet? **Add Dev Container Configuration...** (Command Palette or a folder's context menu) writes one from an official [Dev Container Template](https://containers.dev/templates) with its options and Features. The Templates ship with the extension, so this works offline; those that need Docker Compose or a Docker daemon, and Features that need Docker or a GPU, are left out. It can also install Claude Code, Codex or opencode with their official install scripts in `postCreateCommand`, and put them on `PATH` for bash and zsh.
+
 | Property | Support |
 |---|---|
 | `image`, `build`, `features`, mounts, env, users, lifecycle commands | ✅ |

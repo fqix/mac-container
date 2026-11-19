@@ -1469,6 +1469,48 @@ describe('Apple Container e2e', function () {
     );
   });
 
+  it('adds a devcontainer.json from a Template with a Feature', async function () {
+    // The Templates are bundled, so this needs no network
+    this.timeout(60_000);
+    const folder = fs.realpathSync(
+      fs.mkdtempSync(path.join(os.tmpdir(), 'e2e-template-')),
+    );
+    try {
+      await vscode.commands.executeCommand(
+        'appleContainer.devcontainer.addConfig',
+        vscode.Uri.file(folder),
+        {
+          template: 'ghcr.io/devcontainers/templates/ubuntu',
+          features: ['ghcr.io/devcontainers/features/github-cli'],
+          agents: ['claude'],
+        },
+      );
+      const config = path.join(folder, '.devcontainer', 'devcontainer.json');
+      assert.ok(fs.existsSync(config), 'devcontainer.json was not written');
+      const text = fs.readFileSync(config, 'utf8');
+      assert.match(text, /"image": "mcr\.microsoft\.com\/devcontainers\/base:/);
+      assert.match(text, /ghcr\.io\/devcontainers\/features\/github-cli:\d+/);
+      assert.match(
+        text,
+        /"postCreateCommand": "curl -fsSL https:\/\/claude\.ai\/install\.sh \| bash; /,
+      );
+      // The optional dependabot file is left out
+      assert.ok(!fs.existsSync(path.join(folder, '.github')));
+
+      // From the explorer the second argument is the selection: it must open the prompts, not fail
+      fs.rmSync(path.join(folder, '.devcontainer'), {recursive: true});
+      stub('showQuickPick', async () => undefined);
+      await vscode.commands.executeCommand(
+        'appleContainer.devcontainer.addConfig',
+        vscode.Uri.file(folder),
+        [vscode.Uri.file(folder)],
+      );
+      assert.ok(!fs.existsSync(config));
+    } finally {
+      fs.rmSync(folder, {recursive: true, force: true});
+    }
+  });
+
   it('creates and deletes a volume with a size', async () => {
     await api.cli
       .run(['volume', 'delete', names.volume])

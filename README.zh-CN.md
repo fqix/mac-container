@@ -95,6 +95,8 @@
 
 **在开发容器中打开文件夹** 用内置的 [Dev Containers CLI](https://github.com/devcontainers/cli) 按 `devcontainer.json` 创建容器，再通过 Remote-SSH 打开。下次打开会复用容器，配置有改动时询问是否重建；窗口的远程菜单提供 **重建容器** 和 **在本地重新打开文件夹**。
 
+还没有配置？**添加 Dev Container 配置...**（命令面板或文件夹右键菜单）用官方 [Dev Container 模板](https://containers.dev/templates) 生成配置，可选择模板选项和 Feature。模板随插件打包，离线也能用；需要 Docker Compose 或 Docker 守护进程的模板，以及需要 Docker 或 GPU 的 Feature，不会列出。还可以选择用官方安装脚本在 `postCreateCommand` 里安装 Claude Code、Codex 或 opencode，并把它们加入 bash 和 zsh 的 `PATH`。
+
 | 配置项 | 支持情况 |
 |---|---|
 | `image`、`build`、`features`、挂载、环境变量、用户、生命周期命令 | ✅ |

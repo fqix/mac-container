@@ -7,6 +7,7 @@
 !resources/icon.png
 !resources/container.svg
 !resources/cluster.svg
+!resources/devcontainer-templates/**
 !package.json
 !package.nls*.json
 !l10n/**

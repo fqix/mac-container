@@ -710,6 +710,12 @@
         "icon": "$(refresh)"
       },
       {
+        "command": "appleContainer.devcontainer.addConfig",
+        "title": "%command.devcontainer.addConfig%",
+        "category": "%category%",
+        "icon": "$(add)"
+      },
+      {
         "command": "appleContainer.remote.reopenLocally",
         "title": "%command.remote.reopenLocally%",
         "category": "%category%",
@@ -1134,6 +1140,10 @@
         },
         {
           "command": "appleContainer.devcontainer.rebuild",
+          "when": "!remoteName"
+        },
+        {
+          "command": "appleContainer.devcontainer.addConfig",
           "when": "!remoteName"
         },
         {
@@ -1747,6 +1757,11 @@
           "command": "appleContainer.devcontainer.rebuild",
           "when": "!remoteName && (resourceFilename == devcontainer.json || resourceFilename == .devcontainer.json)",
           "group": "apple-container@7"
+        },
+        {
+          "command": "appleContainer.devcontainer.addConfig",
+          "when": "!remoteName && (explorerResourceIsFolder)",
+          "group": "apple-container@8"
         }
       ],
       "editor/title": [
@@ -1884,6 +1899,7 @@
     "package": "vsce package --no-dependencies --target darwin-arm64",
     "publish": "vsce publish --no-dependencies --target darwin-arm64",
     "check:l10n": "node scripts/check-l10n.mjs",
+    "update:templates": "node scripts/update-devcontainer-templates.mjs",
     "test:e2e": "npm run build && npm run compile-tests && node out/test/runE2E.js",
     "watch:webview": "npm --prefix webview-ui run dev",
     "postinstall": "npm --prefix webview-ui install",

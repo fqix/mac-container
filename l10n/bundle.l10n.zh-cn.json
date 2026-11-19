@@ -441,5 +441,19 @@
   "Machine {0} is unchanged.": "Machine {0} 没有变化。",
   "The new settings of {0} apply when it starts.": "{0} 的新设置将在启动时生效。",
   "The new settings of {0} apply when it restarts. Restart it now?": "{0} 的新设置将在重启后生效。现在重启吗？",
-  "Default": "默认"
+  "Default": "默认",
+  "Add Dev Container Configuration...": "添加 Dev Container 配置...",
+  "Folder to add the dev container to": "要添加 dev container 的文件夹",
+  "Add Dev Container Here": "在此添加 Dev Container",
+  "Add Dev Container Configuration": "添加 Dev Container 配置",
+  "Templates that need Docker Compose or a Docker daemon are not listed: Apple container cannot run them": "需要 Docker Compose 或 Docker 守护进程的模板没有列出：Apple container 无法运行",
+  "Add Features (optional)": "添加 Feature（可选）",
+  "Tools installed into the dev container; press Enter to add none": "安装到 dev container 里的工具；直接回车表示不添加",
+  "Replace": "替换",
+  "Open Existing": "打开现有文件",
+  "{0} already has a dev container configuration.": "{0} 已有 dev container 配置。",
+  "Replacing writes the Template over {0}.": "替换会用模板覆盖 {0}。",
+  "Added {0}.": "已添加 {0}。",
+  "Install Coding Agents (optional)": "安装 Coding Agent（可选）",
+  "Installed by postCreateCommand with their official scripts; press Enter to install none": "由 postCreateCommand 用官方脚本安装；直接回车表示不安装"
 }
