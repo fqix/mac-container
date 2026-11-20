@@ -740,6 +740,20 @@
         "icon": "$(output)"
       }
     ],
+    "taskDefinitions": [
+      {
+        "type": "appleContainer",
+        "required": [
+          "id"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "%taskDefinition.id%"
+          }
+        }
+      }
+    ],
     "menus": {
       "commandPalette": [
         {

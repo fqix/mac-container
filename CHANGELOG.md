@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Fix `there is no registered task type 'appleContainer'` when running image pulls, builds or dev container tasks: the extension now declares its task type
+
 ## 0.10.0
 
 - **Machines** view for the machines of `container machine` (container 1.7.1), persistent Linux environments with your Mac user and home directory: **New Machine...** picks an image with `/sbin/init`, a name, CPUs, memory and the home mount; each machine has **Open Shell** / **Open Root Shell**, start, stop, restart, **Edit...** (applied on the next boot), **Set as Default**, logs, boot logs, delete and **Open in Remote-SSH**, which connects through `container machine run` and logs in as the machine's account. The view is hidden for a `container` without machines

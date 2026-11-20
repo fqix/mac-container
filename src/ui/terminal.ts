@@ -5,6 +5,7 @@ import * as os from 'os';
 import * as vscode from 'vscode';
 
 import type {ContainerCli} from '../services/cli';
+import {TASK_TYPE} from '../utils/steps';
 
 /** Opens a terminal running the container CLI directly; output stays after the process exits */
 export async function openCliTerminal(
@@ -54,7 +55,7 @@ export async function runTask(
   env?: Record<string, string>,
 ): Promise<number | undefined> {
   const task = new vscode.Task(
-    {type: 'appleContainer', id: `${name}-${Date.now()}`},
+    {type: TASK_TYPE, id: `${name}-${Date.now()}`},
     vscode.TaskScope.Workspace,
     name,
     'Apple Container',

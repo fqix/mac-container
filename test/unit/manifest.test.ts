@@ -1,6 +1,8 @@
 import * as assert from 'assert';
-import {readFileSync} from 'fs';
+import {readdirSync, readFileSync, statSync} from 'fs';
 import * as path from 'path';
+
+import {TASK_TYPE} from '../../src/utils/steps';
 
 // Compiled to out/test/unit, so the manifest is three levels up
 const manifest = JSON.parse(
@@ -77,5 +79,36 @@ describe('manifest', () => {
         assert.ok(localOnly(item.when), `${key} ${item.command}: ${item.when}`);
       }
     }
+  });
+
+  it('declares the task type the extension runs its tasks with', () => {
+    // VS Code refuses a task whose type no extension declares ("there is no registered task type")
+    const declared = (manifest.contributes.taskDefinitions ?? []).map(
+      (d: {type: string}) => d.type,
+    );
+    assert.ok(
+      declared.includes(TASK_TYPE),
+      `${TASK_TYPE} is not in taskDefinitions`,
+    );
+    // Every task uses that constant: a task type written out somewhere else would not be checked here
+    const src = path.join(__dirname, '..', '..', '..', 'src');
+    const literal: string[] = [];
+    const walk = (dir: string) => {
+      for (const name of readdirSync(dir)) {
+        const file = path.join(dir, name);
+        if (statSync(file).isDirectory()) {
+          walk(file);
+        } else if (
+          file.endsWith('.ts') &&
+          /new vscode\.Task\(\s*\{\s*type:\s*['"`]/.test(
+            readFileSync(file, 'utf8'),
+          )
+        ) {
+          literal.push(path.relative(src, file));
+        }
+      }
+    };
+    walk(src);
+    assert.deepStrictEqual(literal, []);
   });
 });

@@ -20,3 +20,6 @@ export function formatElapsed(ms: number): string {
 export function toTerminalText(text: string): string {
   return text.replace(/\r?\n/g, '\r\n');
 }
+
+/** Type of every task the extension runs; package.json declares it in taskDefinitions, or VS Code refuses the task */
+export const TASK_TYPE = 'appleContainer';
