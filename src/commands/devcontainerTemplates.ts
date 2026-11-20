@@ -11,9 +11,11 @@ import {
   applyTemplate,
   CODING_AGENTS,
   type CodingAgent,
+  type Conflicts,
   asDirectTemplate,
   type DirectTemplate,
-  existingConfigs,
+  findConflicts,
+  installCommandOf,
   type FeatureEntry,
   parseTemplateIndex,
   type TemplateEntry,
@@ -215,7 +217,7 @@ async function pickAgents(): Promise<CodingAgent[] | undefined> {
     CODING_AGENTS.map(agent => ({
       label: agent.name,
       // The exact command, since it downloads and runs a script
-      detail: agent.install,
+      detail: installCommandOf(agent),
       agent: agent.id,
     })),
     {
@@ -236,6 +238,8 @@ interface Choice {
   args: Record<string, string>;
   features: FeatureEntry[];
   agents: CodingAgent[];
+  /** A root .devcontainer.json the user agreed to move to the Trash */
+  trash?: string;
 }
 
 function fromDirect(index: TemplateIndex, direct: DirectTemplate): Choice {
@@ -258,9 +262,78 @@ function fromDirect(index: TemplateIndex, direct: DirectTemplate): Choice {
   };
 }
 
-async function ask(index: TemplateIndex): Promise<Choice | undefined> {
+/**
+ * Asks before writing over files of the folder: the Template's own files that exist there, and a root
+ * .devcontainer.json it would leave behind next to its .devcontainer/devcontainer.json. Resolves false when the user
+ * keeps them.
+ */
+async function confirmConflicts(
+  folder: string,
+  conflicts: Conflicts,
+): Promise<boolean> {
+  const {overwritten, obsoleteConfig} = conflicts;
+  if (!overwritten.length && !obsoleteConfig) {
+    return true;
+  }
+  const relative = (file: string) => path.relative(folder, file);
+  const replace = vscode.l10n.t('Replace');
+  const open = vscode.l10n.t('Open Existing');
+  const answer = await vscode.window.showWarningMessage(
+    overwritten.length
+      ? vscode.l10n.t(
+          '{0} already has files of this Template.',
+          path.basename(folder),
+        )
+      : vscode.l10n.t(
+          '{0} already has a dev container configuration.',
+          path.basename(folder),
+        ),
+    {
+      modal: true,
+      detail: [
+        ...(overwritten.length
+          ? [
+              vscode.l10n.t(
+                'Replacing writes over: {0}',
+                overwritten.map(relative).join(', '),
+              ),
+            ]
+          : []),
+        ...(obsoleteConfig
+          ? [
+              vscode.l10n.t(
+                '{0} moves to the Trash, so the folder keeps one configuration.',
+                relative(obsoleteConfig),
+              ),
+            ]
+          : []),
+      ].join('\n'),
+    },
+    replace,
+    open,
+  );
+  if (answer === open) {
+    // The configuration rather than, say, the Template's Dockerfile
+    const config =
+      overwritten.find(f => path.basename(f) === 'devcontainer.json') ??
+      obsoleteConfig ??
+      overwritten[0];
+    await vscode.window.showTextDocument(vscode.Uri.file(config));
+  }
+  return answer === replace;
+}
+
+async function ask(
+  index: TemplateIndex,
+  folder: string,
+): Promise<Choice | undefined> {
   const template = await pickTemplate(index);
   if (!template) {
+    return undefined;
+  }
+  // Before the options, so nothing is asked for a Template the user does not want written over their files
+  const conflicts = findConflicts(folder, template, existsSync);
+  if (!(await confirmConflicts(folder, conflicts))) {
     return undefined;
   }
   const args = await askOptions(template);
@@ -273,7 +346,15 @@ async function ask(index: TemplateIndex): Promise<Choice | undefined> {
   }
   // Alpine has no bash for the install scripts
   const agents = supportsCodingAgents(template) ? await pickAgents() : [];
-  return agents && {template, args, features, agents};
+  return (
+    agents && {
+      template,
+      args,
+      features,
+      agents,
+      trash: conflicts.obsoleteConfig,
+    }
+  );
 }
 
 /**
@@ -289,35 +370,8 @@ export async function addDevContainerConfig(
   if (!folder) {
     return undefined;
   }
-  const existing = existingConfigs(folder, existsSync);
-  if (existing.length && !direct) {
-    const replace = vscode.l10n.t('Replace');
-    const open = vscode.l10n.t('Open Existing');
-    const answer = await vscode.window.showWarningMessage(
-      vscode.l10n.t(
-        '{0} already has a dev container configuration.',
-        path.basename(folder),
-      ),
-      {
-        modal: true,
-        detail: vscode.l10n.t(
-          'Replacing writes the Template over {0}.',
-          existing.map(f => path.relative(folder, f)).join(', '),
-        ),
-      },
-      replace,
-      open,
-    );
-    if (answer === open) {
-      await vscode.window.showTextDocument(vscode.Uri.file(existing[0]));
-    }
-    if (answer !== replace) {
-      return undefined;
-    }
-  }
-
   const index = await loadIndex(ctx);
-  const choice = direct ? fromDirect(index, direct) : await ask(index);
+  const choice = direct ? fromDirect(index, direct) : await ask(index, folder);
   if (!choice) {
     return undefined;
   }
@@ -332,6 +386,23 @@ export async function addDevContainerConfig(
     features: choice.features,
     agents: choice.agents,
   });
+  // Only what the user agreed to in the prompt; the direct path asks nothing and moves nothing
+  if (choice.trash) {
+    try {
+      await vscode.workspace.fs.delete(vscode.Uri.file(choice.trash), {
+        useTrash: true,
+      });
+    } catch (error) {
+      // The Template is written: say what is left and go on to open it
+      void vscode.window.showWarningMessage(
+        vscode.l10n.t(
+          'Could not move {0} to the Trash: {1}. Delete it so the folder keeps one configuration.',
+          path.relative(folder, choice.trash),
+          error instanceof Error ? error.message : String(error),
+        ),
+      );
+    }
+  }
   const config = written.find(f => path.basename(f) === 'devcontainer.json');
   if (!config) {
     return undefined;

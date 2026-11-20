@@ -451,9 +451,12 @@
   "Tools installed into the dev container; press Enter to add none": "安装到 dev container 里的工具；直接回车表示不添加",
   "Replace": "替换",
   "Open Existing": "打开现有文件",
-  "{0} already has a dev container configuration.": "{0} 已有 dev container 配置。",
-  "Replacing writes the Template over {0}.": "替换会用模板覆盖 {0}。",
   "Added {0}.": "已添加 {0}。",
   "Install Coding Agents (optional)": "安装 Coding Agent（可选）",
-  "Installed by postCreateCommand with their official scripts; press Enter to install none": "由 postCreateCommand 用官方脚本安装；直接回车表示不安装"
+  "Installed by postCreateCommand with their official scripts; press Enter to install none": "由 postCreateCommand 用官方脚本安装；直接回车表示不安装",
+  "{0} already has files of this Template.": "{0} 里已有这个模板的文件。",
+  "Replacing writes over: {0}": "替换会覆盖：{0}",
+  "{0} moves to the Trash, so the folder keeps one configuration.": "{0} 会移到废纸篓，文件夹里只保留一份配置。",
+  "{0} already has a dev container configuration.": "{0} 已有 dev container 配置。",
+  "Could not move {0} to the Trash: {1}. Delete it so the folder keeps one configuration.": "无法把 {0} 移到废纸篓：{1}。请手动删除，让文件夹里只保留一份配置。"
 }

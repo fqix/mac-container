@@ -3,6 +3,8 @@
 ## Unreleased
 
 - Fix `there is no registered task type 'appleContainer'` when running image pulls, builds or dev container tasks: the extension now declares its task type
+- **Add Dev Container Configuration...** lists every file of the folder the Template would write over (such as a `.devcontainer/Dockerfile`) before replacing them, and moves a root `.devcontainer.json` to the Trash so the folder keeps one configuration
+- Coding agents whose install fails in `postCreateCommand` are named in the dev container log instead of passing silently, a later run adds the PATH line of a newly chosen agent, and generated files are writable even when the extension's own files are read-only
 
 ## 0.10.0
 
