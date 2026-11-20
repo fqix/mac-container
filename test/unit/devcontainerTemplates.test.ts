@@ -1,4 +1,5 @@
 import * as assert from 'assert';
+import {execFileSync} from 'child_process';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
@@ -12,7 +13,7 @@ import {
   agentInstallCommand,
   asDirectTemplate,
   applyTemplate,
-  existingConfigs,
+  findConflicts,
   featureIncompatibility,
   featureReference,
   parseTemplateIndex,
@@ -162,21 +163,69 @@ describe('dev container templates', () => {
   });
 
   it('installs coding agents with their official scripts and puts them on PATH', () => {
-    // The command checked under dash in mcr.microsoft.com/devcontainers/base:ubuntu: every agent found by bash and
-    // zsh, login and interactive, and a second run adds no second PATH line
-    assert.strictEqual(
-      agentInstallCommand(['claude', 'codex', 'opencode']),
-      'curl -fsSL https://claude.ai/install.sh | bash; ' +
-        'curl -fsSL https://chatgpt.com/codex/install.sh | sh; ' +
-        'curl -fsSL https://opencode.ai/v2/install | bash; ' +
-        'for rc in .bashrc .profile .zshenv; do [ "$rc" = .zshenv ] && ! command -v zsh >/dev/null && continue; ' +
-        `grep -qs "${AGENT_PATH_MARKER}" "$HOME/$rc" || ` +
-        `printf "\\n# ${AGENT_PATH_MARKER}\\nexport PATH=\\"\\$HOME/.local/bin:\\$HOME/.opencode/bin:\\$PATH\\"\\n" >> "$HOME/$rc"; done`,
+    const all = agentInstallCommand(['claude', 'codex', 'opencode']);
+    // Downloaded first, so a failed download is a failed install, then run with the shell the docs pipe it to
+    assert.ok(
+      all.includes(
+        `script=$(curl -fsSL https://claude.ai/install.sh) && printf '%s\\n' "$script" | bash || failed="$failed, Claude Code"`,
+      ),
+    );
+    assert.ok(
+      all.includes(
+        `script=$(curl -fsSL https://chatgpt.com/codex/install.sh) && printf '%s\\n' "$script" | sh || failed="$failed, Codex"`,
+      ),
+    );
+    // One single-quoted PATH line per directory, so $HOME and $PATH expand when a shell starts
+    assert.ok(
+      all.includes(
+        `'export PATH="$HOME/.opencode/bin:$PATH" ${AGENT_PATH_MARKER}'`,
+      ),
     );
     const claude = agentInstallCommand(['claude']);
     assert.ok(!claude.includes('codex') && !claude.includes('.opencode'));
     assert.ok(!supportsCodingAgents(template('alpine')));
     assert.ok(supportsCodingAgents(template('python')));
+  });
+
+  it("reports failed agent installs, succeeds anyway and adds a new agent's PATH line later", () => {
+    // Runs the command for real with a curl that serves a script for claude.ai and fails for opencode.ai
+    const home = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-home-'));
+    const bin = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-bin-'));
+    try {
+      fs.writeFileSync(
+        path.join(bin, 'curl'),
+        '#!/bin/sh\ncase "$*" in *claude.ai*) echo "echo installed claude";; *) exit 22;; esac\n',
+        {mode: 0o755},
+      );
+      fs.writeFileSync(path.join(home, '.bashrc'), '# user rc\n');
+      const run = (agents: ('claude' | 'opencode')[]) =>
+        execFileSync(
+          '/bin/sh',
+          ['-c', `{ ${agentInstallCommand(agents)}; } 2>&1`],
+          {
+            env: {HOME: home, PATH: `${bin}:/usr/bin:/bin`},
+            encoding: 'utf8',
+          },
+        );
+      assert.match(run(['claude']), /installed claude/);
+      const out = run(['claude', 'opencode']);
+      assert.match(out, /Could not install: opencode/);
+      assert.doesNotMatch(out, /Could not install:.*Claude/);
+      const bashrc = fs.readFileSync(path.join(home, '.bashrc'), 'utf8');
+      assert.match(bashrc, /^# user rc$/m);
+      const count = (dir: string) =>
+        bashrc.split('\n').filter(l => l.includes(`$HOME/${dir}:$PATH`)).length;
+      // Added once, and the second run still adds the line of the newly chosen agent
+      assert.strictEqual(count('.local/bin'), 1);
+      assert.strictEqual(count('.opencode/bin'), 1);
+      assert.match(
+        bashrc,
+        /^export PATH="\$HOME\/\.local\/bin:\$PATH" # Added by/m,
+      );
+    } finally {
+      fs.rmSync(home, {recursive: true, force: true});
+      fs.rmSync(bin, {recursive: true, force: true});
+    }
   });
 
   it("adds a postCreateCommand and keeps the Template's own", () => {
@@ -230,11 +279,74 @@ describe('dev container templates', () => {
     assert.deepStrictEqual(asDirectTemplate({template: 'x'}), {template: 'x'});
   });
 
-  it('finds configurations that would be overwritten', () => {
-    const present = new Set(['/app/.devcontainer.json']);
+  it('finds every file a Template would write over, and a root configuration it would leave behind', () => {
+    const python = template('python');
+    const present = new Set([
+      '/app/.devcontainer/devcontainer.json',
+      '/app/.devcontainer.json',
+      // Optional, and not written
+      '/app/.github/dependabot.yml',
+    ]);
     assert.deepStrictEqual(
-      existingConfigs('/app', f => present.has(f)),
-      ['/app/.devcontainer.json'],
+      findConflicts('/app', python, f => present.has(f)),
+      {
+        overwritten: ['/app/.devcontainer/devcontainer.json'],
+        obsoleteConfig: '/app/.devcontainer.json',
+      },
     );
+    // A Dockerfile-type Template also writes .devcontainer/Dockerfile
+    const withDockerfile = index.templates.find(t =>
+      t.files.includes('.devcontainer/Dockerfile'),
+    )!;
+    assert.deepStrictEqual(
+      findConflicts(
+        '/app',
+        withDockerfile,
+        f => f === '/app/.devcontainer/Dockerfile',
+      ),
+      {
+        overwritten: ['/app/.devcontainer/Dockerfile'],
+        obsoleteConfig: undefined,
+      },
+    );
+    assert.deepStrictEqual(
+      findConflicts('/app', python, () => false),
+      {
+        overwritten: [],
+        obsoleteConfig: undefined,
+      },
+    );
+  });
+
+  it("writes the user's files writable, whatever the bundled files are", async () => {
+    const source = fs.mkdtempSync(path.join(os.tmpdir(), 'template-src-'));
+    const folder = fs.mkdtempSync(path.join(os.tmpdir(), 'template-test-'));
+    try {
+      fs.mkdirSync(path.join(source, '.devcontainer'));
+      fs.writeFileSync(
+        path.join(source, '.devcontainer', 'devcontainer.json'),
+        '{}',
+        {mode: 0o444},
+      );
+      fs.writeFileSync(path.join(source, '.devcontainer', 'setup.sh'), 'true', {
+        mode: 0o555,
+      });
+      await applyTemplate({
+        templateDir: source,
+        workspaceFolder: folder,
+        template: {
+          files: ['.devcontainer/devcontainer.json', '.devcontainer/setup.sh'],
+          optionalPaths: [],
+          options: {},
+        },
+      });
+      const mode = (file: string) =>
+        fs.statSync(path.join(folder, '.devcontainer', file)).mode & 0o777;
+      assert.strictEqual(mode('devcontainer.json'), 0o644);
+      assert.strictEqual(mode('setup.sh'), 0o755);
+    } finally {
+      fs.rmSync(source, {recursive: true, force: true});
+      fs.rmSync(folder, {recursive: true, force: true});
+    }
   });
 });

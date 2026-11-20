@@ -207,55 +207,82 @@ export function addFeatures(
 
 export type CodingAgent = 'claude' | 'codex' | 'opencode';
 
-/** The official install scripts and where they put the agent, relative to the home directory */
-export const CODING_AGENTS: readonly {
+interface CodingAgentInstall {
   id: CodingAgent;
   name: string;
-  install: string;
+  /** The official install script and the shell its instructions pipe it to */
+  url: string;
+  shell: 'bash' | 'sh';
+  /** Where the script puts the agent, relative to the home directory */
   binDir: string;
-}[] = [
+}
+
+export const CODING_AGENTS: readonly CodingAgentInstall[] = [
   {
     id: 'claude',
     name: 'Claude Code',
-    install: 'curl -fsSL https://claude.ai/install.sh | bash',
+    url: 'https://claude.ai/install.sh',
+    shell: 'bash',
     binDir: '.local/bin',
   },
   {
     id: 'codex',
     name: 'Codex',
-    install: 'curl -fsSL https://chatgpt.com/codex/install.sh | sh',
+    url: 'https://chatgpt.com/codex/install.sh',
+    shell: 'sh',
     binDir: '.local/bin',
   },
   {
     id: 'opencode',
     name: 'opencode',
-    install: 'curl -fsSL https://opencode.ai/v2/install | bash',
+    url: 'https://opencode.ai/v2/install',
+    shell: 'bash',
     binDir: '.opencode/bin',
   },
 ];
 
-/** Marks the PATH line agentInstallCommand adds, so running it again adds none */
-export const AGENT_PATH_MARKER =
-  'Added by Apple Container Tools: coding agents';
+/** The install command as the agent's documentation gives it, for showing */
+export function installCommandOf(agent: CodingAgentInstall): string {
+  return `curl -fsSL ${agent.url} | ${agent.shell}`;
+}
+
+/** Ends each PATH line agentInstallCommand adds */
+export const AGENT_PATH_MARKER = '# Added by Apple Container Tools';
 
 /**
- * A postCreateCommand that installs the agents with their official scripts, one after another (one failing does not
- * stop the others), then puts their directories on PATH for every shell: the scripts only set it up for some (opencode
- * only in .bashrc, none in zsh). POSIX only: the string runs with /bin/sh, which is dash on Debian and Ubuntu. The
- * image needs curl and bash, as the official devcontainers images have.
+ * A postCreateCommand that installs the agents with their official scripts, one after another, then puts their
+ * directories on PATH for every shell: the scripts only set it up for some (opencode only in .bashrc, none in zsh).
+ *
+ * - A script is downloaded before it runs (`script=$(curl …)`), so a failed download counts as a failed install
+ *   instead of an empty `| bash` that succeeds. An install that fails does not stop the others; the agents that could
+ *   not be installed are named on stderr in the dev container log, and the command still succeeds, since a failing
+ *   postCreateCommand would keep the dev container from opening.
+ * - Each directory gets its own PATH line, added once per file: a later run with another agent adds only its line.
+ *   The lines are single-quoted, so $HOME and $PATH expand when a shell starts.
+ * - POSIX only: the string runs with /bin/sh, which is dash on Debian and Ubuntu. The image needs curl and bash, as
+ *   the official devcontainers images have.
  */
 export function agentInstallCommand(agents: readonly CodingAgent[]): string {
   const chosen = CODING_AGENTS.filter(a => agents.includes(a.id));
-  // `\$` so that $HOME and $PATH are written into the file and expand when a shell starts
-  const dirs = [...new Set(chosen.map(a => `\\$HOME/${a.binDir}`))].join(':');
-  // Escaped for the double-quoted printf argument below
-  const pathLine = `export PATH=\\"${dirs}:\\$PATH\\"`;
+  const installs = chosen.map(
+    a =>
+      `script=$(curl -fsSL ${a.url}) && printf '%s\\n' "$script" | ${a.shell} || failed="$failed, ${a.name}"`,
+  );
+  const lines = [...new Set(chosen.map(a => a.binDir))].map(
+    dir => `export PATH="$HOME/${dir}:$PATH" ${AGENT_PATH_MARKER}`,
+  );
   const pathFix =
     'for rc in .bashrc .profile .zshenv; do ' +
     '[ "$rc" = .zshenv ] && ! command -v zsh >/dev/null && continue; ' +
-    `grep -qs "${AGENT_PATH_MARKER}" "$HOME/$rc" || ` +
-    `printf "\\n# ${AGENT_PATH_MARKER}\\n${pathLine}\\n" >> "$HOME/$rc"; done`;
-  return [...chosen.map(a => a.install), pathFix].join('; ');
+    lines
+      .map(
+        line =>
+          `grep -qsF '${line}' "$HOME/$rc" || printf '%s\\n' '${line}' >> "$HOME/$rc"`,
+      )
+      .join('; ') +
+    '; done';
+  const report = `[ -z "$failed" ] || printf 'Could not install:%s\\n' "\${failed#,}" >&2`;
+  return ['failed=', ...installs, pathFix, report].join('; ');
 }
 
 /** Alpine images lack bash, which the install scripts need */
@@ -346,8 +373,8 @@ export async function applyTemplate(options: ApplyOptions): Promise<string[]> {
     }
     await mkdir(path.dirname(target), {recursive: true});
     await writeFile(target, text);
-    // Scripts such as ensure-mount-sources stay executable
-    await chmod(target, (await stat(source)).mode & 0o777);
+    // The user's own file: writable whatever the extension's files are, executable when the Template's file is
+    await chmod(target, (await stat(source)).mode & 0o111 ? 0o755 : 0o644);
     written.push(target);
   }
   return written;
@@ -370,15 +397,36 @@ export function asDirectTemplate(value: unknown): DirectTemplate | undefined {
     : undefined;
 }
 
-/** Configurations a Template would overwrite */
-export const CONFIG_PATHS = [
-  path.join('.devcontainer', 'devcontainer.json'),
-  '.devcontainer.json',
-];
+export interface Conflicts {
+  /** Files of the folder the Template writes over, such as its devcontainer.json or a .devcontainer/Dockerfile */
+  overwritten: string[];
+  /**
+   * A root .devcontainer.json the Template does not write: kept, it would leave the folder with two configurations,
+   * so replacing moves it out of the way
+   */
+  obsoleteConfig?: string;
+}
 
-export function existingConfigs(
+/** What applying `template` would replace in the folder */
+export function findConflicts(
   workspaceFolder: string,
+  template: Pick<TemplateEntry, 'files' | 'optionalPaths'>,
   exists: (file: string) => boolean,
-): string[] {
-  return CONFIG_PATHS.map(p => path.join(workspaceFolder, p)).filter(exists);
+  includeOptionalPaths = false,
+): Conflicts {
+  const files = templateFiles(template, includeOptionalPaths);
+  const overwritten = files
+    .map(file => path.join(workspaceFolder, ...file.split('/')))
+    .filter(exists);
+  const root = path.join(workspaceFolder, '.devcontainer.json');
+  const writesConfig = files.some(
+    file => path.posix.basename(file) === 'devcontainer.json',
+  );
+  return {
+    overwritten,
+    obsoleteConfig:
+      writesConfig && !files.includes('.devcontainer.json') && exists(root)
+        ? root
+        : undefined,
+  };
 }

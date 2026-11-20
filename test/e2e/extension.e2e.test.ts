@@ -1492,7 +1492,7 @@ describe('Apple Container e2e', function () {
       assert.match(text, /ghcr\.io\/devcontainers\/features\/github-cli:\d+/);
       assert.match(
         text,
-        /"postCreateCommand": "curl -fsSL https:\/\/claude\.ai\/install\.sh \| bash; /,
+        /"postCreateCommand": "failed=; script=\$\(curl -fsSL https:\/\/claude\.ai\/install\.sh\)/,
       );
       // The optional dependabot file is left out
       assert.ok(!fs.existsSync(path.join(folder, '.github')));

@@ -10,7 +10,7 @@ import {StringDecoder} from 'string_decoder';
 
 import * as vscode from 'vscode';
 
-import {formatElapsed, toTerminalText} from '../utils/steps';
+import {formatElapsed, TASK_TYPE, toTerminalText} from '../utils/steps';
 
 /** How long to wait for VS Code to open the terminal before writing anyway (writes before open would be lost) */
 const OPEN_TIMEOUT_MS = 10_000;
@@ -66,7 +66,7 @@ export class StepTerminal {
   static async start(name: string): Promise<StepTerminal> {
     const terminal = new StepTerminal();
     const task = new vscode.Task(
-      {type: 'appleContainer', id: `${name}-${Date.now()}`},
+      {type: TASK_TYPE, id: `${name}-${Date.now()}`},
       vscode.TaskScope.Workspace,
       name,
       'Apple Container',
