@@ -11,6 +11,7 @@ import {
   addPostCreateCommand,
   AGENT_PATH_MARKER,
   agentInstallCommand,
+  CODING_AGENTS,
   asDirectTemplate,
   applyTemplate,
   findConflicts,
@@ -187,7 +188,38 @@ describe('dev container templates', () => {
     assert.ok(supportsCodingAgents(template('python')));
   });
 
-  it("reports failed agent installs, succeeds anyway and adds a new agent's PATH line later", () => {
+  it('lists each agent once with its own install script and a home-relative directory', () => {
+    const ids = CODING_AGENTS.map(a => a.id);
+    assert.deepStrictEqual(ids, [
+      'claude',
+      'codex',
+      'opencode',
+      'kimi',
+      'mimo',
+      'qwen',
+    ]);
+    assert.strictEqual(new Set(CODING_AGENTS.map(a => a.url)).size, ids.length);
+    for (const agent of CODING_AGENTS) {
+      assert.match(agent.url, /^https:\/\//, agent.id);
+      assert.match(agent.binDir, /^\.[\w.-]+(\/[\w.-]+)*$/, agent.id);
+    }
+    // One PATH line per distinct directory: agents sharing ~/.local/bin get one line for it
+    const dirs = [
+      ...agentInstallCommand(ids).matchAll(
+        /printf '%s\\n' 'export PATH="\$HOME\/([^:]+):\$PATH"/g,
+      ),
+    ].map(m => m[1]);
+    assert.deepStrictEqual(dirs, [
+      '.local/bin',
+      '.opencode/bin',
+      '.kimi-code/bin',
+      '.mimocode/bin',
+    ]);
+  });
+
+  it("reports failed agent installs, succeeds anyway and adds a new agent's PATH line later", function () {
+    // Runs /bin/sh twice; the first process start can take longer than mocha's 2 s default
+    this.timeout(15_000);
     // Runs the command for real with a curl that serves a script for claude.ai and fails for opencode.ai
     const home = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-home-'));
     const bin = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-bin-'));

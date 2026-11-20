@@ -205,7 +205,8 @@ export function addFeatures(
   return text;
 }
 
-export type CodingAgent = 'claude' | 'codex' | 'opencode';
+export type CodingAgent =
+  'claude' | 'codex' | 'opencode' | 'kimi' | 'mimo' | 'qwen';
 
 interface CodingAgentInstall {
   id: CodingAgent;
@@ -238,6 +239,29 @@ export const CODING_AGENTS: readonly CodingAgentInstall[] = [
     url: 'https://opencode.ai/v2/install',
     shell: 'bash',
     binDir: '.opencode/bin',
+  },
+  // binDir checked on 2026-11-20 in mcr.microsoft.com/devcontainers/base:ubuntu (arm64, non-root) with the scripts'
+  // latest releases then; the scripts install whatever is current, so recheck binDir when one stops being found
+  {
+    id: 'kimi',
+    name: 'Kimi Code',
+    url: 'https://code.kimi.com/kimi-code/install.sh',
+    shell: 'bash',
+    binDir: '.kimi-code/bin',
+  },
+  {
+    id: 'mimo',
+    name: 'MiMo Code',
+    url: 'https://mimo.xiaomi.com/install',
+    shell: 'bash',
+    binDir: '.mimocode/bin',
+  },
+  {
+    id: 'qwen',
+    name: 'Qwen Code',
+    url: 'https://qwen-code-assets.oss-cn-hangzhou.aliyuncs.com/installation/install-qwen-standalone.sh',
+    shell: 'bash',
+    binDir: '.local/bin',
   },
 ];
 
